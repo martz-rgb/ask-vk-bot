@@ -9,7 +9,7 @@ import (
 type Config struct {
 	GroupToken string `json:"GROUP_TOKEN"`
 	AdminToken string `json:"ADMIN_TOKEN"`
-	DataBase   string `json:"DATABASE"`
+	DB         string `json:"DB"`
 
 	AppId        int64  `json:"APP_ID"`
 	ProtectedKey string `json:"PROTECTED_KEY"`
@@ -37,7 +37,7 @@ func main() {
 	if len(config.AdminToken) == 0 {
 		panic("no admin token in config file")
 	}
-	if len(config.DataBase) == 0 {
+	if len(config.DB) == 0 {
 		panic("no database url in config file")
 	}
 
@@ -46,12 +46,12 @@ func main() {
 		panic(err)
 	}
 
-	db, err := NewDb(config.DataBase)
+	db, err := NewDb(config.DB)
 	if err != nil {
 		panic(err)
 	}
 
-	if err = db.Init(); err != nil {
+	if err = db.Init("schema.sql"); err != nil {
 		panic(err)
 	}
 

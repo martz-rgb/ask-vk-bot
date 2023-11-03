@@ -31,8 +31,8 @@ func NewDb(connection string) (*Db, error) {
 	}, nil
 }
 
-func (db *Db) Init() error {
-	schema, err := os.Open("db/schema.sql")
+func (db *Db) Init(filename string) error {
+	schema, err := os.Open(filename)
 	if err != nil {
 		return err
 	}
