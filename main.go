@@ -55,6 +55,12 @@ func main() {
 		panic(err)
 	}
 
+	if err = db.Init(); err != nil {
+		panic(err)
+	}
+
+	//db.LoadCsv()
+
 	chat_bot := NewChatBot(dict, InitState, api, db)
 	chat_bot.RunLongPoll()
 }
