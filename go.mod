@@ -4,6 +4,7 @@ go 1.17
 
 require (
 	github.com/SevereCloud/vksdk/v2 v2.16.0
+	github.com/jmoiron/sqlx v1.3.5
 	github.com/mattn/go-sqlite3 v1.14.17
 )
 

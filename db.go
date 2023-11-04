@@ -1,23 +1,23 @@
 package main
 
 import (
-	"database/sql"
 	"encoding/csv"
 	"fmt"
 	"io"
 	"os"
 	"sync"
 
+	"github.com/jmoiron/sqlx"
 	_ "github.com/mattn/go-sqlite3"
 )
 
 type Db struct {
 	sync.Mutex
-	sql *sql.DB
+	sql *sqlx.DB
 }
 
 func NewDb(connection string) (*Db, error) {
-	db, err := sql.Open("sqlite3", connection)
+	db, err := sqlx.Open("sqlite3", connection)
 	if err != nil {
 		return nil, err
 	}
@@ -90,4 +90,11 @@ func (db *Db) LoadCsv() error {
 	}
 
 	return tx.Commit()
+}
+
+type Role struct {
+	Name         string `db:"name"`
+	Tag          string `db:"tag"`
+	Shown_name   string `db:"shown_name"`
+	Caption_name string `db:"caption_name"`
 }
