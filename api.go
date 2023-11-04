@@ -86,3 +86,8 @@ func (a *VkApi) SendEventAnswer(event_id string, user_id int, peer_id int) {
 	}
 	fmt.Println("event response", response)
 }
+
+func (a *VkApi) ChangeKeyboard(user_id int, keyboard string) {
+	id := a.SendMessage(user_id, "Меняю клавиатуру", keyboard)
+	a.DeleteMessage(user_id, id, 1)
+}
