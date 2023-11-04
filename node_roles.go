@@ -55,10 +55,17 @@ func (node *RolesNode) Do(a *VkApi, db *Db, event EventType, i interface{}) Stat
 			return nil
 		}
 
+		if payload.Id != node.String() {
+			return nil
+		}
+
 		if len(payload.Command) != 0 {
 			switch payload.Command {
 			case "previous":
 				node.page -= 1
+				if node.page < 0 {
+					node.page = 0
+				}
 
 				keyboard, err := node.CreateRolePage(2, 3)
 				if err != nil {
@@ -68,6 +75,9 @@ func (node *RolesNode) Do(a *VkApi, db *Db, event EventType, i interface{}) Stat
 				a.ChangeKeyboard(obj.UserID, keyboard.ToJSON())
 			case "next":
 				node.page += 1
+				if node.page >= node.total_pages {
+					node.page = node.total_pages - 1
+				}
 
 				keyboard, err := node.CreateRolePage(2, 3)
 				if err != nil {
@@ -90,10 +100,10 @@ func (node *RolesNode) Do(a *VkApi, db *Db, event EventType, i interface{}) Stat
 			}
 
 			role_string := fmt.Sprintf(`
-					Идентификатор: %s,
+					Идентификатор: %s
 					Тег: %s
-					Имя: %s,
-					Заголовок: %s,
+					Имя: %s
+					Заголовок: %s
 			`, info.Name, info.Tag, info.Shown_name, info.Caption_name)
 
 			a.SendMessage(obj.UserID, role_string, "")
@@ -118,6 +128,7 @@ func (node *RolesNode) CreateRolePage(rows int, cols int) (*object.MessagesKeybo
 			index := i*rows + j + node.page*cells
 
 			if index >= len(node.roles) {
+				i = rows
 				break
 			}
 
@@ -133,7 +144,6 @@ func (node *RolesNode) CreateRolePage(rows int, cols int) (*object.MessagesKeybo
 	// + доп ряд с функциональными кнопками
 	keyboard.AddRow()
 
-	// кнопка <-
 	if node.page > 0 {
 		payload := &CallbackPayload{
 			Id:      node.String(),
@@ -156,7 +166,6 @@ func (node *RolesNode) CreateRolePage(rows int, cols int) (*object.MessagesKeybo
 		Id:      node.String(),
 		Command: "back",
 	}
-
 	keyboard.AddCallbackButton("Назад", payload, "negative")
 
 	return keyboard, nil
