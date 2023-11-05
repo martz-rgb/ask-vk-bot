@@ -6,17 +6,22 @@ import (
 	"io"
 	"os"
 	"os/signal"
+
+	"go.uber.org/zap"
 )
 
 type Config struct {
 	GroupToken string `json:"GROUP_TOKEN"`
 	AdminToken string `json:"ADMIN_TOKEN"`
 	DB         string `json:"DB"`
+	LogFile    string `json:"LOG_FILE"`
 
 	AppId        int64  `json:"APP_ID"`
 	ProtectedKey string `json:"PROTECTED_KEY"`
 	ServerKey    string `json:"SERVER_KEY"`
 }
+
+var logger *zap.Logger
 
 func main() {
 	config_file, err := os.Open("config.json")
@@ -42,6 +47,16 @@ func main() {
 	if len(config.DB) == 0 {
 		panic("no database url in config file")
 	}
+	if len(config.LogFile) == 0 {
+		panic("no log file in config file")
+	}
+
+	log_cfg := zap.NewDevelopmentConfig()
+	log_cfg.OutputPaths = []string{config.LogFile}
+
+	// global variable
+	logger = zap.Must(log_cfg.Build())
+	defer logger.Sync()
 
 	api, err := NewVkApi(config.GroupToken, config.AdminToken)
 	if err != nil {
