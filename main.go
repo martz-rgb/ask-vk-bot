@@ -1,9 +1,11 @@
 package main
 
 import (
+	"context"
 	"encoding/json"
 	"io"
 	"os"
+	"os/signal"
 )
 
 type Config struct {
@@ -58,5 +60,9 @@ func main() {
 	//db.LoadCsv()
 
 	chat_bot := NewChatBot(&InitNode{}, api, db)
-	chat_bot.RunLongPoll()
+
+	ctx, stop := signal.NotifyContext(context.Background(), os.Interrupt)
+	defer stop()
+
+	chat_bot.RunLongPoll(ctx)
 }

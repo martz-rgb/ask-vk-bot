@@ -26,7 +26,7 @@ func NewChatBot(init_state StateNode, api *VkApi, db *Db) *ChatBot {
 	}
 }
 
-func (bot *ChatBot) RunLongPoll() {
+func (bot *ChatBot) RunLongPoll(ctx context.Context) {
 	group, err := bot.api.group.GroupsGetByID(api.Params{})
 	if err != nil {
 		panic(err)
@@ -42,7 +42,7 @@ func (bot *ChatBot) RunLongPoll() {
 	lp.MessageNew(bot.MessageEvent)
 	lp.MessageEvent(bot.KeyboardEvent)
 
-	lp.Run()
+	lp.RunWithContext(ctx)
 }
 
 func (bot *ChatBot) MessageEvent(ctx context.Context, obj events.MessageNewObject) {
