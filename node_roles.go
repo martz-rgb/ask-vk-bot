@@ -125,7 +125,7 @@ func (node *RolesNode) CreateRolePage(rows int, cols int) (*object.MessagesKeybo
 		keyboard.AddRow()
 
 		for j := 0; j < cols; j++ {
-			index := i*rows + j + node.page*cells
+			index := i*cols + j + node.page*cells
 
 			if index >= len(node.roles) {
 				i = rows
