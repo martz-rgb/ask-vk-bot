@@ -48,6 +48,8 @@ func (bot *ChatBot) RunLongPoll(ctx context.Context) {
 func (bot *ChatBot) MessageEvent(ctx context.Context, obj events.MessageNewObject) {
 	user_id := obj.Message.FromID
 
+	bot.api.MarkAsRead(user_id)
+
 	state, existed := bot.cache.LoadOrStore(user_id, bot.init_state)
 
 	if !existed {
@@ -71,7 +73,7 @@ func (bot *ChatBot) KeyboardEvent(ctx context.Context, obj events.MessageEventOb
 
 	if !existed {
 		state.Init(bot.api, bot.db, user_id, false)
-		return
+		// and try to do next step
 	}
 
 	next := state.Do(bot.api, bot.db, ChangeKeyboardEvent, obj)

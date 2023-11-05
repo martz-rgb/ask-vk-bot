@@ -1,7 +1,6 @@
 package main
 
 import (
-	"fmt"
 	"math/rand"
 	"sync"
 	"time"
@@ -30,6 +29,29 @@ func NewVkApi(group_token string, admin_token string) (*VkApi, error) {
 	return a, nil
 }
 
+func (a *VkApi) MarkAsRead(user_id int) {
+	a.Lock()
+	defer a.Unlock()
+
+	params := api.Params{
+		"mark_conversation_as_read": true,
+		"peer_id":                   user_id,
+	}
+
+	response, err := a.group.MessagesMarkAsRead(params)
+	if err != nil {
+		logger.Errorw("failed to mark as read vk messsage",
+			"error", err,
+			"params", params,
+			"response", response)
+		return
+	}
+
+	logger.Debugw("successfully mark as read vk messsage",
+		"params", params,
+		"response", response)
+}
+
 func (a *VkApi) SendMessage(user_id int, message string, keyboard string) int {
 	a.Lock()
 	defer a.Unlock()
@@ -43,11 +65,17 @@ func (a *VkApi) SendMessage(user_id int, message string, keyboard string) int {
 
 	response, err := a.group.MessagesSend(params)
 	if err != nil {
-		fmt.Println("err", err)
+		logger.Errorw("failed to send vk messsage",
+			"error", err,
+			"params", params,
+			"response", response)
 		return -1
 	}
 
-	fmt.Println("send response", response)
+	logger.Debugw("successfully sent vk messsage",
+		"params", params,
+		"response", response)
+
 	return response
 }
 
@@ -55,17 +83,23 @@ func (a *VkApi) DeleteMessage(peer_id int, message_id int, delete_for_all int) {
 	a.Lock()
 	defer a.Unlock()
 
-	delete_params := api.Params{
+	params := api.Params{
 		"peer_id":        peer_id,
 		"message_ids":    message_id,
 		"delete_for_all": delete_for_all,
 	}
-	response, err := a.group.MessagesDelete(delete_params)
+	response, err := a.group.MessagesDelete(params)
 	if err != nil {
-		fmt.Println("err", err)
+		logger.Errorw("failed to delete vk message",
+			"error", err,
+			"params", params,
+			"response", response)
 		return
 	}
-	fmt.Println("delete response", response)
+
+	logger.Debugw("successfully deleted vk message",
+		"params", params,
+		"response", response)
 }
 
 func (a *VkApi) SendEventAnswer(event_id string, user_id int, peer_id int) {
@@ -81,10 +115,16 @@ func (a *VkApi) SendEventAnswer(event_id string, user_id int, peer_id int) {
 
 	response, err := a.group.MessagesSendMessageEventAnswer(params)
 	if err != nil {
-		fmt.Println("err", err)
+		logger.Errorw("failed to send vk event answer",
+			"error", err,
+			"params", params,
+			"response", response)
 		return
 	}
-	fmt.Println("event response", response)
+
+	logger.Debugw("successfully sent vk event answer",
+		"params", params,
+		"response", response)
 }
 
 func (a *VkApi) ChangeKeyboard(user_id int, keyboard string) {
