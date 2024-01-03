@@ -6,3 +6,9 @@ CREATE TABLE IF NOT EXISTS roles (
     album_link TEXT,
     board_link TEXT
 );
+
+CREATE TABLE IF NOT EXISTS persons (
+    vk_id INT PRIMARY KEY NOT NULL,
+    name TEXT,
+    points INT
+);
