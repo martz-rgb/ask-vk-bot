@@ -1,6 +1,7 @@
 TO-DO list:
 
-- [ ] logging & error handling
+- [x] logging & error handling
 - [ ] db migration
+- [ ] auto deploy from git?
 - [ ] docker
 - [ ] word search (with icu)
