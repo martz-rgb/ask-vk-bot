@@ -5,6 +5,7 @@ import (
 
 	"github.com/SevereCloud/vksdk/v2/events"
 	"github.com/SevereCloud/vksdk/v2/object"
+	"go.uber.org/zap"
 )
 
 type FAQNode struct{}
@@ -38,7 +39,7 @@ func (node *FAQNode) Do(a *VkApi, d *Db, event EventType, i interface{}) StateNo
 	if event == ChangeKeyboardEvent {
 		obj, ok := i.(events.MessageEventObject)
 		if !ok {
-			logger.Warnw("failed to parse vk response to message event object",
+			zap.S().Warnw("failed to parse vk response to message event object",
 				"object", obj)
 			return nil
 		}
@@ -47,13 +48,13 @@ func (node *FAQNode) Do(a *VkApi, d *Db, event EventType, i interface{}) StateNo
 
 		err := json.Unmarshal(obj.Payload, &payload)
 		if err != nil {
-			logger.Errorw("failed to unmarshal payload",
+			zap.S().Errorw("failed to unmarshal payload",
 				"payload", payload)
 			return nil
 		}
 
 		if payload.Id != node.String() {
-			logger.Infow("payload does not belong to node",
+			zap.S().Infow("payload does not belong to node",
 				"node", node.String(),
 				"payload", payload)
 			return nil

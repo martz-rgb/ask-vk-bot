@@ -21,8 +21,6 @@ type Config struct {
 	ServerKey    string `json:"SERVER_KEY"`
 }
 
-var logger *zap.SugaredLogger
-
 func main() {
 	config_file, err := os.Open("config.json")
 	if err != nil {
@@ -54,9 +52,12 @@ func main() {
 	log_cfg := zap.NewDevelopmentConfig()
 	log_cfg.OutputPaths = []string{config.LogFile}
 
-	// global variable
-	logger = zap.Must(log_cfg.Build()).Sugar()
+	logger := zap.Must(log_cfg.Build())
 	defer logger.Sync()
+
+	// use as global variable
+	undo := zap.ReplaceGlobals(logger)
+	defer undo()
 
 	api, err := NewVkApi(config.GroupToken, config.AdminToken)
 	if err != nil {

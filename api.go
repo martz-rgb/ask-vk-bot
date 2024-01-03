@@ -6,6 +6,7 @@ import (
 	"time"
 
 	"github.com/SevereCloud/vksdk/v2/api"
+	"go.uber.org/zap"
 )
 
 type VkApi struct {
@@ -40,14 +41,14 @@ func (a *VkApi) MarkAsRead(user_id int) {
 
 	response, err := a.group.MessagesMarkAsRead(params)
 	if err != nil {
-		logger.Errorw("failed to mark as read vk messsage",
+		zap.S().Errorw("failed to mark as read vk messsage",
 			"error", err,
 			"params", params,
 			"response", response)
 		return
 	}
 
-	logger.Debugw("successfully mark as read vk messsage",
+	zap.S().Debugw("successfully mark as read vk messsage",
 		"params", params,
 		"response", response)
 }
@@ -65,14 +66,14 @@ func (a *VkApi) SendMessage(user_id int, message string, keyboard string) int {
 
 	response, err := a.group.MessagesSend(params)
 	if err != nil {
-		logger.Errorw("failed to send vk messsage",
+		zap.S().Errorw("failed to send vk messsage",
 			"error", err,
 			"params", params,
 			"response", response)
 		return -1
 	}
 
-	logger.Debugw("successfully sent vk messsage",
+	zap.S().Debugw("successfully sent vk messsage",
 		"params", params,
 		"response", response)
 
@@ -90,14 +91,14 @@ func (a *VkApi) DeleteMessage(peer_id int, message_id int, delete_for_all int) {
 	}
 	response, err := a.group.MessagesDelete(params)
 	if err != nil {
-		logger.Errorw("failed to delete vk message",
+		zap.S().Errorw("failed to delete vk message",
 			"error", err,
 			"params", params,
 			"response", response)
 		return
 	}
 
-	logger.Debugw("successfully deleted vk message",
+	zap.S().Debugw("successfully deleted vk message",
 		"params", params,
 		"response", response)
 }
@@ -115,14 +116,14 @@ func (a *VkApi) SendEventAnswer(event_id string, user_id int, peer_id int) {
 
 	response, err := a.group.MessagesSendMessageEventAnswer(params)
 	if err != nil {
-		logger.Errorw("failed to send vk event answer",
+		zap.S().Errorw("failed to send vk event answer",
 			"error", err,
 			"params", params,
 			"response", response)
 		return
 	}
 
-	logger.Debugw("successfully sent vk event answer",
+	zap.S().Debugw("successfully sent vk event answer",
 		"params", params,
 		"response", response)
 }

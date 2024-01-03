@@ -7,6 +7,7 @@ import (
 
 	"github.com/SevereCloud/vksdk/v2/events"
 	"github.com/SevereCloud/vksdk/v2/object"
+	"go.uber.org/zap"
 )
 
 type RolesNode struct {
@@ -24,7 +25,7 @@ func (node *RolesNode) Init(a *VkApi, d *Db, user_id int, silent bool) {
 
 	err := d.sql.Select(&node.roles, query)
 	if err != nil {
-		logger.Errorw("failed to select from database",
+		zap.S().Errorw("failed to select from database",
 			"error", err,
 			"query", query)
 		return
@@ -33,7 +34,7 @@ func (node *RolesNode) Init(a *VkApi, d *Db, user_id int, silent bool) {
 	node.page = 0
 	keyboard, err := node.CreateRolePage(2, 3)
 	if err != nil {
-		logger.Errorw("failed to create keyboard",
+		zap.S().Errorw("failed to create keyboard",
 			"error", err,
 			"roles", node.roles)
 		return
@@ -51,7 +52,7 @@ func (node *RolesNode) Do(a *VkApi, db *Db, event EventType, i interface{}) Stat
 	if event == ChangeKeyboardEvent {
 		obj, ok := i.(events.MessageEventObject)
 		if !ok {
-			logger.Warnw("failed to parse vk response to message event object",
+			zap.S().Warnw("failed to parse vk response to message event object",
 				"object", obj)
 			return nil
 		}
@@ -60,13 +61,13 @@ func (node *RolesNode) Do(a *VkApi, db *Db, event EventType, i interface{}) Stat
 
 		err := json.Unmarshal([]byte(obj.Payload), &payload)
 		if err != nil {
-			logger.Errorw("failed to unmarshal payload",
+			zap.S().Errorw("failed to unmarshal payload",
 				"payload", payload)
 			return nil
 		}
 
 		if payload.Id != node.String() {
-			logger.Infow("payload does not belong to node",
+			zap.S().Infow("payload does not belong to node",
 				"node", node.String(),
 				"payload", payload)
 			return nil
@@ -82,7 +83,7 @@ func (node *RolesNode) Do(a *VkApi, db *Db, event EventType, i interface{}) Stat
 
 				keyboard, err := node.CreateRolePage(2, 3)
 				if err != nil {
-					logger.Errorw("failed to update keyboard",
+					zap.S().Errorw("failed to update keyboard",
 						"error", err,
 						"page", node.page,
 						"list", node.roles)
@@ -98,7 +99,7 @@ func (node *RolesNode) Do(a *VkApi, db *Db, event EventType, i interface{}) Stat
 
 				keyboard, err := node.CreateRolePage(2, 3)
 				if err != nil {
-					logger.Errorw("failed to update keyboard",
+					zap.S().Errorw("failed to update keyboard",
 						"error", err,
 						"page", node.page,
 						"list", node.roles)
@@ -121,7 +122,7 @@ func (node *RolesNode) Do(a *VkApi, db *Db, event EventType, i interface{}) Stat
 			}
 
 			if info.Name != payload.Value {
-				logger.Errorw("failed to find role in list",
+				zap.S().Errorw("failed to find role in list",
 					"role", payload.Value,
 					"list", node.roles)
 				return nil
