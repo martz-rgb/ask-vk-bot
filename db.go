@@ -32,23 +32,21 @@ func NewDb(connection string) (*Db, error) {
 }
 
 func (db *Db) Init(filename string) error {
-	schema, err := os.Open(filename)
+	file, err := os.Open(filename)
 	if err != nil {
 		return err
 	}
-	defer schema.Close()
 
-	sql, _ := io.ReadAll(schema)
+	schema, _ := io.ReadAll(file)
+
+	file.Close()
 
 	db.Lock()
 	defer db.Unlock()
 
-	_, err = db.sql.Exec(string(sql))
-	if err != nil {
-		return err
-	}
+	err = db.Migrate(string(schema))
 
-	return nil
+	return err
 }
 
 func (db *Db) LoadCsv() error {
