@@ -147,6 +147,10 @@ func (node *RolesNode) CreateRolePage(rows int, cols int) (*object.MessagesKeybo
 	node.total_pages = int(math.Ceil(float64(len(node.roles)) / float64(cells)))
 
 	for i := 0; i < rows; i++ {
+		if i*cols >= len(node.roles) {
+			break
+		}
+
 		keyboard.AddRow()
 
 		for j := 0; j < cols; j++ {

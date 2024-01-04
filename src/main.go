@@ -16,15 +16,44 @@ type Config struct {
 	DB         string `json:"DB"`
 	Schema     string `json:"SCHEMA"`
 	LogFile    string `json:"LOG_FILE"`
+
+	SecretGroupToken string `json:"SECRET_GROUP_TOKEN"`
+	SecretAdminToken string `json:"SECRET_ADMIN_TOKEN"`
 }
 
 func main() {
 	config := Config{
-		GroupToken: os.Getenv("GROUP_TOKEN"),
-		AdminToken: os.Getenv("ADMIN_TOKEN"),
-		DB:         os.Getenv("DB"),
-		Schema:     os.Getenv("SCHEMA"),
-		LogFile:    os.Getenv("LOG_FILE"),
+		SecretGroupToken: os.Getenv("SECRET_GROUP_TOKEN"),
+		SecretAdminToken: os.Getenv("SECRET_ADMIN_TOKEN"),
+		DB:               os.Getenv("DB"),
+		Schema:           os.Getenv("SCHEMA"),
+		LogFile:          os.Getenv("LOG_FILE"),
+	}
+
+	if len(config.SecretGroupToken) != 0 {
+		file, err := os.Open(config.SecretGroupToken)
+		if err != nil {
+			panic(err)
+		}
+
+		token, err := io.ReadAll(file)
+		if err != nil {
+			panic(err)
+		}
+		config.GroupToken = string(token)
+	}
+
+	if len(config.SecretAdminToken) != 0 {
+		file, err := os.Open(config.SecretAdminToken)
+		if err != nil {
+			panic(err)
+		}
+
+		token, err := io.ReadAll(file)
+		if err != nil {
+			panic(err)
+		}
+		config.AdminToken = string(token)
 	}
 
 	config_file, err := os.Open("config.json")
