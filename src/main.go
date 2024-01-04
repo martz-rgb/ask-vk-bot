@@ -56,7 +56,7 @@ func main() {
 		config.AdminToken = string(token)
 	}
 
-	config_file, err := os.Open("config.json")
+	config_file, err := os.Open("../config.json")
 	if err == nil {
 		content, err := io.ReadAll(config_file)
 		config_file.Close()

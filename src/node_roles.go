@@ -10,6 +10,9 @@ import (
 	"go.uber.org/zap"
 )
 
+var rows_count int = 2
+var cols_count int = 3
+
 type RolesNode struct {
 	page        int
 	total_pages int
@@ -32,7 +35,7 @@ func (node *RolesNode) Init(a *VkApi, d *Db, user_id int, silent bool) {
 	}
 
 	node.page = 0
-	keyboard, err := node.CreateRolePage(2, 3)
+	keyboard, err := node.CreateRolePage(rows_count, cols_count)
 	if err != nil {
 		zap.S().Errorw("failed to create keyboard",
 			"error", err,
@@ -43,9 +46,40 @@ func (node *RolesNode) Init(a *VkApi, d *Db, user_id int, silent bool) {
 	a.SendMessage(user_id, "Выберите нужную роль с помощи клавиатуры: ", keyboard.ToJSON())
 }
 
-func (node *RolesNode) Do(a *VkApi, db *Db, event EventType, i interface{}) StateNode {
+type SearchParam struct {
+	ShownName string `db:"shown_name"`
+}
+
+func (node *RolesNode) Do(a *VkApi, d *Db, event EventType, i interface{}) StateNode {
 	if event == NewMessageEvent {
-		// to-do search
+		obj, ok := i.(events.MessageNewObject)
+		if !ok {
+			zap.S().Warnw("failed to parse vk response to new message object",
+				"object", obj)
+			return nil
+		}
+
+		query := "select name, tag, shown_name, caption_name from roles where shown_name like ?"
+
+		err := d.sql.Select(&node.roles, query, "%"+obj.Message.Text+"%")
+		if err != nil {
+			zap.S().Errorw("failed to select from database with parameter",
+				"error", err,
+				"query", query,
+				"param", "%"+obj.Message.Text+"%")
+			return nil
+		}
+
+		node.page = 0
+		keyboard, err := node.CreateRolePage(rows_count, cols_count)
+		if err != nil {
+			zap.S().Errorw("failed to create keyboard",
+				"error", err,
+				"roles", node.roles)
+			return nil
+		}
+
+		a.ChangeKeyboard(obj.Message.FromID, keyboard.ToJSON())
 		return nil
 	}
 
@@ -81,7 +115,7 @@ func (node *RolesNode) Do(a *VkApi, db *Db, event EventType, i interface{}) Stat
 					node.page = 0
 				}
 
-				keyboard, err := node.CreateRolePage(2, 3)
+				keyboard, err := node.CreateRolePage(rows_count, cols_count)
 				if err != nil {
 					zap.S().Errorw("failed to update keyboard",
 						"error", err,
@@ -97,7 +131,7 @@ func (node *RolesNode) Do(a *VkApi, db *Db, event EventType, i interface{}) Stat
 					node.page = node.total_pages - 1
 				}
 
-				keyboard, err := node.CreateRolePage(2, 3)
+				keyboard, err := node.CreateRolePage(rows_count, cols_count)
 				if err != nil {
 					zap.S().Errorw("failed to update keyboard",
 						"error", err,
@@ -129,7 +163,7 @@ func (node *RolesNode) Do(a *VkApi, db *Db, event EventType, i interface{}) Stat
 			}
 
 			role_string := fmt.Sprintf("Идентификатор: %s\nТег: %s\nИмя: %s\nЗаголовок: %s\n",
-				info.Name, info.Tag, info.Shown_name, info.Caption_name)
+				info.Name, info.Tag, info.ShownName, info.CaptionName)
 
 			a.SendMessage(obj.UserID, role_string, "")
 			return nil
@@ -166,7 +200,7 @@ func (node *RolesNode) CreateRolePage(rows int, cols int) (*object.MessagesKeybo
 				Value: node.roles[index].Name,
 			}
 
-			keyboard.AddCallbackButton(node.roles[index].Shown_name, payload, "secondary")
+			keyboard.AddCallbackButton(node.roles[index].ShownName, payload, "secondary")
 		}
 	}
 

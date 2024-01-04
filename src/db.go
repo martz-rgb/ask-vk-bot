@@ -2,7 +2,6 @@ package main
 
 import (
 	"encoding/csv"
-	"fmt"
 	"io"
 	"os"
 	"sync"
@@ -51,8 +50,8 @@ func (db *Db) Init(filename string) error {
 	return nil
 }
 
-func (db *Db) LoadCsv() error {
-	file, err := os.Open("db/roles.csv")
+func (db *Db) LoadCsv(name string) error {
+	file, err := os.Open(name)
 	if err != nil {
 		return err
 	}
@@ -80,8 +79,6 @@ func (db *Db) LoadCsv() error {
 	}
 
 	for _, record := range content {
-		fmt.Println(record)
-
 		_, err := tx.Stmt(stmt).Exec(record[0], record[1], record[2], record[3])
 		if err != nil {
 			tx.Rollback()
@@ -93,8 +90,8 @@ func (db *Db) LoadCsv() error {
 }
 
 type Role struct {
-	Name         string `db:"name"`
-	Tag          string `db:"tag"`
-	Shown_name   string `db:"shown_name"`
-	Caption_name string `db:"caption_name"`
+	Name        string `db:"name"`
+	Tag         string `db:"tag"`
+	ShownName   string `db:"shown_name"`
+	CaptionName string `db:"caption_name"`
 }
