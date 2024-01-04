@@ -1,0 +1,20 @@
+services:
+  bot:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    env_file: .env
+    environment:
+      SECRET_GROUP_TOKEN: /run/secrets/secret_group_token
+      SECRET_ADMIN_TOKEN: /run/secrets/secret_admin_token
+    secrets:
+      - vk_group_token
+      - vk_admin_token
+    ports:
+      - "4000:4000"
+
+secrets:
+  secret_group_token:
+    file: secret_group_token.txt
+  secret_admin_token:
+    file: secret_admin_token.txt
