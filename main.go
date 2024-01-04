@@ -26,9 +26,12 @@ func main() {
 	if err != nil {
 		panic(err)
 	}
-	defer config_file.Close()
 
-	content, _ := io.ReadAll(config_file)
+	content, err := io.ReadAll(config_file)
+	config_file.Close()
+	if err != nil {
+		panic(err)
+	}
 
 	var config Config
 	err = json.Unmarshal(content, &config)
@@ -59,11 +62,6 @@ func main() {
 	undo := zap.ReplaceGlobals(logger)
 	defer undo()
 
-	api, err := NewVkApi(config.GroupToken, config.AdminToken)
-	if err != nil {
-		panic(err)
-	}
-
 	db, err := NewDb(config.DB)
 	if err != nil {
 		panic(err)
@@ -73,7 +71,10 @@ func main() {
 		panic(err)
 	}
 
-	//db.LoadCsv()
+	api, err := NewVkApi(config.GroupToken, config.AdminToken)
+	if err != nil {
+		panic(err)
+	}
 
 	chat_bot := NewChatBot(&InitNode{}, api, db)
 
