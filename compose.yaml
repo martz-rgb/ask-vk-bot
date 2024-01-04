@@ -4,12 +4,12 @@ services:
       context: .
       dockerfile: Dockerfile
     env_file: .env
+    secrets:
+      - secret_group_token
+      - secret_admin_token
     environment:
       SECRET_GROUP_TOKEN: /run/secrets/secret_group_token
       SECRET_ADMIN_TOKEN: /run/secrets/secret_admin_token
-    secrets:
-      - vk_group_token
-      - vk_admin_token
     ports:
       - "4000:4000"
 
