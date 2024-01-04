@@ -14,6 +14,7 @@ type Config struct {
 	GroupToken string `json:"GROUP_TOKEN"`
 	AdminToken string `json:"ADMIN_TOKEN"`
 	DB         string `json:"DB"`
+	Schema     string `json:"SCHEMA"`
 	LogFile    string `json:"LOG_FILE"`
 
 	AppId        int64  `json:"APP_ID"`
@@ -22,34 +23,42 @@ type Config struct {
 }
 
 func main() {
+	config := Config{
+		GroupToken: os.Getenv("GROUP_TOKEN"),
+		AdminToken: os.Getenv("ADMIN_TOKEN"),
+		DB:         os.Getenv("DB"),
+		Schema:     os.Getenv("SCHEMA"),
+		LogFile:    os.Getenv("LOG_FILE"),
+	}
+
 	config_file, err := os.Open("config.json")
-	if err != nil {
-		panic(err)
-	}
+	if err == nil {
+		content, err := io.ReadAll(config_file)
+		config_file.Close()
+		if err != nil {
+			panic(err)
+		}
 
-	content, err := io.ReadAll(config_file)
-	config_file.Close()
-	if err != nil {
-		panic(err)
-	}
-
-	var config Config
-	err = json.Unmarshal(content, &config)
-	if err != nil {
-		panic(err)
+		err = json.Unmarshal(content, &config)
+		if err != nil {
+			panic(err)
+		}
 	}
 
 	if len(config.GroupToken) == 0 {
-		panic("no group token in config file")
+		panic("no group token is provided")
 	}
 	if len(config.AdminToken) == 0 {
-		panic("no admin token in config file")
+		panic("no admin token is provided")
 	}
 	if len(config.DB) == 0 {
-		panic("no database url in config file")
+		panic("no database url is provided")
+	}
+	if len(config.Schema) == 0 {
+		panic("no database schema is provided")
 	}
 	if len(config.LogFile) == 0 {
-		panic("no log file in config file")
+		panic("no log file is provided")
 	}
 
 	log_cfg := zap.NewDevelopmentConfig()
@@ -67,7 +76,7 @@ func main() {
 		panic(err)
 	}
 
-	if err = db.Init("schema.sql"); err != nil {
+	if err = db.Init(config.Schema); err != nil {
 		panic(err)
 	}
 
