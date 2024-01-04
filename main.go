@@ -16,10 +16,6 @@ type Config struct {
 	DB         string `json:"DB"`
 	Schema     string `json:"SCHEMA"`
 	LogFile    string `json:"LOG_FILE"`
-
-	AppId        int64  `json:"APP_ID"`
-	ProtectedKey string `json:"PROTECTED_KEY"`
-	ServerKey    string `json:"SERVER_KEY"`
 }
 
 func main() {
