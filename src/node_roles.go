@@ -43,7 +43,9 @@ func (node *RolesNode) Init(a *VkApi, d *Db, user_id int, silent bool) {
 		return
 	}
 
-	a.SendMessage(user_id, "Выберите нужную роль с помощи клавиатуры: ", keyboard.ToJSON())
+	a.SendMessage(user_id, `Выберите нужную роль с помощи клавиатуры или начните вводить и отправьте часть, с которой начинается имя роли.
+							Отправьте специальный символ '%' для того, чтобы вернуться к полному списку ролей.`,
+		keyboard.ToJSON())
 }
 
 type SearchParam struct {
@@ -61,12 +63,12 @@ func (node *RolesNode) Do(a *VkApi, d *Db, event EventType, i interface{}) State
 
 		query := "select name, tag, shown_name, caption_name from roles where shown_name like ?"
 
-		err := d.sql.Select(&node.roles, query, "%"+obj.Message.Text+"%")
+		err := d.sql.Select(&node.roles, query, obj.Message.Text+"%")
 		if err != nil {
 			zap.S().Errorw("failed to select from database with parameter",
 				"error", err,
 				"query", query,
-				"param", "%"+obj.Message.Text+"%")
+				"param", obj.Message.Text+"%")
 			return nil
 		}
 
