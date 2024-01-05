@@ -4,7 +4,8 @@ TO-DO list:
 - [ ] db migration
 - [ ] auto deploy from git?
 - [x] docker but not all
-- [ ] db in volume
+- [ ] db in volume (not volume, mount i guess)
+- [ ] smaller image (multistage or something)
 - [ ] web client for sqlite
 - [ ] change keyboard without delete
 - [x] word search (with icu) (yes!!!!)
