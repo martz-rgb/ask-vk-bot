@@ -6,4 +6,5 @@ TO-DO list:
 - [x] docker but not all
 - [ ] db in volume
 - [ ] web client for sqlite
+- [ ] change keyboard without delete
 - [x] word search (with icu) (yes!!!!)
