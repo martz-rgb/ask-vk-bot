@@ -1,9 +1,18 @@
 FROM golang:1.21.3-alpine
-WORKDIR /app/
-COPY ./src go.mod go.sum schema.sql /app/
 
+WORKDIR /build
 RUN apk add build-base icu-dev
-RUN mkdir log && mkdir db
-RUN CGO_ENABLED=1 go build -o bot -tags "icu" . 
 
-CMD ["/app/bot"]
+COPY ./src .
+RUN go mod download
+RUN go build -o app -tags "icu" .
+
+FROM alpine:3
+
+WORKDIR /bin
+
+COPY schema.sql .
+COPY --from=0 /build/app main
+COPY --from=0 /usr/lib/libicuuc.so.73 /usr/lib/libicui18n.so.73 /usr/lib/libicudata.so.73 /usr/lib/libstdc++.so.6  /usr/lib/libgcc_s.so.1 /usr/lib/
+
+CMD ["/bin/main"]
