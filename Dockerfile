@@ -3,7 +3,7 @@ FROM golang:1.21.3-alpine
 WORKDIR /build
 RUN apk add build-base icu-dev
 
-COPY ./src .
+COPY ./src go.mod go.sum ./
 RUN go mod download
 RUN go build -o app -tags "icu" .
 

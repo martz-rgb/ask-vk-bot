@@ -2,10 +2,12 @@ package main
 
 import (
 	"math/rand"
+	"strings"
 	"sync"
 	"time"
 
 	"github.com/SevereCloud/vksdk/v2/api"
+	"github.com/awnumar/memguard"
 	"go.uber.org/zap"
 )
 
@@ -19,13 +21,15 @@ type VkApi struct {
 	admin *api.VK
 }
 
-func NewVkApi(group_token string, admin_token string) (*VkApi, error) {
+func NewVkApi(group_token *memguard.LockedBuffer, admin_token *memguard.LockedBuffer) (*VkApi, error) {
 	a := &VkApi{}
 	source := rand.NewSource(time.Now().UnixNano())
 	a.r = rand.New(source)
 
-	a.group = api.NewVK(group_token)
-	a.admin = api.NewVK(admin_token)
+	// should copy strings because VkApi saves them inside and use,
+	//  but i destroy LockedBuffers with pointers on strings
+	a.group = api.NewVK(strings.Clone(group_token.String()))
+	a.admin = api.NewVK(strings.Clone(admin_token.String()))
 
 	return a, nil
 }

@@ -7,18 +7,16 @@ import (
 	"os"
 	"os/signal"
 
+	"github.com/awnumar/memguard"
 	"go.uber.org/zap"
 )
 
 type Config struct {
-	GroupToken string `json:"GROUP_TOKEN"`
-	AdminToken string `json:"ADMIN_TOKEN"`
-	DB         string `json:"DB"`
-	Schema     string `json:"SCHEMA"`
-	LogFile    string `json:"LOG_FILE"`
-
 	SecretGroupToken string `json:"SECRET_GROUP_TOKEN"`
 	SecretAdminToken string `json:"SECRET_ADMIN_TOKEN"`
+	DB               string `json:"DB"`
+	Schema           string `json:"SCHEMA"`
+	LogFile          string `json:"LOG_FILE"`
 }
 
 func main() {
@@ -28,32 +26,6 @@ func main() {
 		DB:               os.Getenv("DB"),
 		Schema:           os.Getenv("SCHEMA"),
 		LogFile:          os.Getenv("LOG_FILE"),
-	}
-
-	if len(config.SecretGroupToken) != 0 {
-		file, err := os.Open(config.SecretGroupToken)
-		if err != nil {
-			panic(err)
-		}
-
-		token, err := io.ReadAll(file)
-		if err != nil {
-			panic(err)
-		}
-		config.GroupToken = string(token)
-	}
-
-	if len(config.SecretAdminToken) != 0 {
-		file, err := os.Open(config.SecretAdminToken)
-		if err != nil {
-			panic(err)
-		}
-
-		token, err := io.ReadAll(file)
-		if err != nil {
-			panic(err)
-		}
-		config.AdminToken = string(token)
 	}
 
 	config_file, err := os.Open("../config.json")
@@ -70,10 +42,39 @@ func main() {
 		}
 	}
 
-	if len(config.GroupToken) == 0 {
+	if len(config.SecretGroupToken) == 0 {
+		panic("no place of group token is provided")
+	}
+	if len(config.SecretAdminToken) == 0 {
+		panic("no place of admin token is provided")
+	}
+
+	var group_token, admin_token *memguard.LockedBuffer
+
+	group_file, err := os.Open(config.SecretGroupToken)
+	if err != nil {
+		panic(err)
+	}
+	group_token, err = memguard.NewBufferFromEntireReader(group_file)
+	group_file.Close()
+	if err != nil {
+		panic(err)
+	}
+
+	admin_file, err := os.Open(config.SecretAdminToken)
+	if err != nil {
+		panic(err)
+	}
+	admin_token, err = memguard.NewBufferFromEntireReader(admin_file)
+	admin_file.Close()
+	if err != nil {
+		panic(err)
+	}
+
+	if group_token.Size() == 0 {
 		panic("no group token is provided")
 	}
-	if len(config.AdminToken) == 0 {
+	if admin_token.Size() == 0 {
 		panic("no admin token is provided")
 	}
 	if len(config.DB) == 0 {
@@ -105,10 +106,12 @@ func main() {
 		panic(err)
 	}
 
-	api, err := NewVkApi(config.GroupToken, config.AdminToken)
+	api, err := NewVkApi(group_token, admin_token)
 	if err != nil {
 		panic(err)
 	}
+	group_token.Destroy()
+	admin_token.Destroy()
 
 	chat_bot := NewChatBot(&InitNode{}, api, db)
 
