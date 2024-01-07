@@ -2,10 +2,10 @@ TO-DO list:
 
 - [x] logging & error handling
 - [ ] db migration
-- [ ] auto deploy from git?
 - [x] docker but not all
-- [ ] db in volume (not volume, mount i guess)
+- [x] db in mount
 - [x] smaller image (multistage or something)
 - [ ] web client for sqlite
 - [ ] change keyboard without delete
+- [ ] manage secrets with docker swarm? 
 - [x] word search (with icu) (yes!!!!)

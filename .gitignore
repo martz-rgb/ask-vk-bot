@@ -4,3 +4,4 @@ db/
 log/
 
 secret_*.txt
+.env

@@ -1,20 +1,25 @@
 services:
-  bot:
-    build:
-      context: .
-      dockerfile: Dockerfile
-    env_file: .env
+  main:
+    build: .
     secrets:
       - secret_group_token
       - secret_admin_token
     environment:
+      DB: /db/ask.db
+      SCHEMA: schema.sql
+      LOG_FILE: app.log
       SECRET_GROUP_TOKEN: /run/secrets/secret_group_token
       SECRET_ADMIN_TOKEN: /run/secrets/secret_admin_token
-    ports:
-      - "4000:4000"
+    volumes:
+      - type: bind
+        source: ${DB_LOCAL}
+        target: /db/
 
 secrets:
   secret_group_token:
     file: secret_group_token.txt
   secret_admin_token:
     file: secret_admin_token.txt
+
+volumes:
+  db:
