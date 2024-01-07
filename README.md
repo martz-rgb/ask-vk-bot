@@ -6,6 +6,6 @@ TO-DO list:
 - [x] db in mount
 - [x] smaller image (multistage or something)
 - [x] web client for sqlite BUT not very useful
-- [ ] change keyboard without delete
+- [x] change keyboard without delete
 - [ ] manage secrets with docker swarm? 
 - [x] word search (with icu) (yes!!!!)
