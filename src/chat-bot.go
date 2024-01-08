@@ -3,6 +3,7 @@ package main
 import (
 	"context"
 	"fmt"
+	"time"
 
 	"github.com/SevereCloud/vksdk/v2/api"
 	"github.com/SevereCloud/vksdk/v2/events"
@@ -13,14 +14,17 @@ type ChatBot struct {
 	cache      *Cache
 	init_state StateNode
 
+	timeout time.Duration
+
 	api *VkApi
 	db  *Db
 }
 
-func NewChatBot(init_state StateNode, api *VkApi, db *Db) *ChatBot {
+func NewChatBot(init_state StateNode, timeout time.Duration, api *VkApi, db *Db) *ChatBot {
 	return &ChatBot{
 		cache:      NewCache(),
 		init_state: init_state,
+		timeout:    timeout,
 		api:        api,
 		db:         db,
 	}
@@ -39,46 +43,68 @@ func (bot *ChatBot) RunLongPoll(ctx context.Context) {
 		panic(err)
 	}
 
-	lp.MessageNew(bot.MessageEvent)
-	lp.MessageEvent(bot.KeyboardEvent)
+	lp.MessageNew(bot.MessageNew)
+	lp.MessageEvent(bot.MessageEvent)
 
 	lp.RunWithContext(ctx)
 }
 
-func (bot *ChatBot) MessageEvent(ctx context.Context, obj events.MessageNewObject) {
+func (bot *ChatBot) MessageNew(ctx context.Context, obj events.MessageNewObject) {
 	user_id := obj.Message.FromID
 
 	bot.api.MarkAsRead(user_id)
 
-	state, existed := bot.cache.LoadOrStore(user_id, bot.init_state)
+	existed := true
+	chat, ok := bot.cache.Get(user_id)
+	if !ok {
+		existed = false
+		chat = bot.cache.PutAndGet(user_id,
+			NewChat(user_id,
+				bot.init_state,
+				bot.timeout,
+				bot.cache.NotifyExpired))
+	}
+	defer bot.cache.Put(user_id, chat)
+
+	chat.ResetTimer(bot.timeout, user_id, bot.cache.NotifyExpired)
 
 	if !existed {
-		state.Init(bot.api, bot.db, user_id, false)
+		chat.Init(bot.api, bot.db, user_id, false)
 		return
 	}
-
-	next := state.Do(bot.api, bot.db, NewMessageEvent, obj)
+	next := chat.Do(bot.api, bot.db, NewMessageEvent, obj)
 	if next != nil {
-		bot.cache.Store(user_id, next)
-		next.Init(bot.api, bot.db, user_id, true)
+		chat.ChangeState(next)
+		chat.Init(bot.api, bot.db, user_id, true)
 	}
 }
 
-func (bot *ChatBot) KeyboardEvent(ctx context.Context, obj events.MessageEventObject) {
-	bot.api.SendEventAnswer(obj.EventID, obj.UserID, obj.PeerID)
-
+func (bot *ChatBot) MessageEvent(ctx context.Context, obj events.MessageEventObject) {
 	user_id := obj.UserID
 
-	state, existed := bot.cache.LoadOrStore(user_id, bot.init_state)
+	bot.api.SendEventAnswer(obj.EventID, user_id, obj.PeerID)
+
+	existed := true
+	chat, ok := bot.cache.Get(user_id)
+	if !ok {
+		existed = false
+		chat = bot.cache.PutAndGet(user_id,
+			NewChat(user_id,
+				bot.init_state,
+				bot.timeout,
+				bot.cache.NotifyExpired))
+	}
+	defer bot.cache.Put(user_id, chat)
+
+	chat.ResetTimer(bot.timeout, user_id, bot.cache.NotifyExpired)
 
 	if !existed {
-		state.Init(bot.api, bot.db, user_id, false)
+		chat.Init(bot.api, bot.db, user_id, false)
 		// and try to do next step
 	}
-
-	next := state.Do(bot.api, bot.db, ChangeKeyboardEvent, obj)
+	next := chat.Do(bot.api, bot.db, ChangeKeyboardEvent, obj)
 	if next != nil {
-		bot.cache.Store(user_id, next)
-		next.Init(bot.api, bot.db, user_id, true)
+		chat.ChangeState(next)
+		chat.Init(bot.api, bot.db, user_id, true)
 	}
 }

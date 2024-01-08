@@ -6,17 +6,19 @@ import (
 	"io"
 	"os"
 	"os/signal"
+	"time"
 
 	"github.com/awnumar/memguard"
 	"go.uber.org/zap"
 )
 
 type Config struct {
-	SecretGroupToken string `json:"SECRET_GROUP_TOKEN"`
-	SecretAdminToken string `json:"SECRET_ADMIN_TOKEN"`
-	DB               string `json:"DB"`
-	Schema           string `json:"SCHEMA"`
-	LogFile          string `json:"LOG_FILE"`
+	SecretGroupToken string        `json:"SECRET_GROUP_TOKEN"`
+	SecretAdminToken string        `json:"SECRET_ADMIN_TOKEN"`
+	DB               string        `json:"DB"`
+	Schema           string        `json:"SCHEMA"`
+	Timeout          time.Duration `json:"TIMEOUT"`
+	LogFile          string        `json:"LOG_FILE"`
 }
 
 func main() {
@@ -83,6 +85,9 @@ func main() {
 	if len(config.Schema) == 0 {
 		panic("no database schema is provided")
 	}
+	if config.Timeout == 0 {
+		config.Timeout = 1 * time.Hour
+	}
 	if len(config.LogFile) == 0 {
 		panic("no log file is provided")
 	}
@@ -113,7 +118,7 @@ func main() {
 	group_token.Destroy()
 	admin_token.Destroy()
 
-	chat_bot := NewChatBot(&InitNode{}, api, db)
+	chat_bot := NewChatBot(&InitNode{}, config.Timeout, api, db)
 
 	ctx, stop := signal.NotifyContext(context.Background(), os.Interrupt)
 	defer stop()

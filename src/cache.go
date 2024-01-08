@@ -1,51 +1,79 @@
 package main
 
-import "sync"
+import (
+	"sync"
+	"time"
+)
 
-// to-do capacity of cache?
-// or expiring users (more fair)
+// vk longpoll is sequential, but deleting with timer is not
 type Cache struct {
-	sync.Mutex
-	users map[int]StateNode
+	*sync.Mutex
+
+	NotifyExpired chan int
+	chats         map[int]*Chat
 }
 
 func NewCache() *Cache {
-	return &Cache{
-		users: make(map[int]StateNode),
+	cache := &Cache{
+		&sync.Mutex{},
+		make(chan int),
+		make(map[int]*Chat),
 	}
+
+	go cache.ListenExpired()
+
+	return cache
 }
 
-func (c *Cache) Load(key int) (StateNode, bool) {
+func (c *Cache) Get(key int) (actual *Chat, ok bool) {
 	c.Lock()
 	defer c.Unlock()
 
-	user, ok := c.users[key]
-	return user, ok
-}
-
-func (c *Cache) Store(key int, value StateNode) {
-	c.Lock()
-	defer c.Unlock()
-
-	c.users[key] = value
-}
-
-func (c *Cache) LoadOrStore(key int, value StateNode) (actual StateNode, loaded bool) {
-	c.Lock()
-	defer c.Unlock()
-
-	user, ok := c.users[key]
+	chat, ok := c.chats[key]
 	if !ok {
-		c.users[key] = value
-		return value, false
+		return nil, false
 	}
 
-	return user, true
+	chat.in_use.Lock()
+	return chat, true
 }
 
-func (c *Cache) Delete(key int) {
+func (c *Cache) Put(key int, value *Chat) {
 	c.Lock()
 	defer c.Unlock()
 
-	delete(c.users, key)
+	_, ok := c.chats[key]
+	c.chats[key] = value
+
+	if ok {
+		value.in_use.Unlock()
+		return
+	}
+}
+
+func (c *Cache) PutAndGet(key int, value *Chat) *Chat {
+	c.Lock()
+	defer c.Unlock()
+
+	c.chats[key] = value
+	value.in_use.Lock()
+
+	return value
+}
+
+func (c *Cache) ListenExpired() {
+	for {
+		key := <-c.NotifyExpired
+
+		c.Lock()
+		value, ok := c.chats[key]
+		if ok {
+			value.in_use.Lock()
+			if time.Now().After(value.expired) {
+				delete(c.chats, key)
+			}
+			value.in_use.Unlock()
+		}
+		c.Unlock()
+	}
 }
