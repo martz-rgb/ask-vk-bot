@@ -6,6 +6,7 @@ import (
 	"io"
 	"os"
 	"os/signal"
+	"path/filepath"
 	"time"
 
 	"github.com/awnumar/memguard"
@@ -18,7 +19,7 @@ type Config struct {
 	DB               string        `json:"DB"`
 	Schema           string        `json:"SCHEMA"`
 	Timeout          time.Duration `json:"TIMEOUT"`
-	LogFile          string        `json:"LOG_FILE"`
+	LogDir           string        `json:"LOG_DIR"`
 }
 
 func main() {
@@ -27,7 +28,7 @@ func main() {
 		SecretAdminToken: os.Getenv("SECRET_ADMIN_TOKEN"),
 		DB:               os.Getenv("DB"),
 		Schema:           os.Getenv("SCHEMA"),
-		LogFile:          os.Getenv("LOG_FILE"),
+		LogDir:           os.Getenv("LOG_DIR"),
 	}
 
 	config_file, err := os.Open("../config.json")
@@ -74,26 +75,26 @@ func main() {
 	}
 
 	if group_token.Size() == 0 {
-		panic("no group token is provided")
+		panic("group token is not provided")
 	}
 	if admin_token.Size() == 0 {
-		panic("no admin token is provided")
+		panic("admin token is not provided")
 	}
 	if len(config.DB) == 0 {
-		panic("no database url is provided")
+		panic("database url is not provided")
 	}
 	if len(config.Schema) == 0 {
-		panic("no database schema is provided")
+		panic("database schema is not provided")
 	}
 	if config.Timeout == 0 {
 		config.Timeout = 1 * time.Hour
 	}
-	if len(config.LogFile) == 0 {
-		panic("no log file is provided")
+	if len(config.LogDir) == 0 {
+		panic("log directory is not provided")
 	}
 
 	log_cfg := zap.NewDevelopmentConfig()
-	log_cfg.OutputPaths = []string{config.LogFile}
+	log_cfg.OutputPaths = []string{filepath.Join(config.LogDir, "chat-bot.log")}
 
 	logger := zap.Must(log_cfg.Build())
 	defer logger.Sync()

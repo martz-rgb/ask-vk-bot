@@ -155,10 +155,6 @@ func (a *VkApi) GetLastBotMessage(user_id int) *object.MessagesMessage {
 		return nil
 	}
 
-	zap.S().Debugw("successfully got last messages",
-		"params", params,
-		"response", response)
-
 	for _, message := range response.Items {
 		if message.Out {
 			return &message
