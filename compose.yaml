@@ -7,16 +7,19 @@ services:
     environment:
       DB: /db/ask.db
       SCHEMA: schema.sql
-      LOG_FILE: app.log
+      LOG_DIR: /log
       SECRET_GROUP_TOKEN: /run/secrets/secret_group_token
       SECRET_ADMIN_TOKEN: /run/secrets/secret_admin_token
     volumes:
       - type: bind
         source: ${DB_LOCAL_PATH}
         target: /db
+      - type: bind
+        source: ${LOG_LOCAL_PATH}
+        target: /log
 
   web_sqlite:
-    image: docker.io/coleifer/sqlite-web
+    build: ./sqlite-web/docker
     environment:
       SQLITE_DATABASE: /db/ask.db
     volumes:
