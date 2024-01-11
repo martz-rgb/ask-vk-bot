@@ -13,6 +13,8 @@ import (
 type DB struct {
 	sync.Mutex
 	sql *sqlx.DB
+
+	// TO-DO: some sqlbuilder would be nice
 }
 
 func NewDB(connection string) (*DB, error) {
@@ -87,11 +89,4 @@ func (db *DB) LoadCsv(name string) error {
 	}
 
 	return tx.Commit()
-}
-
-type Role struct {
-	Name        string `db:"name"`
-	Tag         string `db:"tag"`
-	ShownName   string `db:"shown_name"`
-	CaptionName string `db:"caption_name"`
 }

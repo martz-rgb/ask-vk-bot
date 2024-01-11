@@ -10,8 +10,8 @@ const (
 type StateNode interface {
 	String() string
 
-	Init(a *VK, db *DB, user_id int, silent bool)
-	Do(a *VK, db *DB, event EventType, i interface{}) StateNode
+	Init(ask *Ask, vk *VK, user_id int, silent bool)
+	Do(ask *Ask, vk *VK, event EventType, i interface{}) StateNode
 }
 
 type CallbackPayload struct {

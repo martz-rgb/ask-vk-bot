@@ -23,14 +23,13 @@ func (node *RolesNode) String() string {
 	return "roles"
 }
 
-func (node *RolesNode) Init(v *VK, d *DB, user_id int, silent bool) {
-	query := "select name, tag, shown_name, caption_name from roles"
+func (node *RolesNode) Init(ask *Ask, vk *VK, user_id int, silent bool) {
+	var err error
 
-	err := d.sql.Select(&node.roles, query)
+	node.roles, err = ask.Roles()
 	if err != nil {
-		zap.S().Errorw("failed to select from database",
-			"error", err,
-			"query", query)
+		zap.S().Errorw("failed to get roles from ask",
+			"error", err)
 		return
 	}
 
@@ -43,16 +42,14 @@ func (node *RolesNode) Init(v *VK, d *DB, user_id int, silent bool) {
 		return
 	}
 
-	v.SendMessage(user_id, `Выберите нужную роль с помощи клавиатуры или начните вводить и отправьте часть, с которой начинается имя роли.
+	vk.SendMessage(user_id, `Выберите нужную роль с помощи клавиатуры или начните вводить и отправьте часть, с которой начинается имя роли.
 							Отправьте специальный символ '%' для того, чтобы вернуться к полному списку ролей.`,
 		keyboard.ToJSON())
 }
 
-type SearchParam struct {
-	ShownName string `db:"shown_name"`
-}
+func (node *RolesNode) Do(ask *Ask, vk *VK, event EventType, i interface{}) StateNode {
+	var err error
 
-func (node *RolesNode) Do(v *VK, d *DB, event EventType, i interface{}) StateNode {
 	if event == NewMessageEvent {
 		obj, ok := i.(events.MessageNewObject)
 		if !ok {
@@ -61,14 +58,11 @@ func (node *RolesNode) Do(v *VK, d *DB, event EventType, i interface{}) StateNod
 			return nil
 		}
 
-		query := "select name, tag, shown_name, caption_name from roles where shown_name like ?"
-
-		err := d.sql.Select(&node.roles, query, obj.Message.Text+"%")
+		node.roles, err = ask.RolesStartWith(obj.Message.Text)
 		if err != nil {
-			zap.S().Errorw("failed to select from database with parameter",
+			zap.S().Errorw("failed to get roles start with from ask",
 				"error", err,
-				"query", query,
-				"param", obj.Message.Text+"%")
+				"start with", obj.Message.Text)
 			return nil
 		}
 
@@ -81,7 +75,7 @@ func (node *RolesNode) Do(v *VK, d *DB, event EventType, i interface{}) StateNod
 			return nil
 		}
 
-		v.ChangeKeyboard(obj.Message.FromID, keyboard.ToJSON())
+		vk.ChangeKeyboard(obj.Message.FromID, keyboard.ToJSON())
 		return nil
 	}
 
@@ -126,7 +120,7 @@ func (node *RolesNode) Do(v *VK, d *DB, event EventType, i interface{}) StateNod
 					return nil
 				}
 
-				v.ChangeKeyboard(obj.UserID, keyboard.ToJSON())
+				vk.ChangeKeyboard(obj.UserID, keyboard.ToJSON())
 			case "next":
 				node.page += 1
 				if node.page >= node.total_pages {
@@ -142,7 +136,7 @@ func (node *RolesNode) Do(v *VK, d *DB, event EventType, i interface{}) StateNod
 					return nil
 				}
 
-				v.ChangeKeyboard(obj.UserID, keyboard.ToJSON())
+				vk.ChangeKeyboard(obj.UserID, keyboard.ToJSON())
 			case "back":
 				return &InitNode{}
 			}
@@ -167,7 +161,7 @@ func (node *RolesNode) Do(v *VK, d *DB, event EventType, i interface{}) StateNod
 			role_string := fmt.Sprintf("Идентификатор: %s\nТег: %s\nИмя: %s\nЗаголовок: %s\n",
 				info.Name, info.Tag, info.ShownName, info.CaptionName)
 
-			v.SendMessage(obj.UserID, role_string, "")
+			vk.SendMessage(obj.UserID, role_string, "")
 			return nil
 		}
 

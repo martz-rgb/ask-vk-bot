@@ -112,6 +112,8 @@ func main() {
 		panic(err)
 	}
 
+	ask := NewAsk(nil, db)
+
 	group_api, err := NewVK(group_token)
 	if err != nil {
 		panic(err)
@@ -123,8 +125,8 @@ func main() {
 	group_token.Destroy()
 	admin_token.Destroy()
 
-	chat_bot := NewChatBot(&InitNode{}, config.Timeout, group_api, db)
-	listener := NewListener(group_api, admin_api, db)
+	chat_bot := NewChatBot(ask, &InitNode{}, config.Timeout, group_api)
+	listener := NewListener(ask, group_api, admin_api)
 
 	ctx, stop := signal.NotifyContext(context.Background(), os.Interrupt)
 	defer stop()

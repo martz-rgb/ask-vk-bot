@@ -3,17 +3,17 @@ package main
 import "context"
 
 type Listener struct {
+	ask *Ask
+
 	group *VK
 	admin *VK
-
-	db *DB
 }
 
-func NewListener(group *VK, admin *VK, db *DB) *Listener {
+func NewListener(ask *Ask, group *VK, admin *VK) *Listener {
 	return &Listener{
+		ask:   ask,
 		group: group,
 		admin: admin,
-		db:    db,
 	}
 }
 

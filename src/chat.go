@@ -29,12 +29,12 @@ func NewChat(user_id int, state StateNode, timeout time.Duration, expired chan i
 	}
 }
 
-func (chat *Chat) Init(a *VK, db *DB, user_id int, silent bool) {
-	chat.state.Init(a, db, user_id, silent)
+func (chat *Chat) Init(ask *Ask, vk *VK, user_id int, silent bool) {
+	chat.state.Init(ask, vk, user_id, silent)
 }
 
-func (chat *Chat) Do(a *VK, db *DB, event EventType, i interface{}) StateNode {
-	return chat.state.Do(a, db, event, i)
+func (chat *Chat) Do(ask *Ask, vk *VK, event EventType, i interface{}) StateNode {
+	return chat.state.Do(ask, vk, event, i)
 }
 
 // reset timer and make new if timer was expired
