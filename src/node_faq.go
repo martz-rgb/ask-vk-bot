@@ -14,7 +14,7 @@ func (node *FAQNode) String() string {
 	return "faq"
 }
 
-func (node *FAQNode) Init(a *VkApi, d *Db, user_id int, silent bool) {
+func (node *FAQNode) Init(v *VK, d *DB, user_id int, silent bool) {
 	keyboard := object.NewMessagesKeyboard(false)
 
 	keyboard.AddRow()
@@ -32,10 +32,10 @@ func (node *FAQNode) Init(a *VkApi, d *Db, user_id int, silent bool) {
 		Value: "back",
 	}, "primary")
 
-	a.SendMessage(user_id, "Выберите вопрос, который вас интересует на клавиатуре ниже.", keyboard.ToJSON())
+	v.SendMessage(user_id, "Выберите вопрос, который вас интересует на клавиатуре ниже.", keyboard.ToJSON())
 }
 
-func (node *FAQNode) Do(a *VkApi, d *Db, event EventType, i interface{}) StateNode {
+func (node *FAQNode) Do(v *VK, d *DB, event EventType, i interface{}) StateNode {
 	if event == ChangeKeyboardEvent {
 		obj, ok := i.(events.MessageEventObject)
 		if !ok {
@@ -61,12 +61,12 @@ func (node *FAQNode) Do(a *VkApi, d *Db, event EventType, i interface{}) StateNo
 		}
 
 		if payload.Value == "who" {
-			a.SendMessage(obj.UserID, "Я подрядчик этого дома.", "")
+			v.SendMessage(obj.UserID, "Я подрядчик этого дома.", "")
 			return nil
 		}
 
 		if payload.Value == "what" {
-			a.SendMessage(obj.UserID, "Я умею отвечать на ваши сообщения и управлять этим домом.", "")
+			v.SendMessage(obj.UserID, "Я умею отвечать на ваши сообщения и управлять этим домом.", "")
 			return nil
 		}
 

@@ -10,12 +10,12 @@ import (
 	_ "github.com/mattn/go-sqlite3"
 )
 
-type Db struct {
+type DB struct {
 	sync.Mutex
 	sql *sqlx.DB
 }
 
-func NewDb(connection string) (*Db, error) {
+func NewDB(connection string) (*DB, error) {
 	db, err := sqlx.Open("sqlite3", connection)
 	if err != nil {
 		return nil, err
@@ -25,12 +25,12 @@ func NewDb(connection string) (*Db, error) {
 		return nil, err
 	}
 
-	return &Db{
+	return &DB{
 		sql: db,
 	}, nil
 }
 
-func (db *Db) Init(filename string) error {
+func (db *DB) Init(filename string) error {
 	schema, err := os.Open(filename)
 	if err != nil {
 		return err
@@ -50,7 +50,7 @@ func (db *Db) Init(filename string) error {
 	return nil
 }
 
-func (db *Db) LoadCsv(name string) error {
+func (db *DB) LoadCsv(name string) error {
 	file, err := os.Open(name)
 	if err != nil {
 		return err

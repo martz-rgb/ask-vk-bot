@@ -10,16 +10,16 @@ type ChatBot struct {
 
 	timeout time.Duration
 
-	api *VkApi
-	db  *Db
+	vk *VK
+	db *DB
 }
 
-func NewChatBot(init_state StateNode, timeout time.Duration, api *VkApi, db *Db) *ChatBot {
+func NewChatBot(init_state StateNode, timeout time.Duration, vk *VK, db *DB) *ChatBot {
 	return &ChatBot{
 		cache:      NewCache(),
 		init_state: init_state,
 		timeout:    timeout,
-		api:        api,
+		vk:         vk,
 		db:         db,
 	}
 }

@@ -14,7 +14,7 @@ func (node *InitNode) String() string {
 	return "init"
 }
 
-func (node *InitNode) Init(a *VkApi, d *Db, user_id int, silent bool) {
+func (node *InitNode) Init(v *VK, d *DB, user_id int, silent bool) {
 	keyboard := object.NewMessagesKeyboard(false)
 
 	keyboard.AddRow()
@@ -30,13 +30,13 @@ func (node *InitNode) Init(a *VkApi, d *Db, user_id int, silent bool) {
 	}, "secondary")
 
 	if !silent {
-		a.SendMessage(user_id, "Здравствуйте!", keyboard.ToJSON())
+		v.SendMessage(user_id, "Здравствуйте!", keyboard.ToJSON())
 	} else {
-		a.ChangeKeyboard(user_id, keyboard.ToJSON())
+		v.ChangeKeyboard(user_id, keyboard.ToJSON())
 	}
 }
 
-func (node *InitNode) Do(a *VkApi, d *Db, event EventType, i interface{}) StateNode {
+func (node *InitNode) Do(v *VK, d *DB, event EventType, i interface{}) StateNode {
 	if event == ChangeKeyboardEvent {
 		obj, ok := i.(events.MessageEventObject)
 		if !ok {

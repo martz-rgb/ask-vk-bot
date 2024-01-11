@@ -103,7 +103,7 @@ func main() {
 	undo := zap.ReplaceGlobals(logger)
 	defer undo()
 
-	db, err := NewDb(config.DB)
+	db, err := NewDB(config.DB)
 	if err != nil {
 		panic(err)
 	}
@@ -112,17 +112,23 @@ func main() {
 		panic(err)
 	}
 
-	api, err := NewVkApi(group_token, admin_token)
+	group_api, err := NewVK(group_token)
+	if err != nil {
+		panic(err)
+	}
+	admin_api, err := NewVK(admin_token)
 	if err != nil {
 		panic(err)
 	}
 	group_token.Destroy()
 	admin_token.Destroy()
 
-	chat_bot := NewChatBot(&InitNode{}, config.Timeout, api, db)
+	chat_bot := NewChatBot(&InitNode{}, config.Timeout, group_api, db)
+	listener := NewListener(group_api, admin_api, db)
 
 	ctx, stop := signal.NotifyContext(context.Background(), os.Interrupt)
 	defer stop()
 
 	chat_bot.RunLongPoll(ctx)
+	listener.RunLongPoll(ctx)
 }

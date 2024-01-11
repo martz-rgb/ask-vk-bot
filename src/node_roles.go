@@ -23,7 +23,7 @@ func (node *RolesNode) String() string {
 	return "roles"
 }
 
-func (node *RolesNode) Init(a *VkApi, d *Db, user_id int, silent bool) {
+func (node *RolesNode) Init(v *VK, d *DB, user_id int, silent bool) {
 	query := "select name, tag, shown_name, caption_name from roles"
 
 	err := d.sql.Select(&node.roles, query)
@@ -43,7 +43,7 @@ func (node *RolesNode) Init(a *VkApi, d *Db, user_id int, silent bool) {
 		return
 	}
 
-	a.SendMessage(user_id, `Выберите нужную роль с помощи клавиатуры или начните вводить и отправьте часть, с которой начинается имя роли.
+	v.SendMessage(user_id, `Выберите нужную роль с помощи клавиатуры или начните вводить и отправьте часть, с которой начинается имя роли.
 							Отправьте специальный символ '%' для того, чтобы вернуться к полному списку ролей.`,
 		keyboard.ToJSON())
 }
@@ -52,7 +52,7 @@ type SearchParam struct {
 	ShownName string `db:"shown_name"`
 }
 
-func (node *RolesNode) Do(a *VkApi, d *Db, event EventType, i interface{}) StateNode {
+func (node *RolesNode) Do(v *VK, d *DB, event EventType, i interface{}) StateNode {
 	if event == NewMessageEvent {
 		obj, ok := i.(events.MessageNewObject)
 		if !ok {
@@ -81,7 +81,7 @@ func (node *RolesNode) Do(a *VkApi, d *Db, event EventType, i interface{}) State
 			return nil
 		}
 
-		a.ChangeKeyboard(obj.Message.FromID, keyboard.ToJSON())
+		v.ChangeKeyboard(obj.Message.FromID, keyboard.ToJSON())
 		return nil
 	}
 
@@ -126,7 +126,7 @@ func (node *RolesNode) Do(a *VkApi, d *Db, event EventType, i interface{}) State
 					return nil
 				}
 
-				a.ChangeKeyboard(obj.UserID, keyboard.ToJSON())
+				v.ChangeKeyboard(obj.UserID, keyboard.ToJSON())
 			case "next":
 				node.page += 1
 				if node.page >= node.total_pages {
@@ -142,7 +142,7 @@ func (node *RolesNode) Do(a *VkApi, d *Db, event EventType, i interface{}) State
 					return nil
 				}
 
-				a.ChangeKeyboard(obj.UserID, keyboard.ToJSON())
+				v.ChangeKeyboard(obj.UserID, keyboard.ToJSON())
 			case "back":
 				return &InitNode{}
 			}
@@ -167,7 +167,7 @@ func (node *RolesNode) Do(a *VkApi, d *Db, event EventType, i interface{}) State
 			role_string := fmt.Sprintf("Идентификатор: %s\nТег: %s\nИмя: %s\nЗаголовок: %s\n",
 				info.Name, info.Tag, info.ShownName, info.CaptionName)
 
-			a.SendMessage(obj.UserID, role_string, "")
+			v.SendMessage(obj.UserID, role_string, "")
 			return nil
 		}
 

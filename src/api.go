@@ -11,34 +11,31 @@ import (
 	"go.uber.org/zap"
 )
 
-type VkApi struct {
-	r *rand.Rand
-
-	// api.VK is based on http.Client and http.Client is claimed to be concurrency safe
-	group *api.VK
-	admin *api.VK
+// api.VK is based on http.Client and http.Client is claimed to be concurrency safe
+type VK struct {
+	api *api.VK
+	r   *rand.Rand
 }
 
-func NewVkApi(group_token *memguard.LockedBuffer, admin_token *memguard.LockedBuffer) (*VkApi, error) {
-	a := &VkApi{}
+func NewVK(token *memguard.LockedBuffer) (*VK, error) {
+	v := &VK{}
 	source := rand.NewSource(time.Now().UnixNano())
-	a.r = rand.New(source)
+	v.r = rand.New(source)
 
-	// should copy strings because VkApi saves them inside and use,
-	//  but i destroy LockedBuffers with pointers on strings
-	a.group = api.NewVK(strings.Clone(group_token.String()))
-	a.admin = api.NewVK(strings.Clone(admin_token.String()))
+	// should copy string because VK saves it inside and use,
+	// but i destroy LockedBuffers with pointer on string
+	v.api = api.NewVK(strings.Clone(token.String()))
 
-	return a, nil
+	return v, nil
 }
 
-func (a *VkApi) MarkAsRead(user_id int) {
+func (v *VK) MarkAsRead(user_id int) {
 	params := api.Params{
 		"mark_conversation_as_read": true,
 		"peer_id":                   user_id,
 	}
 
-	response, err := a.group.MessagesMarkAsRead(params)
+	response, err := v.api.MessagesMarkAsRead(params)
 	if err != nil {
 		zap.S().Errorw("failed to mark as read vk messsage",
 			"error", err,
@@ -52,15 +49,15 @@ func (a *VkApi) MarkAsRead(user_id int) {
 		"response", response)
 }
 
-func (a *VkApi) SendMessage(user_id int, message string, keyboard string) int {
+func (v *VK) SendMessage(user_id int, message string, keyboard string) int {
 	params := api.Params{
 		"user_id":   user_id,
-		"random_id": a.r.Int(),
+		"random_id": v.r.Int(),
 		"message":   message,
 		"keyboard":  keyboard,
 	}
 
-	response, err := a.group.MessagesSend(params)
+	response, err := v.api.MessagesSend(params)
 	if err != nil {
 		zap.S().Errorw("failed to send vk messsage",
 			"error", err,
@@ -76,7 +73,7 @@ func (a *VkApi) SendMessage(user_id int, message string, keyboard string) int {
 	return response
 }
 
-func (a *VkApi) EditMessage(peer_id int, message_id int, message string, keyboard string) {
+func (v *VK) EditMessage(peer_id int, message_id int, message string, keyboard string) {
 	params := api.Params{
 		"peer_id":    peer_id,
 		"message_id": message_id,
@@ -84,7 +81,7 @@ func (a *VkApi) EditMessage(peer_id int, message_id int, message string, keyboar
 		"keyboard":   keyboard,
 	}
 
-	response, err := a.group.MessagesEdit(params)
+	response, err := v.api.MessagesEdit(params)
 	if err != nil {
 		zap.S().Errorw("failed to edit vk message",
 			"error", err,
@@ -98,13 +95,13 @@ func (a *VkApi) EditMessage(peer_id int, message_id int, message string, keyboar
 		"response", response)
 }
 
-func (a *VkApi) DeleteMessage(peer_id int, message_id int, delete_for_all int) {
+func (v *VK) DeleteMessage(peer_id int, message_id int, delete_for_all int) {
 	params := api.Params{
 		"peer_id":        peer_id,
 		"message_ids":    message_id,
 		"delete_for_all": delete_for_all,
 	}
-	response, err := a.group.MessagesDelete(params)
+	response, err := v.api.MessagesDelete(params)
 	if err != nil {
 		zap.S().Errorw("failed to delete vk message",
 			"error", err,
@@ -118,15 +115,15 @@ func (a *VkApi) DeleteMessage(peer_id int, message_id int, delete_for_all int) {
 		"response", response)
 }
 
-func (a *VkApi) SendEventAnswer(event_id string, user_id int, peer_id int) {
+func (v *VK) SendEventAnswer(event_id string, user_id int, peer_id int) {
 	params := api.Params{
 		"event_id":  event_id,
 		"user_id":   user_id,
-		"random_id": a.r.Int(),
+		"random_id": v.r.Int(),
 		"peer_id":   []int{peer_id},
 	}
 
-	response, err := a.group.MessagesSendMessageEventAnswer(params)
+	response, err := v.api.MessagesSendMessageEventAnswer(params)
 	if err != nil {
 		zap.S().Errorw("failed to send vk event answer",
 			"error", err,
@@ -140,13 +137,13 @@ func (a *VkApi) SendEventAnswer(event_id string, user_id int, peer_id int) {
 		"response", response)
 }
 
-func (a *VkApi) GetLastBotMessage(user_id int) *object.MessagesMessage {
+func (v *VK) GetLastBotMessage(user_id int) *object.MessagesMessage {
 	params := api.Params{
 		"count":   20, // heuristic value
 		"user_id": user_id,
 	}
 
-	response, err := a.group.MessagesGetHistory(params)
+	response, err := v.api.MessagesGetHistory(params)
 	if err != nil {
 		zap.S().Errorw("failed to get last bot message",
 			"error", err,
@@ -164,28 +161,28 @@ func (a *VkApi) GetLastBotMessage(user_id int) *object.MessagesMessage {
 	return nil
 }
 
-func (a *VkApi) ChangeKeyboard(user_id int, keyboard string) {
-	ok := a.ChangeKeyboardWithoutDelete(user_id, keyboard)
+func (v *VK) ChangeKeyboard(user_id int, keyboard string) {
+	ok := v.ChangeKeyboardWithoutDelete(user_id, keyboard)
 
 	if ok == false {
-		a.ChangeKeyboardWithDelete(user_id, keyboard)
+		v.ChangeKeyboardWithDelete(user_id, keyboard)
 
 		zap.S().Warnw("unable to change keyboard without delete")
 	}
 }
 
-func (a *VkApi) ChangeKeyboardWithDelete(user_id int, keyboard string) {
-	id := a.SendMessage(user_id, "Меняю клавиатуру", keyboard)
-	a.DeleteMessage(user_id, id, 1)
+func (v *VK) ChangeKeyboardWithDelete(user_id int, keyboard string) {
+	id := v.SendMessage(user_id, "Меняю клавиатуру", keyboard)
+	v.DeleteMessage(user_id, id, 1)
 }
 
-func (a *VkApi) ChangeKeyboardWithoutDelete(user_id int, keyboard string) bool {
-	message := a.GetLastBotMessage(user_id)
+func (v *VK) ChangeKeyboardWithoutDelete(user_id int, keyboard string) bool {
+	message := v.GetLastBotMessage(user_id)
 	if message == nil {
 		return false
 	}
 
 	// vk allows edit any group's message somehow
-	a.EditMessage(user_id, message.ID, message.Text, keyboard)
+	v.EditMessage(user_id, message.ID, message.Text, keyboard)
 	return true
 }

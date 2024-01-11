@@ -29,11 +29,11 @@ func NewChat(user_id int, state StateNode, timeout time.Duration, expired chan i
 	}
 }
 
-func (chat *Chat) Init(a *VkApi, db *Db, user_id int, silent bool) {
+func (chat *Chat) Init(a *VK, db *DB, user_id int, silent bool) {
 	chat.state.Init(a, db, user_id, silent)
 }
 
-func (chat *Chat) Do(a *VkApi, db *Db, event EventType, i interface{}) StateNode {
+func (chat *Chat) Do(a *VK, db *DB, event EventType, i interface{}) StateNode {
 	return chat.state.Do(a, db, event, i)
 }
 
