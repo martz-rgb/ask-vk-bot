@@ -7,7 +7,7 @@ import (
 
 // vk longpoll is sequential, but deleting with timer is not
 type Cache struct {
-	*sync.Mutex
+	mu *sync.Mutex
 
 	NotifyExpired chan int
 	chats         map[int]*Chat
@@ -15,9 +15,9 @@ type Cache struct {
 
 func NewCache() *Cache {
 	cache := &Cache{
-		&sync.Mutex{},
-		make(chan int),
-		make(map[int]*Chat),
+		mu:            &sync.Mutex{},
+		NotifyExpired: make(chan int),
+		chats:         make(map[int]*Chat),
 	}
 
 	go cache.ListenExpired()
@@ -26,8 +26,8 @@ func NewCache() *Cache {
 }
 
 func (c *Cache) Get(key int) (actual *Chat, ok bool) {
-	c.Lock()
-	defer c.Unlock()
+	c.mu.Lock()
+	defer c.mu.Unlock()
 
 	chat, ok := c.chats[key]
 	if !ok {
@@ -39,8 +39,8 @@ func (c *Cache) Get(key int) (actual *Chat, ok bool) {
 }
 
 func (c *Cache) Put(key int, value *Chat) {
-	c.Lock()
-	defer c.Unlock()
+	c.mu.Lock()
+	defer c.mu.Unlock()
 
 	_, ok := c.chats[key]
 	c.chats[key] = value
@@ -52,8 +52,8 @@ func (c *Cache) Put(key int, value *Chat) {
 }
 
 func (c *Cache) PutAndGet(key int, value *Chat) *Chat {
-	c.Lock()
-	defer c.Unlock()
+	c.mu.Lock()
+	defer c.mu.Unlock()
 
 	c.chats[key] = value
 	value.in_use.Lock()
@@ -65,7 +65,7 @@ func (c *Cache) ListenExpired() {
 	for {
 		key := <-c.NotifyExpired
 
-		c.Lock()
+		c.mu.Lock()
 		value, ok := c.chats[key]
 		if ok {
 			value.in_use.Lock()
@@ -74,6 +74,6 @@ func (c *Cache) ListenExpired() {
 			}
 			value.in_use.Unlock()
 		}
-		c.Unlock()
+		c.mu.Unlock()
 	}
 }
