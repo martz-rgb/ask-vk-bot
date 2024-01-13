@@ -6,46 +6,50 @@ import (
 )
 
 type Chat struct {
-	in_use *sync.Mutex
+	user_id int
+	state   StateNode
 
-	state StateNode
+	in_use *sync.Mutex
 
 	timer   *time.Timer
 	expired time.Time
 }
 
-func ChatTimerFunc(user_id int, expired chan int) func() {
+func (c *Chat) TimerFunc(expired chan int) func() {
 	return func() {
-		expired <- user_id
+		expired <- c.user_id
 	}
 }
 
 func NewChat(user_id int, state StateNode, timeout time.Duration, expired chan int) *Chat {
-	return &Chat{
+	c := &Chat{
+		user_id: user_id,
 		in_use:  &sync.Mutex{},
 		state:   state,
-		timer:   time.AfterFunc(timeout, ChatTimerFunc(user_id, expired)),
 		expired: time.Now().Add(timeout),
 	}
+	c.timer = time.AfterFunc(timeout, c.TimerFunc(expired))
+
+	return c
 }
 
-func (chat *Chat) Init(ask *Ask, vk *VK, user_id int, silent bool) {
-	chat.state.Init(ask, vk, user_id, silent)
+func (c *Chat) Entry(ask *Ask, vk *VK, silent bool) {
+	c.state.Entry(ask, vk, c.user_id, silent)
 }
 
-func (chat *Chat) Do(ask *Ask, vk *VK, event EventType, i interface{}) StateNode {
-	return chat.state.Do(ask, vk, event, i)
+func (c *Chat) Do(ask *Ask, vk *VK, event EventType, i interface{}) StateNode {
+	return c.state.Do(ask, vk, event, i)
 }
 
 // reset timer and make new if timer was expired
-func (chat *Chat) ResetTimer(timeout time.Duration, user_id int, expired chan int) {
-	active := chat.timer.Reset(timeout)
+func (c *Chat) ResetTimer(timeout time.Duration, expired chan int) {
+	active := c.timer.Reset(timeout)
 	if !active {
-		chat.timer = time.AfterFunc(timeout, ChatTimerFunc(user_id, expired))
+		c.timer = time.AfterFunc(timeout, c.TimerFunc(expired))
 	}
 }
 
-func (chat *Chat) ChangeState(next StateNode) *Chat {
-	chat.state = next
-	return chat
+func (c *Chat) ChangeState(next StateNode) *Chat {
+	c.state = next
+	return c
 }

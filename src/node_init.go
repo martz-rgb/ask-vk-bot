@@ -14,7 +14,7 @@ func (node *InitNode) String() string {
 	return "init"
 }
 
-func (node *InitNode) Init(ask *Ask, vk *VK, user_id int, silent bool) {
+func (node *InitNode) Entry(ask *Ask, vk *VK, user_id int, silent bool) {
 	keyboard := object.NewMessagesKeyboard(false)
 
 	keyboard.AddRow()

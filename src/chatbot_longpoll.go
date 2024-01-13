@@ -36,16 +36,16 @@ func (bot *ChatBot) MessageNew(ctx context.Context, obj events.MessageNewObject)
 	chat, existed := bot.GetChat(user_id)
 	defer bot.PutChat(user_id, chat)
 
-	chat.ResetTimer(bot.timeout, user_id, bot.cache.NotifyExpired)
+	chat.ResetTimer(bot.timeout, bot.cache.NotifyExpired)
 
 	if !existed {
-		chat.Init(bot.ask, bot.vk, user_id, false)
+		chat.Entry(bot.ask, bot.vk, false)
 		return
 	}
 	next := chat.Do(bot.ask, bot.vk, NewMessageEvent, obj)
 	if next != nil {
 		chat.ChangeState(next)
-		chat.Init(bot.ask, bot.vk, user_id, true)
+		chat.Entry(bot.ask, bot.vk, true)
 	}
 }
 
@@ -57,15 +57,15 @@ func (bot *ChatBot) MessageEvent(ctx context.Context, obj events.MessageEventObj
 	chat, existed := bot.GetChat(user_id)
 	defer bot.PutChat(user_id, chat)
 
-	chat.ResetTimer(bot.timeout, user_id, bot.cache.NotifyExpired)
+	chat.ResetTimer(bot.timeout, bot.cache.NotifyExpired)
 
 	if !existed {
-		chat.Init(bot.ask, bot.vk, user_id, false)
+		chat.Entry(bot.ask, bot.vk, false)
 		// and try to do next step
 	}
 	next := chat.Do(bot.ask, bot.vk, ChangeKeyboardEvent, obj)
 	if next != nil {
 		chat.ChangeState(next)
-		chat.Init(bot.ask, bot.vk, user_id, true)
+		chat.Entry(bot.ask, bot.vk, true)
 	}
 }

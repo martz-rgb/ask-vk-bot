@@ -14,7 +14,7 @@ func (node *FAQNode) String() string {
 	return "faq"
 }
 
-func (node *FAQNode) Init(ask *Ask, vk *VK, user_id int, silent bool) {
+func (node *FAQNode) Entry(ask *Ask, vk *VK, user_id int, silent bool) {
 	keyboard := object.NewMessagesKeyboard(false)
 
 	keyboard.AddRow()

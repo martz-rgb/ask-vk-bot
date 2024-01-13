@@ -10,7 +10,7 @@ const (
 type StateNode interface {
 	String() string
 
-	Init(ask *Ask, vk *VK, user_id int, silent bool)
+	Entry(ask *Ask, vk *VK, user_id int, silent bool)
 	Do(ask *Ask, vk *VK, event EventType, i interface{}) StateNode
 }
 

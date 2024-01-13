@@ -23,7 +23,7 @@ func (node *RolesNode) String() string {
 	return "roles"
 }
 
-func (node *RolesNode) Init(ask *Ask, vk *VK, user_id int, silent bool) {
+func (node *RolesNode) Entry(ask *Ask, vk *VK, user_id int, silent bool) {
 	var err error
 
 	node.roles, err = ask.Roles()
