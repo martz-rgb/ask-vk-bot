@@ -1,7 +1,9 @@
 package main
 
 import (
+	"errors"
 	"math/rand"
+	"os"
 	"strings"
 	"time"
 
@@ -15,6 +17,31 @@ import (
 type VK struct {
 	api *api.VK
 	r   *rand.Rand
+}
+
+func NewVKFromFile(name string) (*VK, error) {
+	file, err := os.Open(name)
+	if err != nil {
+		return nil, err
+	}
+	defer file.Close()
+
+	token, err := memguard.NewBufferFromEntireReader(file)
+	if err != nil {
+		return nil, err
+	}
+	defer token.Destroy()
+
+	if token.Size() == 0 {
+		return nil, errors.New("group token is not provided")
+	}
+
+	api, err := NewVK(token)
+	if err != nil {
+		return nil, err
+	}
+
+	return api, nil
 }
 
 func NewVK(token *memguard.LockedBuffer) (*VK, error) {

@@ -3,13 +3,14 @@ package main
 import (
 	"context"
 	"encoding/json"
+	"errors"
 	"io"
+	"log"
 	"os"
 	"os/signal"
 	"path/filepath"
 	"time"
 
-	"github.com/awnumar/memguard"
 	"go.uber.org/zap"
 )
 
@@ -22,75 +23,73 @@ type Config struct {
 	LogDir           string        `json:"LOG_DIR"`
 }
 
-func main() {
-	config := Config{
+func ConfigFromEnv() *Config {
+	return &Config{
 		SecretGroupToken: os.Getenv("SECRET_GROUP_TOKEN"),
 		SecretAdminToken: os.Getenv("SECRET_ADMIN_TOKEN"),
 		DB:               os.Getenv("DB"),
 		Schema:           os.Getenv("SCHEMA"),
 		LogDir:           os.Getenv("LOG_DIR"),
 	}
+}
 
-	config_file, err := os.Open("../config.json")
+func ConfigFromFile(name string) (*Config, error) {
+	file, err := os.Open("../config.json")
+	if err != nil {
+		return nil, err
+	}
+	defer file.Close()
+
+	content, err := io.ReadAll(file)
+	if err != nil {
+		return nil, err
+	}
+
+	c := &Config{}
+	err = json.Unmarshal(content, c)
+	if err != nil {
+		return nil, err
+	}
+
+	return c, nil
+}
+
+func (c *Config) Validate() error {
+	if len(c.SecretGroupToken) == 0 {
+		return errors.New("no place of group token is provided")
+	}
+	if len(c.SecretAdminToken) == 0 {
+		return errors.New("no place of admin token is provided")
+	}
+	if len(c.DB) == 0 {
+		return errors.New("database url is not provided")
+	}
+	if len(c.Schema) == 0 {
+		return errors.New("database schema is not provided")
+	}
+	if len(c.LogDir) == 0 {
+		return errors.New("log directory is not provided")
+	}
+
+	if c.Timeout == 0 {
+		c.Timeout = 1 * time.Hour
+	}
+
+	return nil
+}
+
+func main() {
+	config := ConfigFromEnv()
+
+	// development purposes
+	dev, err := ConfigFromFile("../config.json")
 	if err == nil {
-		content, err := io.ReadAll(config_file)
-		config_file.Close()
-		if err != nil {
-			panic(err)
-		}
-
-		err = json.Unmarshal(content, &config)
-		if err != nil {
-			panic(err)
-		}
+		config = dev
 	}
 
-	if len(config.SecretGroupToken) == 0 {
-		panic("no place of group token is provided")
-	}
-	if len(config.SecretAdminToken) == 0 {
-		panic("no place of admin token is provided")
-	}
-
-	var group_token, admin_token *memguard.LockedBuffer
-
-	group_file, err := os.Open(config.SecretGroupToken)
+	err = config.Validate()
 	if err != nil {
-		panic(err)
-	}
-	group_token, err = memguard.NewBufferFromEntireReader(group_file)
-	group_file.Close()
-	if err != nil {
-		panic(err)
-	}
-
-	admin_file, err := os.Open(config.SecretAdminToken)
-	if err != nil {
-		panic(err)
-	}
-	admin_token, err = memguard.NewBufferFromEntireReader(admin_file)
-	admin_file.Close()
-	if err != nil {
-		panic(err)
-	}
-
-	if group_token.Size() == 0 {
-		panic("group token is not provided")
-	}
-	if admin_token.Size() == 0 {
-		panic("admin token is not provided")
-	}
-	if len(config.DB) == 0 {
-		panic("database url is not provided")
-	}
-	if len(config.Schema) == 0 {
-		panic("database schema is not provided")
-	}
-	if config.Timeout == 0 {
-		config.Timeout = 1 * time.Hour
-	}
-	if len(config.LogDir) == 0 {
-		panic("log directory is not provided")
+		log.Fatal(err)
 	}
 
 	log_cfg := zap.NewDevelopmentConfig()
@@ -105,25 +104,22 @@ func main() {
 
 	db, err := NewDB(config.DB)
 	if err != nil {
-		panic(err)
+		log.Fatal(err)
 	}
-
 	if err = db.Init(config.Schema); err != nil {
-		panic(err)
+		log.Fatal(err)
 	}
 
 	ask := NewAsk(nil, db)
 
-	group_api, err := NewVK(group_token)
+	group_api, err := NewVKFromFile(config.SecretGroupToken)
 	if err != nil {
-		panic(err)
+		log.Fatal(err)
 	}
-	admin_api, err := NewVK(admin_token)
+	admin_api, err := NewVKFromFile(config.SecretGroupToken)
 	if err != nil {
-		panic(err)
+		log.Fatal(err)
 	}
-	group_token.Destroy()
-	admin_token.Destroy()
 
 	chat_bot := NewChatBot(ask, &InitNode{}, config.Timeout, group_api)
 	listener := NewListener(ask, group_api, admin_api)
