@@ -2,24 +2,22 @@ package main
 
 import (
 	"context"
-	"fmt"
+	"sync"
 
-	"github.com/SevereCloud/vksdk/v2/api"
 	"github.com/SevereCloud/vksdk/v2/events"
 	"github.com/SevereCloud/vksdk/v2/longpoll-bot"
+	"go.uber.org/zap"
 )
 
-func (bot *ChatBot) RunLongPoll(ctx context.Context) {
-	group, err := bot.vk.api.GroupsGetByID(api.Params{})
-	if err != nil {
-		panic(err)
-	}
+func (bot *ChatBot) RunLongPoll(ctx context.Context, wg *sync.WaitGroup) {
+	defer wg.Done()
 
-	fmt.Println("OK", group[0].ID)
-
-	lp, err := longpoll.NewLongPoll(bot.vk.api, group[0].ID)
+	lp, err := longpoll.NewLongPoll(bot.vk.api, bot.group_id)
 	if err != nil {
-		panic(err)
+		zap.S().Errorw("failed to run bot longpoll",
+			"error", err,
+			"id", bot.group_id)
+		return
 	}
 
 	lp.MessageNew(bot.MessageNew)

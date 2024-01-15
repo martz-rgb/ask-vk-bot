@@ -4,17 +4,21 @@ import (
 	"context"
 	"encoding/json"
 	"errors"
+	"fmt"
 	"io"
 	"log"
 	"os"
 	"os/signal"
 	"path/filepath"
+	"strconv"
+	"sync"
 	"time"
 
 	"go.uber.org/zap"
 )
 
 type Config struct {
+	GroupID          int           `json:"GROUP_ID"`
 	SecretGroupToken string        `json:"SECRET_GROUP_TOKEN"`
 	SecretAdminToken string        `json:"SECRET_ADMIN_TOKEN"`
 	DB               string        `json:"DB"`
@@ -24,7 +28,10 @@ type Config struct {
 }
 
 func ConfigFromEnv() *Config {
+	group_id, _ := strconv.Atoi(os.Getenv("GROUP_ID"))
+
 	return &Config{
+		GroupID:          group_id,
 		SecretGroupToken: os.Getenv("SECRET_GROUP_TOKEN"),
 		SecretAdminToken: os.Getenv("SECRET_ADMIN_TOKEN"),
 		DB:               os.Getenv("DB"),
@@ -55,11 +62,14 @@ func ConfigFromFile(name string) (*Config, error) {
 }
 
 func (c *Config) Validate() error {
+	if c.GroupID == 0 {
+		return errors.New("group id is not provided")
+	}
 	if len(c.SecretGroupToken) == 0 {
-		return errors.New("no place of group token is provided")
+		return errors.New("place of group token is not provided")
 	}
 	if len(c.SecretAdminToken) == 0 {
-		return errors.New("no place of admin token is provided")
+		return errors.New("place of admin token is not provided")
 	}
 	if len(c.DB) == 0 {
 		return errors.New("database url is not provided")
@@ -112,21 +122,28 @@ func main() {
 
 	ask := NewAsk(nil, db)
 
-	group_api, err := NewVKFromFile(config.SecretGroupToken)
+	group, err := NewVKFromFile(config.SecretGroupToken)
 	if err != nil {
 		log.Fatal(err)
 	}
-	admin_api, err := NewVKFromFile(config.SecretGroupToken)
+	admin, err := NewVKFromFile(config.SecretAdminToken)
 	if err != nil {
 		log.Fatal(err)
 	}
 
-	chat_bot := NewChatBot(ask, &InitNode{}, config.Timeout, group_api)
-	listener := NewListener(ask, group_api, admin_api)
+	chat_bot := NewChatBot(ask, &InitNode{}, config.Timeout, config.GroupID, group)
+	listener := NewListener(ask, config.GroupID, group, admin)
 
 	ctx, stop := signal.NotifyContext(context.Background(), os.Interrupt)
 	defer stop()
 
-	chat_bot.RunLongPoll(ctx)
-	listener.RunLongPoll(ctx)
+	wg := &sync.WaitGroup{}
+	wg.Add(2)
+
+	go listener.RunLongPoll(ctx, wg)
+	go chat_bot.RunLongPoll(ctx, wg)
+
+	fmt.Println("run", config.GroupID)
+
+	wg.Wait()
 }

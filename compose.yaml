@@ -5,6 +5,7 @@ services:
       - secret_group_token
       - secret_admin_token
     environment:
+      GROUP_ID: ${GROUP_ID}
       DB: /db/ask.db
       SCHEMA: schema.sql
       LOG_DIR: /log
