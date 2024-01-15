@@ -1,5 +1,9 @@
 package main
 
+import (
+	"github.com/leporo/sqlf"
+)
+
 type AskConfig struct {
 }
 
@@ -16,6 +20,8 @@ type Ask struct {
 }
 
 func NewAsk(config *AskConfig, db *DB) *Ask {
+	sqlf.SetDialect(sqlf.NoDialect)
+
 	return &Ask{
 		config: config,
 		db:     db,
@@ -24,9 +30,9 @@ func NewAsk(config *AskConfig, db *DB) *Ask {
 
 func (a *Ask) Roles() ([]Role, error) {
 	var roles []Role
-	query := "select name, tag, shown_name, caption_name from roles"
 
-	err := a.db.sql.Select(&roles, query)
+	query := sqlf.From("roles").Bind(&Role{})
+	err := a.db.Select(&roles, query.String())
 	if err != nil {
 		return nil, err
 	}
@@ -37,9 +43,8 @@ func (a *Ask) Roles() ([]Role, error) {
 func (a *Ask) RolesStartWith(prefix string) ([]Role, error) {
 	var roles []Role
 
-	query := "select name, tag, shown_name, caption_name from roles where shown_name like ?"
-
-	err := a.db.sql.Select(&roles, query, prefix+"%")
+	query := sqlf.From("roles").Bind(&Role{}).Where("shown_name like ?", prefix+"%")
+	err := a.db.Select(&roles, query.String(), query.Args()...)
 	if err != nil {
 		return nil, err
 	}

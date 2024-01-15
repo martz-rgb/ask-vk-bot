@@ -13,6 +13,8 @@ require (
 require (
 	github.com/awnumar/memcall v0.2.0 // indirect
 	github.com/klauspost/compress v1.16.0 // indirect
+	github.com/leporo/sqlf v1.4.0
+	github.com/valyala/bytebufferpool v1.0.0 // indirect
 	github.com/vmihailenco/msgpack/v5 v5.3.5 // indirect
 	github.com/vmihailenco/tagparser/v2 v2.0.0 // indirect
 	go.uber.org/multierr v1.10.0 // indirect
