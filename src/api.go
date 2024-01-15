@@ -213,3 +213,27 @@ func (v *VK) ChangeKeyboardWithoutDelete(user_id int, keyboard string) bool {
 	v.EditMessage(user_id, message.ID, message.Text, keyboard)
 	return true
 }
+
+func (v *VK) WallPostNew(group_id int, message string, attachments string, signed bool, publish_date int64) {
+	params := api.Params{
+		"owner_id":     -group_id,
+		"from_group":   1,
+		"message":      message,
+		"attachments":  attachments,
+		"signed":       signed,
+		"publish_date": publish_date,
+	}
+
+	response, err := v.api.WallPost(params)
+	if err != nil {
+		zap.S().Errorw("failed to post on wall",
+			"error", err,
+			"params", params,
+			"response", response)
+		return
+	}
+
+	zap.S().Debugw("successfully posted on wall",
+		"params", params,
+		"response", response)
+}
