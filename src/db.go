@@ -11,10 +11,8 @@ import (
 )
 
 type DB struct {
-	sync.Mutex
+	mu  sync.Mutex
 	sql *sqlx.DB
-
-	// TO-DO: some sqlbuilder would be nice
 }
 
 func NewDB(connection string) (*DB, error) {
@@ -40,9 +38,6 @@ func (db *DB) Init(filename string) error {
 	defer schema.Close()
 
 	sql, _ := io.ReadAll(schema)
-
-	db.Lock()
-	defer db.Unlock()
 
 	_, err = db.sql.Exec(string(sql))
 	if err != nil {
@@ -89,4 +84,9 @@ func (db *DB) LoadCsv(name string) error {
 	}
 
 	return tx.Commit()
+}
+
+// read-only is concurrency safe
+func (db *DB) Select(dest interface{}, query string, args ...interface{}) error {
+	return db.sql.Select(dest, query, args...)
 }
