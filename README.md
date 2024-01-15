@@ -7,6 +7,7 @@ git clone https://github.com/coleifer/sqlite-web.git
 TO-DO list:
 
 - [ ] db migration
+- [ ] надо куда-то запихнуть админов/система прав
 - [ ] ask architecture somehow (listener + db, points\persons)
 - [ ] manage secrets with docker swarm? 
 
