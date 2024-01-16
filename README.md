@@ -8,6 +8,7 @@ TO-DO list:
 
 - [ ] um very thing to do IS TO REFACTOR NODES... i appreciate myself but what the f*ck
 - [ ] db migration
+- [ ] надо куда-то запихнуть админов/система прав
 - [ ] ask architecture somehow (listener + db, points\persons)
 - [ ] manage secrets with docker swarm? 
 
