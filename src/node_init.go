@@ -24,6 +24,11 @@ func (node *InitNode) Entry(ask *Ask, vk *VK, user_id int, silent bool) {
 		Value: (&RolesNode{}).String(),
 	}, "secondary")
 
+	keyboard.AddCallbackButton("Баллы", CallbackPayload{
+		Id:    node.String(),
+		Value: (&PointsNode{}).String(),
+	}, "secondary")
+
 	keyboard.AddCallbackButton("FAQ", CallbackPayload{
 		Id:    node.String(),
 		Value: (&FAQNode{}).String(),
@@ -68,6 +73,10 @@ func (node *InitNode) Do(ask *Ask, vk *VK, event EventType, i interface{}) State
 
 		if payload.Value == (&RolesNode{}).String() {
 			return &RolesNode{}
+		}
+
+		if payload.Value == (&PointsNode{}).String() {
+			return &PointsNode{}
 		}
 	}
 

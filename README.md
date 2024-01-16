@@ -6,6 +6,7 @@ git clone https://github.com/coleifer/sqlite-web.git
 
 TO-DO list:
 
+- [ ] um very thing to do IS TO REFACTOR NODES... i appreciate myself but what the f*ck
 - [ ] db migration
 - [ ] ask architecture somehow (listener + db, points\persons)
 - [ ] manage secrets with docker swarm? 
