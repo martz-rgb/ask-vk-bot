@@ -2,6 +2,7 @@ package main
 
 import (
 	"encoding/csv"
+	"fmt"
 	"io"
 	"os"
 	"sync"
@@ -16,7 +17,8 @@ type DB struct {
 }
 
 func NewDB(connection string) (*DB, error) {
-	db, err := sqlx.Open("sqlite3", connection)
+	// TO-DO: make Sprintf prettier?..
+	db, err := sqlx.Open("sqlite3", fmt.Sprintf("%s?_fk=true", connection))
 	if err != nil {
 		return nil, err
 	}
@@ -89,4 +91,8 @@ func (db *DB) LoadCsv(name string) error {
 // read-only is concurrency safe
 func (db *DB) Select(dest interface{}, query string, args ...interface{}) error {
 	return db.sql.Select(dest, query, args...)
+}
+
+func (db *DB) QueryRow(dest interface{}, query string, args ...interface{}) error {
+	return db.sql.QueryRow(query, args...).Scan(dest)
 }
