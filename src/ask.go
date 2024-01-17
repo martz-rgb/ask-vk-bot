@@ -40,10 +40,11 @@ type Role struct {
 	Tag         string `db:"tag"`
 	ShownName   string `db:"shown_name"`
 	CaptionName string `db:"caption_name"`
-	Album       string `db:"album_link"`
-	Board       string `db:"board_link"`
+	// Album       string `db:"album_link"`
+	// Board       string `db:"board_link"`
 }
 
+// TO-DO should roles be sorted alphabetically or by groups
 func (a *Ask) Roles() ([]Role, error) {
 	var roles []Role
 

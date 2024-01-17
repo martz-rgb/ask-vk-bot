@@ -40,7 +40,7 @@ func (bot *ChatBot) MessageNew(ctx context.Context, obj events.MessageNewObject)
 		chat.Entry(bot.ask, bot.vk, false)
 		return
 	}
-	next := chat.Do(bot.ask, bot.vk, NewMessageEvent, obj)
+	next := chat.Do(bot.ask, bot.vk, obj)
 	if next != nil {
 		chat.ChangeState(next)
 		chat.Entry(bot.ask, bot.vk, true)
@@ -61,7 +61,7 @@ func (bot *ChatBot) MessageEvent(ctx context.Context, obj events.MessageEventObj
 		chat.Entry(bot.ask, bot.vk, false)
 		// and try to do next step
 	}
-	next := chat.Do(bot.ask, bot.vk, ChangeKeyboardEvent, obj)
+	next := chat.Do(bot.ask, bot.vk, obj)
 	if next != nil {
 		chat.ChangeState(next)
 		chat.Entry(bot.ask, bot.vk, true)

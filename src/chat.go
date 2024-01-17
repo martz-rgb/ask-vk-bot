@@ -5,6 +5,7 @@ import (
 	"time"
 )
 
+// state cache probably
 type Chat struct {
 	user_id int
 	state   StateNode
@@ -34,11 +35,11 @@ func NewChat(user_id int, state StateNode, timeout time.Duration, expired chan i
 }
 
 func (c *Chat) Entry(ask *Ask, vk *VK, silent bool) {
-	c.state.Entry(ask, vk, c.user_id, silent)
+	c.state.Entry(c.user_id, ask, vk, silent)
 }
 
-func (c *Chat) Do(ask *Ask, vk *VK, event EventType, i interface{}) StateNode {
-	return c.state.Do(ask, vk, event, i)
+func (c *Chat) Do(ask *Ask, vk *VK, input interface{}) StateNode {
+	return c.state.Do(c.user_id, ask, vk, input)
 }
 
 // reset timer and make new if timer was expired

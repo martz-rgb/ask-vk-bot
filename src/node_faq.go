@@ -1,78 +1,74 @@
 package main
 
 import (
-	"encoding/json"
-
 	"github.com/SevereCloud/vksdk/v2/events"
-	"github.com/SevereCloud/vksdk/v2/object"
 	"go.uber.org/zap"
 )
 
 type FAQNode struct{}
 
-func (node *FAQNode) String() string {
+func (node *FAQNode) ID() string {
 	return "faq"
 }
 
-func (node *FAQNode) Entry(ask *Ask, vk *VK, user_id int, silent bool) {
-	keyboard := object.NewMessagesKeyboard(false)
+func (node *FAQNode) Entry(user_id int, ask *Ask, vk *VK, silent bool) {
+	buttons := [][]Button{{
+		{
+			Label: "Кто ты?",
+			Color: "secondary",
 
-	keyboard.AddRow()
+			Command: "who",
+		},
+		{
+			Label: "Что ты можешь делать?",
+			Color: "secondary",
 
-	keyboard.AddCallbackButton("Кто я?", CallbackPayload{
-		Id:    node.String(),
-		Value: "who",
-	}, "secondary")
-	keyboard.AddCallbackButton("Что я могу делать?", CallbackPayload{
-		Id:    node.String(),
-		Value: "what",
-	}, "secondary")
-	keyboard.AddCallbackButton("Назад", CallbackPayload{
-		Id:    node.String(),
-		Value: "back",
-	}, "primary")
+			Command: "what",
+		},
+		{
+			Label: "Назад",
+			Color: "secondary",
 
-	vk.SendMessage(user_id, "Выберите вопрос, который вас интересует на клавиатуре ниже.", keyboard.ToJSON())
+			Command: "back",
+		},
+	}}
+
+	message := "Выберите вопрос, который вас интересует на клавиатуре ниже."
+
+	vk.SendMessage(user_id, message, CreateKeyboard(node, buttons))
 }
 
-func (node *FAQNode) Do(ask *Ask, vk *VK, event EventType, i interface{}) StateNode {
-	if event == ChangeKeyboardEvent {
-		obj, ok := i.(events.MessageEventObject)
-		if !ok {
-			zap.S().Warnw("failed to parse vk response to message event object",
-				"object", obj)
-			return nil
-		}
+func (node *FAQNode) Do(user_id int, ask *Ask, vk *VK, input interface{}) StateNode {
+	switch obj := input.(type) {
 
-		var payload CallbackPayload
-
-		err := json.Unmarshal(obj.Payload, &payload)
+	case events.MessageEventObject:
+		payload, err := UnmarshalPayload(node, obj.Payload)
 		if err != nil {
 			zap.S().Errorw("failed to unmarshal payload",
 				"payload", payload)
 			return nil
 		}
 
-		if payload.Id != node.String() {
-			zap.S().Infow("payload does not belong to node",
-				"node", node.String(),
-				"payload", payload)
-			return nil
-		}
+		return node.KeyboardEvent(ask, vk, obj.UserID, payload)
 
-		if payload.Value == "who" {
-			vk.SendMessage(obj.UserID, "Я подрядчик этого дома.", "")
-			return nil
-		}
+	default:
+		zap.S().Warnw("failed to parse vk response to message event object",
+			"object", obj)
+	}
 
-		if payload.Value == "what" {
-			vk.SendMessage(obj.UserID, "Я умею отвечать на ваши сообщения и управлять этим домом.", "")
-			return nil
-		}
+	return nil
+}
 
-		if payload.Value == "back" {
-			return &InitNode{}
-		}
+func (node *FAQNode) KeyboardEvent(ask *Ask, vk *VK, user_id int, payload *CallbackPayload) StateNode {
+	switch payload.Command {
+	case "who":
+		vk.SendMessage(user_id, "Я подрядчик этого дома.", "")
+		return nil
+	case "what":
+		vk.SendMessage(user_id, "Я умею отвечать на ваши сообщения и управлять этим домом.", "")
+		return nil
+	case "back":
+		return &InitNode{}
 	}
 
 	return nil
