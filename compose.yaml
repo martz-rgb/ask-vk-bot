@@ -19,8 +19,8 @@ services:
         source: ${LOG_LOCAL_PATH}
         target: /log
 
-  web_sqlite:
-    build: ./sqlite-web/docker
+  sqlite-web:
+    build: ./sqlite-web
     environment:
       SQLITE_DATABASE: /db/ask.db
     volumes:

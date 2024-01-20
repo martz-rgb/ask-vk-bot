@@ -676,8 +676,8 @@ def table_insert(table):
     row = {}
     for column in dataset.get_columns(table):
         field = model._meta.columns[column.name]
-        if isinstance(field, AutoField):
-            continue
+        # if isinstance(field, AutoField):
+        #     continue
         columns.append(column)
         col_dict[column.name] = column
         row[column.name] = ''
