@@ -6,8 +6,9 @@ git clone https://github.com/coleifer/sqlite-web.git
 
 TO-DO list:
 
-- [ ] um very thing to do IS TO REFACTOR NODES... i appreciate myself but what the f*ck
 - [ ] db migration
+- [ ] переписать вк апи, чтобы ошибки нормально обрабатывать 
+- [ ] логирование без синглтона...
 - [ ] надо куда-то запихнуть админов/система прав
 - [ ] ask architecture somehow (listener + db, points\persons)
 - [ ] manage secrets with docker swarm? 
@@ -22,3 +23,4 @@ done:
 - [x] web client for sqlite (make it useful)
 - [x] change keyboard without delete
 - [x] cache expired deleting
+- [x] um very thing to do IS TO REFACTOR NODES... i appreciate myself but what the f*ck (сойдет)
