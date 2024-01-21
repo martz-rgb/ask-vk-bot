@@ -2,6 +2,7 @@ package main
 
 import (
 	"errors"
+	"io"
 	"math/rand"
 	"os"
 	"strings"
@@ -13,13 +14,22 @@ import (
 	"go.uber.org/zap"
 )
 
+const (
+	PrimaryColor   = "primary"
+	SecondaryColor = "secondary"
+	PositiveColor  = "positive"
+	NegativeColor  = "negative"
+)
+
 // api.VK is based on http.Client and http.Client is claimed to be concurrency safe
 type VK struct {
+	id int
+
 	api *api.VK
 	r   *rand.Rand
 }
 
-func NewVKFromFile(name string) (*VK, error) {
+func NewVKFromFile(name string, id int) (*VK, error) {
 	file, err := os.Open(name)
 	if err != nil {
 		return nil, err
@@ -36,7 +46,7 @@ func NewVKFromFile(name string) (*VK, error) {
 		return nil, errors.New("group token is not provided")
 	}
 
-	api, err := NewVK(token)
+	api, err := NewVK(id, token)
 	if err != nil {
 		return nil, err
 	}
@@ -44,10 +54,11 @@ func NewVKFromFile(name string) (*VK, error) {
 	return api, nil
 }
 
-func NewVK(token *memguard.LockedBuffer) (*VK, error) {
+func NewVK(id int, token *memguard.LockedBuffer) (*VK, error) {
 	v := &VK{}
 	source := rand.NewSource(time.Now().UnixNano())
 	v.r = rand.New(source)
+	v.id = id
 
 	// should copy string because VK saves it inside and use,
 	// but i destroy LockedBuffers with pointer on string
@@ -76,12 +87,13 @@ func (v *VK) MarkAsRead(user_id int) {
 		"response", response)
 }
 
-func (v *VK) SendMessage(user_id int, message string, keyboard string) int {
+func (v *VK) SendMessage(user_id int, message string, keyboard string, attachment string) int {
 	params := api.Params{
-		"user_id":   user_id,
-		"random_id": v.r.Int(),
-		"message":   message,
-		"keyboard":  keyboard,
+		"user_id":    user_id,
+		"random_id":  v.r.Int(),
+		"message":    message,
+		"keyboard":   keyboard,
+		"attachment": attachment,
 	}
 
 	response, err := v.api.MessagesSend(params)
@@ -199,7 +211,7 @@ func (v *VK) ChangeKeyboard(user_id int, keyboard string) {
 }
 
 func (v *VK) ChangeKeyboardWithDelete(user_id int, keyboard string) {
-	id := v.SendMessage(user_id, "Меняю клавиатуру", keyboard)
+	id := v.SendMessage(user_id, "Меняю клавиатуру", keyboard, "")
 	v.DeleteMessage(user_id, id, 1)
 }
 
@@ -236,4 +248,21 @@ func (v *VK) WallPostNew(group_id int, message string, attachments string, signe
 	zap.S().Debugw("successfully posted on wall",
 		"params", params,
 		"response", response)
+}
+
+func (v *VK) UploadDocument(peer_id int, name string, file io.Reader) int {
+	response, err := v.api.UploadMessagesDoc(peer_id, "doc", name, "", file)
+	if err != nil {
+		zap.S().Errorw("failed to upload document",
+			"error", err,
+			"peer_id", peer_id,
+			"response", response)
+		return 0
+	}
+
+	zap.S().Debugw("successfully upload document",
+		"peer_id", peer_id,
+		"response", response)
+
+	return response.Doc.ID
 }

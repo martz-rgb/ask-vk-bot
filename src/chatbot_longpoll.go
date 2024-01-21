@@ -12,11 +12,11 @@ import (
 func (bot *ChatBot) RunLongPoll(ctx context.Context, wg *sync.WaitGroup) {
 	defer wg.Done()
 
-	lp, err := longpoll.NewLongPoll(bot.vk.api, bot.group_id)
+	lp, err := longpoll.NewLongPoll(bot.vk.api, bot.vk.id)
 	if err != nil {
 		zap.S().Errorw("failed to run bot longpoll",
 			"error", err,
-			"id", bot.group_id)
+			"id", bot.vk.id)
 		return
 	}
 

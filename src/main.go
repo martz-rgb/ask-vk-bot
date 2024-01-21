@@ -122,17 +122,17 @@ func main() {
 
 	ask := NewAsk(nil, db)
 
-	group, err := NewVKFromFile(config.SecretGroupToken)
+	group, err := NewVKFromFile(config.SecretGroupToken, config.GroupID)
 	if err != nil {
 		log.Fatal(err)
 	}
-	admin, err := NewVKFromFile(config.SecretAdminToken)
+	admin, err := NewVKFromFile(config.SecretAdminToken, config.GroupID)
 	if err != nil {
 		log.Fatal(err)
 	}
 
-	chat_bot := NewChatBot(ask, &InitNode{}, config.Timeout, config.GroupID, group)
-	listener := NewListener(ask, config.GroupID, group, admin)
+	chat_bot := NewChatBot(ask, &InitNode{}, config.Timeout, group)
+	listener := NewListener(ask, group, admin)
 
 	ctx, stop := signal.NotifyContext(context.Background(), os.Interrupt)
 	defer stop()

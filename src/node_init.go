@@ -31,7 +31,7 @@ func (node *InitNode) Entry(user_id int, ask *Ask, vk *VK, silent bool) {
 	}}
 
 	if !silent {
-		vk.SendMessage(user_id, "Здравствуйте!", CreateKeyboard(node, buttons))
+		vk.SendMessage(user_id, "Здравствуйте!", CreateKeyboard(node, buttons), "")
 	} else {
 		vk.ChangeKeyboard(user_id, CreateKeyboard(node, buttons))
 	}

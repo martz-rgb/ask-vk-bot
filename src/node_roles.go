@@ -42,14 +42,14 @@ func (node *RolesNode) Entry(user_id int, ask *Ask, vk *VK, silent bool) {
 	message := `Выберите нужную роль с помощи клавиатуры или начните вводить и отправьте часть, с которой начинается имя роли.
 				Отправьте специальный символ '%' для того, чтобы вернуться к полному списку ролей.`
 
-	vk.SendMessage(user_id, message, keyboard)
+	vk.SendMessage(user_id, message, keyboard, "")
 }
 
 func (node *RolesNode) Do(user_id int, ask *Ask, vk *VK, input interface{}) StateNode {
 	switch obj := input.(type) {
 
 	case events.MessageNewObject:
-		return node.NewMessage(ask, vk, obj.Message.FromID, obj.Message.Text)
+		return node.NewMessage(obj.Message.FromID, ask, vk, obj.Message.Text)
 
 	case events.MessageEventObject:
 		payload, err := UnmarshalPayload(node, obj.Payload)
@@ -59,7 +59,7 @@ func (node *RolesNode) Do(user_id int, ask *Ask, vk *VK, input interface{}) Stat
 			return nil
 		}
 
-		return node.KeyboardEvent(ask, vk, obj.UserID, payload)
+		return node.KeyboardEvent(obj.UserID, ask, vk, payload)
 
 	default:
 		zap.S().Warnw("failed to parse vk response to message event object",
@@ -69,7 +69,7 @@ func (node *RolesNode) Do(user_id int, ask *Ask, vk *VK, input interface{}) Stat
 	return nil
 }
 
-func (node *RolesNode) NewMessage(ask *Ask, vk *VK, user_id int, message string) StateNode {
+func (node *RolesNode) NewMessage(user_id int, ask *Ask, vk *VK, message string) StateNode {
 	roles, err := ask.RolesStartWith(message)
 	if err != nil {
 		zap.S().Errorw("failed to get roles start with from ask",
@@ -93,7 +93,7 @@ func (node *RolesNode) NewMessage(ask *Ask, vk *VK, user_id int, message string)
 	return nil
 }
 
-func (node *RolesNode) KeyboardEvent(ask *Ask, vk *VK, user_id int, payload *CallbackPayload) StateNode {
+func (node *RolesNode) KeyboardEvent(user_id int, ask *Ask, vk *VK, payload *CallbackPayload) StateNode {
 	switch payload.Command {
 	case "roles":
 		var info *Role
@@ -114,8 +114,7 @@ func (node *RolesNode) KeyboardEvent(ask *Ask, vk *VK, user_id int, payload *Cal
 		message := fmt.Sprintf("Идентификатор: %s\nТег: %s\nИмя: %s\nЗаголовок: %s\n",
 			info.Name, info.Tag, info.ShownName, info.CaptionName)
 
-		vk.SendMessage(user_id, message, "")
-
+		vk.SendMessage(user_id, message, "", "")
 		return nil
 	case "previous":
 		node.page -= 1

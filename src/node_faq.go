@@ -35,7 +35,7 @@ func (node *FAQNode) Entry(user_id int, ask *Ask, vk *VK, silent bool) {
 
 	message := "Выберите вопрос, который вас интересует на клавиатуре ниже."
 
-	vk.SendMessage(user_id, message, CreateKeyboard(node, buttons))
+	vk.SendMessage(user_id, message, CreateKeyboard(node, buttons), "")
 }
 
 func (node *FAQNode) Do(user_id int, ask *Ask, vk *VK, input interface{}) StateNode {
@@ -62,10 +62,10 @@ func (node *FAQNode) Do(user_id int, ask *Ask, vk *VK, input interface{}) StateN
 func (node *FAQNode) KeyboardEvent(ask *Ask, vk *VK, user_id int, payload *CallbackPayload) StateNode {
 	switch payload.Command {
 	case "who":
-		vk.SendMessage(user_id, "Я подрядчик этого дома.", "")
+		vk.SendMessage(user_id, "Я подрядчик этого дома.", "", "")
 		return nil
 	case "what":
-		vk.SendMessage(user_id, "Я умею отвечать на ваши сообщения и управлять этим домом.", "")
+		vk.SendMessage(user_id, "Я умею отвечать на ваши сообщения и управлять этим домом.", "", "")
 		return nil
 	case "back":
 		return &InitNode{}

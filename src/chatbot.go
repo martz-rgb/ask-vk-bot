@@ -5,8 +5,6 @@ import (
 )
 
 type ChatBot struct {
-	group_id int
-
 	cache      *Cache
 	init_state StateNode
 
@@ -16,10 +14,8 @@ type ChatBot struct {
 	vk  *VK
 }
 
-func NewChatBot(ask *Ask, init_state StateNode, timeout time.Duration, group_id int, vk *VK) *ChatBot {
+func NewChatBot(ask *Ask, init_state StateNode, timeout time.Duration, vk *VK) *ChatBot {
 	return &ChatBot{
-		group_id: group_id,
-
 		cache:      NewCache(),
 		init_state: init_state,
 		timeout:    timeout,
