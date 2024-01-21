@@ -19,10 +19,9 @@ CREATE TABLE IF NOT EXISTS persons (
 );
 
 CREATE TABLE IF NOT EXISTS points (
-    id  INT PRIMARY KEY NOT NULL,
     person INT REFERENCES persons(vk_id) NOT NULL,
     diff INT,
     cause TEXT,
-    timestamp TEXT
+    timestamp DATETIME
 );
 CREATE INDEX IF NOT EXISTS idx_points_person ON points(person);
