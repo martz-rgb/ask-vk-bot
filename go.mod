@@ -1,6 +1,6 @@
 module ask-bot
 
-go 1.17
+go 1.18
 
 require (
 	github.com/SevereCloud/vksdk/v2 v2.16.0
@@ -9,6 +9,8 @@ require (
 	github.com/mattn/go-sqlite3 v1.14.17
 	go.uber.org/zap v1.26.0
 )
+
+require github.com/rb-go/plural-ru v1.0.1
 
 require (
 	github.com/awnumar/memcall v0.2.0 // indirect
