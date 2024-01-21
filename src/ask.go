@@ -18,6 +18,22 @@ type Person struct {
 	Birthday time.Time `db:"birthday"`
 }
 
+type Role struct {
+	Name        string `db:"name"`
+	Tag         string `db:"tag"`
+	ShownName   string `db:"shown_name"`
+	CaptionName string `db:"caption_name"`
+	// Album       string `db:"album_link"`
+	// Board       string `db:"board_link"`
+}
+
+type Points struct {
+	Person    int       `db:"person"`
+	Diff      int       `db:"diff"`
+	Cause     string    `db:"cause"`
+	Timestamp time.Time `db:"timestamp"`
+}
+
 type AskConfig struct {
 }
 
@@ -33,15 +49,6 @@ func NewAsk(config *AskConfig, db *DB) *Ask {
 		config: config,
 		db:     db,
 	}
-}
-
-type Role struct {
-	Name        string `db:"name"`
-	Tag         string `db:"tag"`
-	ShownName   string `db:"shown_name"`
-	CaptionName string `db:"caption_name"`
-	// Album       string `db:"album_link"`
-	// Board       string `db:"board_link"`
 }
 
 // TO-DO should roles be sorted alphabetically or by groups
@@ -69,23 +76,27 @@ func (a *Ask) RolesStartWith(prefix string) ([]Role, error) {
 	return roles, nil
 }
 
-type Points struct {
-	Id        int       `db:"id"`
-	Person    int       `db:"person"`
-	Diff      int       `db:"diff"`
-	Cause     string    `db:"cause"`
-	Timestamp time.Time `db:"timestamp"`
-}
-
 func (a *Ask) Points(id int) (int, error) {
 	var points int
 
 	// zero is default value, it is not a error if it is null
-	query := sqlf.From("points").Select("COALESCE(SUM(diff), 0)").Where("id == ?", id)
+	query := sqlf.From("points").Select("COALESCE(SUM(diff), 0)").Where("person == ?", id)
 	err := a.db.QueryRow(&points, query.String(), query.Args()...)
 	if err != nil {
 		return 0, err
 	}
 
 	return points, nil
+}
+
+func (a *Ask) HistoryPoints(id int) ([]Points, error) {
+	var history []Points
+
+	query := sqlf.From("points").Bind(&Points{}).Where("person == ?", id).OrderBy("timestamp DESC")
+	err := a.db.Select(&history, query.String(), query.Args()...)
+	if err != nil {
+		return nil, err
+	}
+
+	return history, nil
 }
