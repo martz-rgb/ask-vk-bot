@@ -6,7 +6,6 @@ import (
 
 	"github.com/SevereCloud/vksdk/v2/events"
 	"github.com/SevereCloud/vksdk/v2/longpoll-bot"
-	"go.uber.org/zap"
 )
 
 func (bot *ChatBot) RunLongPoll(ctx context.Context, wg *sync.WaitGroup) {
@@ -14,7 +13,7 @@ func (bot *ChatBot) RunLongPoll(ctx context.Context, wg *sync.WaitGroup) {
 
 	lp, err := longpoll.NewLongPoll(bot.vk.api, bot.vk.id)
 	if err != nil {
-		zap.S().Errorw("failed to run bot longpoll",
+		bot.log.Errorw("failed to run bot longpoll",
 			"error", err,
 			"id", bot.vk.id)
 		return
@@ -29,41 +28,43 @@ func (bot *ChatBot) RunLongPoll(ctx context.Context, wg *sync.WaitGroup) {
 func (bot *ChatBot) MessageNew(ctx context.Context, obj events.MessageNewObject) {
 	user_id := obj.Message.FromID
 
-	bot.vk.MarkAsRead(user_id)
-
 	chat, existed := bot.GetChat(user_id)
 	defer bot.PutChat(user_id, chat)
 
 	chat.ResetTimer(bot.timeout, bot.cache.NotifyExpired)
 
+	init := NoInit
 	if !existed {
-		chat.Entry(bot.ask, bot.vk, false)
-		return
+		init = OnlyInit
 	}
-	next := chat.Do(bot.ask, bot.vk, obj)
-	if next != nil {
-		chat.ChangeState(next)
-		chat.Entry(bot.ask, bot.vk, true)
+
+	err := chat.Work(bot.ask, bot.vk, obj, init)
+	if err != nil {
+		bot.log.Errorw("error occured while new message",
+			"user_id", user_id,
+			"state", chat.state.ID(),
+			"error", err)
 	}
 }
 
 func (bot *ChatBot) MessageEvent(ctx context.Context, obj events.MessageEventObject) {
 	user_id := obj.UserID
 
-	bot.vk.SendEventAnswer(obj.EventID, user_id, obj.PeerID)
-
 	chat, existed := bot.GetChat(user_id)
 	defer bot.PutChat(user_id, chat)
 
 	chat.ResetTimer(bot.timeout, bot.cache.NotifyExpired)
 
+	init := NoInit
 	if !existed {
-		chat.Entry(bot.ask, bot.vk, false)
-		// and try to do next step
+		init = InitAndTry
 	}
-	next := chat.Do(bot.ask, bot.vk, obj)
-	if next != nil {
-		chat.ChangeState(next)
-		chat.Entry(bot.ask, bot.vk, true)
+
+	err := chat.Work(bot.ask, bot.vk, obj, init)
+	if err != nil {
+		bot.log.Errorw("error occured while message event",
+			"user_id", user_id,
+			"state", chat.state.ID(),
+			"error", err)
 	}
 }

@@ -13,6 +13,11 @@ require (
 require github.com/rb-go/plural-ru v1.0.1
 
 require (
+	github.com/hori-ryota/zaperr v0.0.0-20210301022522-bfd0551d7f64 // indirect
+	github.com/pkg/errors v0.9.1 // indirect
+)
+
+require (
 	github.com/awnumar/memcall v0.2.0 // indirect
 	github.com/klauspost/compress v1.16.0 // indirect
 	github.com/leporo/sqlf v1.4.0

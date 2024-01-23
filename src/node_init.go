@@ -11,7 +11,7 @@ func (node *InitNode) ID() string {
 	return "init"
 }
 
-func (node *InitNode) Entry(user_id int, ask *Ask, vk *VK, silent bool) {
+func (node *InitNode) Entry(user_id int, ask *Ask, vk *VK, params Params) error {
 	buttons := [][]Button{{
 		{
 			Label:   "Список ролей",
@@ -30,32 +30,33 @@ func (node *InitNode) Entry(user_id int, ask *Ask, vk *VK, silent bool) {
 		},
 	}}
 
-	if !silent {
-		vk.SendMessage(user_id, "Здравствуйте!", CreateKeyboard(node, buttons), "")
-	} else {
-		vk.ChangeKeyboard(user_id, CreateKeyboard(node, buttons))
+	silent, ok := params.Bool("silent")
+
+	if ok && silent {
+		return vk.ChangeKeyboard(user_id, CreateKeyboard(node, buttons))
 	}
+
+	_, err := vk.SendMessage(user_id, "Здравствуйте!", CreateKeyboard(node, buttons), nil)
+	return err
 }
 
-func (node *InitNode) Do(user_id int, ask *Ask, vk *VK, input interface{}) StateNode {
+func (node *InitNode) Do(user_id int, ask *Ask, vk *VK, input interface{}) (StateNode, error) {
 	switch obj := input.(type) {
 
 	case events.MessageEventObject:
 		payload, err := UnmarshalPayload(node, obj.Payload)
 		if err != nil {
-			zap.S().Errorw("failed to unmarshal payload",
-				"payload", payload)
-			return nil
+			return nil, err
 		}
 
-		return node.KeyboardEvent(ask, vk, payload)
+		return node.KeyboardEvent(ask, vk, payload), nil
 
 	default:
-		zap.S().Warnw("failed to parse vk response to message event object",
+		zap.S().Infow("failed to parse vk response to message event object",
 			"object", obj)
 	}
 
-	return nil
+	return nil, nil
 }
 
 func (node *InitNode) KeyboardEvent(ask *Ask, vk *VK, payload *CallbackPayload) StateNode {

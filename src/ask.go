@@ -3,7 +3,9 @@ package main
 import (
 	"time"
 
+	"github.com/hori-ryota/zaperr"
 	"github.com/leporo/sqlf"
+	"go.uber.org/zap"
 )
 
 type Administration struct {
@@ -58,7 +60,8 @@ func (a *Ask) Roles() ([]Role, error) {
 	query := sqlf.From("roles").Bind(&Role{})
 	err := a.db.Select(&roles, query.String())
 	if err != nil {
-		return nil, err
+		return nil, zaperr.Wrap(err, "failed to get all roles",
+			zap.String("query", query.String()))
 	}
 
 	return roles, nil
@@ -70,7 +73,9 @@ func (a *Ask) RolesStartWith(prefix string) ([]Role, error) {
 	query := sqlf.From("roles").Bind(&Role{}).Where("shown_name like ?", prefix+"%")
 	err := a.db.Select(&roles, query.String(), query.Args()...)
 	if err != nil {
-		return nil, err
+		return nil, zaperr.Wrap(err, "failed to get roles starts with",
+			zap.String("query", query.String()),
+			zap.Any("args", query.Args()))
 	}
 
 	return roles, nil
@@ -83,7 +88,9 @@ func (a *Ask) Points(id int) (int, error) {
 	query := sqlf.From("points").Select("COALESCE(SUM(diff), 0)").Where("person == ?", id)
 	err := a.db.QueryRow(&points, query.String(), query.Args()...)
 	if err != nil {
-		return 0, err
+		return -1, zaperr.Wrap(err, "failed to get points for user",
+			zap.String("query", query.String()),
+			zap.Any("args", query.Args()))
 	}
 
 	return points, nil
@@ -95,7 +102,9 @@ func (a *Ask) HistoryPoints(id int) ([]Points, error) {
 	query := sqlf.From("points").Bind(&Points{}).Where("person == ?", id).OrderBy("timestamp DESC")
 	err := a.db.Select(&history, query.String(), query.Args()...)
 	if err != nil {
-		return nil, err
+		return nil, zaperr.Wrap(err, "failed to get history of points for user",
+			zap.String("query", query.String()),
+			zap.Any("args", query.Args()))
 	}
 
 	return history, nil

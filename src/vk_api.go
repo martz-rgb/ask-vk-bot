@@ -3,6 +3,7 @@ package main
 import (
 	"errors"
 	"io"
+	"maps"
 	"math/rand"
 	"os"
 	"strings"
@@ -11,6 +12,7 @@ import (
 	"github.com/SevereCloud/vksdk/v2/api"
 	"github.com/SevereCloud/vksdk/v2/object"
 	"github.com/awnumar/memguard"
+	"github.com/hori-ryota/zaperr"
 	"go.uber.org/zap"
 )
 
@@ -67,7 +69,7 @@ func NewVK(id int, token *memguard.LockedBuffer) (*VK, error) {
 	return v, nil
 }
 
-func (v *VK) MarkAsRead(user_id int) {
+func (v *VK) MarkAsRead(user_id int) error {
 	params := api.Params{
 		"mark_conversation_as_read": true,
 		"peer_id":                   user_id,
@@ -75,44 +77,43 @@ func (v *VK) MarkAsRead(user_id int) {
 
 	response, err := v.api.MessagesMarkAsRead(params)
 	if err != nil {
-		zap.S().Errorw("failed to mark as read vk messsage",
-			"error", err,
-			"params", params,
-			"response", response)
-		return
+		return zaperr.Wrap(err, "failed to mark as read vk messsage",
+			zap.Any("params", params),
+			zap.Int("response", response),
+		)
 	}
 
 	zap.S().Debugw("successfully mark as read vk messsage",
 		"params", params,
 		"response", response)
+
+	return nil
 }
 
-func (v *VK) SendMessage(user_id int, message string, keyboard string, attachment string) int {
+func (v *VK) SendMessage(user_id int, message string, keyboard string, args api.Params) (int, error) {
 	params := api.Params{
-		"user_id":    user_id,
-		"random_id":  v.r.Int(),
-		"message":    message,
-		"keyboard":   keyboard,
-		"attachment": attachment,
+		"user_id":   user_id,
+		"random_id": v.r.Int(),
+		"message":   message,
+		"keyboard":  keyboard,
 	}
+	maps.Copy(params, args)
 
 	response, err := v.api.MessagesSend(params)
 	if err != nil {
-		zap.S().Errorw("failed to send vk messsage",
-			"error", err,
-			"params", params,
-			"response", response)
-		return -1
+		return -1, zaperr.Wrap(err, "failed to send vk messsage",
+			zap.Any("params", params),
+			zap.Int("response", response))
 	}
 
 	zap.S().Debugw("successfully sent vk messsage",
 		"params", params,
 		"response", response)
 
-	return response
+	return response, nil
 }
 
-func (v *VK) EditMessage(peer_id int, message_id int, message string, keyboard string) {
+func (v *VK) EditMessage(peer_id int, message_id int, message string, keyboard string) error {
 	params := api.Params{
 		"peer_id":    peer_id,
 		"message_id": message_id,
@@ -122,19 +123,19 @@ func (v *VK) EditMessage(peer_id int, message_id int, message string, keyboard s
 
 	response, err := v.api.MessagesEdit(params)
 	if err != nil {
-		zap.S().Errorw("failed to edit vk message",
-			"error", err,
-			"params", params,
-			"response", response)
-		return
+		return zaperr.Wrap(err, "failed to edit vk message",
+			zap.Any("params", params),
+			zap.Int("response", response))
 	}
 
 	zap.S().Debugw("successfully edited vk message",
 		"params", params,
 		"response", response)
+
+	return nil
 }
 
-func (v *VK) DeleteMessage(peer_id int, message_id int, delete_for_all int) {
+func (v *VK) DeleteMessage(peer_id int, message_id int, delete_for_all int) error {
 	params := api.Params{
 		"peer_id":        peer_id,
 		"message_ids":    message_id,
@@ -142,19 +143,20 @@ func (v *VK) DeleteMessage(peer_id int, message_id int, delete_for_all int) {
 	}
 	response, err := v.api.MessagesDelete(params)
 	if err != nil {
-		zap.S().Errorw("failed to delete vk message",
-			"error", err,
-			"params", params,
-			"response", response)
-		return
+		return zaperr.Wrap(err, "failed to delete vk message",
+			zap.Any("params", params),
+			zap.Any("response", response),
+		)
 	}
 
 	zap.S().Debugw("successfully deleted vk message",
 		"params", params,
 		"response", response)
+
+	return nil
 }
 
-func (v *VK) SendEventAnswer(event_id string, user_id int, peer_id int) {
+func (v *VK) SendEventAnswer(event_id string, user_id int, peer_id int) error {
 	params := api.Params{
 		"event_id":  event_id,
 		"user_id":   user_id,
@@ -164,19 +166,19 @@ func (v *VK) SendEventAnswer(event_id string, user_id int, peer_id int) {
 
 	response, err := v.api.MessagesSendMessageEventAnswer(params)
 	if err != nil {
-		zap.S().Errorw("failed to send vk event answer",
-			"error", err,
-			"params", params,
-			"response", response)
-		return
+		return zaperr.Wrap(err, "failed to send vk event answer",
+			zap.Any("params", params),
+			zap.Int("reponse", response))
 	}
 
 	zap.S().Debugw("successfully sent vk event answer",
 		"params", params,
 		"response", response)
+
+	return nil
 }
 
-func (v *VK) GetLastBotMessage(user_id int) *object.MessagesMessage {
+func (v *VK) GetLastBotMessage(user_id int) (*object.MessagesMessage, error) {
 	params := api.Params{
 		"count":   20, // heuristic value
 		"user_id": user_id,
@@ -184,49 +186,54 @@ func (v *VK) GetLastBotMessage(user_id int) *object.MessagesMessage {
 
 	response, err := v.api.MessagesGetHistory(params)
 	if err != nil {
-		zap.S().Errorw("failed to get last bot message",
-			"error", err,
-			"params", params,
-			"response", response)
-		return nil
+		return nil, zaperr.Wrap(err, "failed to get last bot message",
+			zap.Any("params", params),
+			zap.Any("response", response))
 	}
 
 	for _, message := range response.Items {
 		if message.Out {
-			return &message
+			return &message, nil
 		}
+	}
+
+	err = errors.New("unable to find last bot message")
+
+	return nil, zaperr.Wrap(nil, "",
+		zap.Any("params", params),
+		zap.Any("response", response))
+}
+
+func (v *VK) ChangeKeyboard(user_id int, keyboard string) error {
+	err := v.ChangeKeyboardWithoutDelete(user_id, keyboard)
+	if err != nil {
+		zap.S().Debugw("unable to change keyboard without delete")
+		return v.ChangeKeyboardWithDelete(user_id, keyboard)
 	}
 
 	return nil
 }
 
-func (v *VK) ChangeKeyboard(user_id int, keyboard string) {
-	ok := v.ChangeKeyboardWithoutDelete(user_id, keyboard)
-
-	if ok == false {
-		v.ChangeKeyboardWithDelete(user_id, keyboard)
-
-		zap.S().Warnw("unable to change keyboard without delete")
+func (v *VK) ChangeKeyboardWithDelete(user_id int, keyboard string) error {
+	id, err := v.SendMessage(user_id, "Меняю клавиатуру", keyboard, nil)
+	if err != nil {
+		return err
 	}
+
+	return v.DeleteMessage(user_id, id, 1)
 }
 
-func (v *VK) ChangeKeyboardWithDelete(user_id int, keyboard string) {
-	id := v.SendMessage(user_id, "Меняю клавиатуру", keyboard, "")
-	v.DeleteMessage(user_id, id, 1)
-}
-
-func (v *VK) ChangeKeyboardWithoutDelete(user_id int, keyboard string) bool {
-	message := v.GetLastBotMessage(user_id)
-	if message == nil {
-		return false
+func (v *VK) ChangeKeyboardWithoutDelete(user_id int, keyboard string) error {
+	message, err := v.GetLastBotMessage(user_id)
+	if err != nil {
+		return err
 	}
 
 	// vk allows edit any group's message somehow
-	v.EditMessage(user_id, message.ID, message.Text, keyboard)
-	return true
+	return v.EditMessage(user_id, message.ID, message.Text, keyboard)
 }
 
-func (v *VK) WallPostNew(group_id int, message string, attachments string, signed bool, publish_date int64) {
+func (v *VK) WallPostNew(group_id int, message string, attachments string, signed bool, publish_date int64) error {
 	params := api.Params{
 		"owner_id":     -group_id,
 		"from_group":   1,
@@ -238,31 +245,29 @@ func (v *VK) WallPostNew(group_id int, message string, attachments string, signe
 
 	response, err := v.api.WallPost(params)
 	if err != nil {
-		zap.S().Errorw("failed to post on wall",
-			"error", err,
-			"params", params,
-			"response", response)
-		return
+		return zaperr.Wrap(err, "failed to post on wall",
+			zap.Any("params", params),
+			zap.Any("response", response))
 	}
 
 	zap.S().Debugw("successfully posted on wall",
 		"params", params,
 		"response", response)
+
+	return nil
 }
 
-func (v *VK) UploadDocument(peer_id int, name string, file io.Reader) int {
+func (v *VK) UploadDocument(peer_id int, name string, file io.Reader) (int, error) {
 	response, err := v.api.UploadMessagesDoc(peer_id, "doc", name, "", file)
 	if err != nil {
-		zap.S().Errorw("failed to upload document",
-			"error", err,
-			"peer_id", peer_id,
-			"response", response)
-		return 0
+		return -1, zaperr.Wrap(err, "failed to upload document",
+			zap.Int("peer_id", peer_id),
+			zap.Any("response", response))
 	}
 
 	zap.S().Debugw("successfully upload document",
 		"peer_id", peer_id,
 		"response", response)
 
-	return response.Doc.ID
+	return response.Doc.ID, nil
 }

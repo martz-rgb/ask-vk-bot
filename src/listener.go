@@ -14,6 +14,8 @@ type Listener struct {
 
 	group *VK
 	admin *VK
+
+	log *zap.SugaredLogger
 }
 
 func NewListener(ask *Ask, group *VK, admin *VK) *Listener {

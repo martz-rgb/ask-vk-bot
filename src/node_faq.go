@@ -11,7 +11,7 @@ func (node *FAQNode) ID() string {
 	return "faq"
 }
 
-func (node *FAQNode) Entry(user_id int, ask *Ask, vk *VK, silent bool) {
+func (node *FAQNode) Entry(user_id int, ask *Ask, vk *VK, params Params) error {
 	buttons := [][]Button{{
 		{
 			Label: "Кто ты?",
@@ -35,37 +35,36 @@ func (node *FAQNode) Entry(user_id int, ask *Ask, vk *VK, silent bool) {
 
 	message := "Выберите вопрос, который вас интересует на клавиатуре ниже."
 
-	vk.SendMessage(user_id, message, CreateKeyboard(node, buttons), "")
+	_, err := vk.SendMessage(user_id, message, CreateKeyboard(node, buttons), nil)
+	return err
 }
 
-func (node *FAQNode) Do(user_id int, ask *Ask, vk *VK, input interface{}) StateNode {
+func (node *FAQNode) Do(user_id int, ask *Ask, vk *VK, input interface{}) (StateNode, error) {
 	switch obj := input.(type) {
 
 	case events.MessageEventObject:
 		payload, err := UnmarshalPayload(node, obj.Payload)
 		if err != nil {
-			zap.S().Errorw("failed to unmarshal payload",
-				"payload", payload)
-			return nil
+			return nil, err
 		}
 
-		return node.KeyboardEvent(ask, vk, obj.UserID, payload)
+		return node.KeyboardEvent(ask, vk, obj.UserID, payload), nil
 
 	default:
-		zap.S().Warnw("failed to parse vk response to message event object",
+		zap.S().Infow("failed to parse vk response to message event object",
 			"object", obj)
 	}
 
-	return nil
+	return nil, nil
 }
 
 func (node *FAQNode) KeyboardEvent(ask *Ask, vk *VK, user_id int, payload *CallbackPayload) StateNode {
 	switch payload.Command {
 	case "who":
-		vk.SendMessage(user_id, "Я подрядчик этого дома.", "", "")
+		vk.SendMessage(user_id, "Я подрядчик этого дома.", "", nil)
 		return nil
 	case "what":
-		vk.SendMessage(user_id, "Я умею отвечать на ваши сообщения и управлять этим домом.", "", "")
+		vk.SendMessage(user_id, "Я умею отвечать на ваши сообщения и управлять этим домом.", "", nil)
 		return nil
 	case "back":
 		return &InitNode{}

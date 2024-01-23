@@ -102,8 +102,9 @@ func main() {
 		log.Fatal(err)
 	}
 
+	// make debug log
 	log_cfg := zap.NewDevelopmentConfig()
-	log_cfg.OutputPaths = []string{filepath.Join(config.LogDir, "chat-bot.log")}
+	log_cfg.OutputPaths = []string{filepath.Join(config.LogDir, "info.log")}
 
 	logger := zap.Must(log_cfg.Build())
 	defer logger.Sync()
@@ -112,6 +113,14 @@ func main() {
 	undo := zap.ReplaceGlobals(logger)
 	defer undo()
 
+	// make chatbot log
+	log_cfg = zap.NewDevelopmentConfig()
+	log_cfg.OutputPaths = []string{filepath.Join(config.LogDir, "chatbot.log")}
+	log_cfg.DisableStacktrace = true
+
+	bot_logger := zap.Must(log_cfg.Build())
+
+	// init db + migrate
 	db, err := NewDB(config.DB)
 	if err != nil {
 		log.Fatal(err)
@@ -120,8 +129,10 @@ func main() {
 		log.Fatal(err)
 	}
 
+	// make ask layer upon db
 	ask := NewAsk(nil, db)
 
+	// vk api's init
 	group, err := NewVKFromFile(config.SecretGroupToken, config.GroupID)
 	if err != nil {
 		log.Fatal(err)
@@ -131,7 +142,7 @@ func main() {
 		log.Fatal(err)
 	}
 
-	chat_bot := NewChatBot(ask, &InitNode{}, config.Timeout, group)
+	chat_bot := NewChatBot(ask, &InitNode{}, config.Timeout, group, bot_logger.Sugar())
 	listener := NewListener(ask, group, admin)
 
 	ctx, stop := signal.NotifyContext(context.Background(), os.Interrupt)

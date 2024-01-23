@@ -7,6 +7,7 @@ import (
 	"strings"
 	"time"
 
+	"github.com/SevereCloud/vksdk/v2/api"
 	"github.com/SevereCloud/vksdk/v2/events"
 	"go.uber.org/zap"
 )
@@ -22,13 +23,10 @@ func (node *PointsNode) ID() string {
 	return "points"
 }
 
-func (node *PointsNode) Entry(user_id int, ask *Ask, vk *VK, silent bool) {
+func (node *PointsNode) Entry(user_id int, ask *Ask, vk *VK, params Params) error {
 	points, err := ask.Points(user_id)
 	if err != nil {
-		zap.S().Warnw("failed to get points",
-			"error", err,
-			"user_id", user_id)
-		return
+		return err
 	}
 
 	buttons := [][]Button{
@@ -56,54 +54,50 @@ func (node *PointsNode) Entry(user_id int, ask *Ask, vk *VK, silent bool) {
 
 	message := fmt.Sprintf("Ваше текущее количество баллов: %d", points)
 
-	vk.SendMessage(user_id, message, CreateKeyboard(node, buttons), "")
+	_, err = vk.SendMessage(user_id, message, CreateKeyboard(node, buttons), nil)
+	return err
 }
 
-func (node *PointsNode) Do(user_id int, ask *Ask, vk *VK, input interface{}) StateNode {
+func (node *PointsNode) Do(user_id int, ask *Ask, vk *VK, input interface{}) (StateNode, error) {
 	switch obj := input.(type) {
 
 	case events.MessageEventObject:
 		payload, err := UnmarshalPayload(node, obj.Payload)
 		if err != nil {
-			zap.S().Errorw("failed to unmarshal payload",
-				"payload", payload)
-			return nil
+			return nil, err
 		}
 
 		return node.KeyboardEvent(user_id, ask, vk, payload)
 
 	default:
-		zap.S().Warnw("failed to parse vk response to message event object",
+		zap.S().Infow("failed to parse vk response to message event object",
 			"object", obj)
 	}
 
-	return nil
+	return nil, nil
 }
 
-func (node *PointsNode) KeyboardEvent(user_id int, ask *Ask, vk *VK, payload *CallbackPayload) StateNode {
+func (node *PointsNode) KeyboardEvent(user_id int, ask *Ask, vk *VK, payload *CallbackPayload) (StateNode, error) {
 	switch payload.Command {
 	case "spend":
 		message := `Пока что не на что тратить баллы.`
-		vk.SendMessage(user_id, message, "", "")
-		return nil
+		_, err := vk.SendMessage(user_id, message, "", nil)
+		return nil, err
 	case "history":
 		history, err := ask.HistoryPoints(user_id)
 		if err != nil {
-			zap.S().Errorw("failed to get history points for user",
-				"error", err,
-				"user_id", user_id)
-			return nil
+			return nil, err
 		}
 
 		message, attachment, err := node.PrepareHistory(user_id, ask, vk, history)
 
-		vk.SendMessage(user_id, message, "", attachment)
-		return nil
+		_, err = vk.SendMessage(user_id, message, "", api.Params{"attachment": attachment})
+		return nil, err
 	case "back":
-		return &InitNode{}
+		return &InitNode{}, nil
 	}
 
-	return nil
+	return nil, nil
 }
 
 func (node *PointsNode) PrepareHistory(user_id int, ask *Ask, vk *VK, history []Points) (message string, attachment string, err error) {
@@ -149,7 +143,10 @@ func (node *PointsNode) PrepareHistory(user_id int, ask *Ask, vk *VK, history []
 	name := fmt.Sprintf("full_history_%d_%s.txt", user_id, time.Now().Format(time.DateOnly))
 	full_history := strings.Join(events, "\n")
 
-	id := vk.UploadDocument(user_id, name, bytes.NewReader([]byte(full_history)))
+	id, err := vk.UploadDocument(user_id, name, bytes.NewReader([]byte(full_history)))
+	if err != nil {
+		return "", "", err
+	}
 	if id == 0 {
 		return "", "", errors.New("no doc id")
 	}
