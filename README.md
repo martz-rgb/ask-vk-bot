@@ -22,6 +22,3 @@ done:
 - [x] cache expired deleting
 - [x] um very thing to do IS TO REFACTOR NODES... i appreciate myself but what the f*ck (сойдет)
 - [x] логирование без синглтона... -> no log in db\vk\nodes, up to chat; not in bot because i want it clear (i think?)
-- [x] i want to wrap errors from bottom to contain all needed info before logging
-- [x] переписать вк апи, чтобы ошибки нормально обрабатывать 
-- [x] ask architecture somehow (listener + db, points\persons)
