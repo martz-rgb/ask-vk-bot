@@ -4,12 +4,12 @@ about logging:
 
 TO-DO list:
 
-- [ ] db migration
-- [ ] надо куда-то запихнуть админов/система прав
-- [ ] manage secrets with docker swarm? 
+- [ ] deadline + member system 
+- [ ] система прав
+- [ ] resetvations
 - [ ] listener time probably
-- [ ] or points (spend) or members\reservations
-
+- [ ] points (spend)
+- [ ] manage secrets with docker swarm? 
 done:
 
 - [x] logging & error handling
@@ -22,3 +22,4 @@ done:
 - [x] cache expired deleting
 - [x] um very thing to do IS TO REFACTOR NODES... i appreciate myself but what the f*ck (сойдет)
 - [x] логирование без синглтона... -> no log in db\vk\nodes, up to chat; not in bot because i want it clear (i think?)
+- [x] db migration (let's fucking go)
