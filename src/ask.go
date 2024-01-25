@@ -1,6 +1,7 @@
 package main
 
 import (
+	"database/sql"
 	"time"
 
 	"github.com/hori-ryota/zaperr"
@@ -14,19 +15,19 @@ type Administration struct {
 
 // TO-DO: time.Time is dangerous but i want to try
 type Person struct {
-	VkID     int       `db:"vk_id"`
-	Name     string    `db:"name"`
-	Gallery  string    `db:"gallery"`
-	Birthday time.Time `db:"birthday"`
+	VkID     int            `db:"vk_id"`
+	Name     sql.NullString `db:"name"`
+	Gallery  sql.NullString `db:"gallery"`
+	Birthday sql.NullTime   `db:"birthday"`
 }
 
 type Role struct {
-	Name        string `db:"name"`
-	Tag         string `db:"tag"`
-	ShownName   string `db:"shown_name"`
-	CaptionName string `db:"caption_name"`
-	// Album       string `db:"album_link"`
-	// Board       string `db:"board_link"`
+	Name        string         `db:"name"`
+	Tag         string         `db:"tag"`
+	ShownName   string         `db:"shown_name"`
+	CaptionName sql.NullString `db:"caption_name"`
+	Album       sql.NullString `db:"album_link"`
+	Board       sql.NullString `db:"board_link"`
 }
 
 type Points struct {
