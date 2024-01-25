@@ -25,3 +25,10 @@ CREATE TABLE IF NOT EXISTS points (
     timestamp DATETIME
 );
 CREATE INDEX IF NOT EXISTS idx_points_person ON points(person);
+
+CREATE TABLE IF NOT EXISTS members (
+    id INT PRIMARY KEY NOT NULL,
+    person INT REFERENCES persons(vk_id) NOT NULL,
+    role TEXT REFERENCES roles(name) NOT NULL,
+    status TEXT CHECK(status IN ('Active','Freeze')) NOT NULL DEFAULT 'Active'
+)
