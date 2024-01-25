@@ -10,6 +10,7 @@ TO-DO list:
 - [ ] listener time probably
 - [ ] points (spend)
 - [ ] manage secrets with docker swarm? 
+
 done:
 
 - [x] logging & error handling
