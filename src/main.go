@@ -22,6 +22,7 @@ type Config struct {
 	SecretGroupToken string        `json:"SECRET_GROUP_TOKEN"`
 	SecretAdminToken string        `json:"SECRET_ADMIN_TOKEN"`
 	DB               string        `json:"DB"`
+	AllowDeletion    bool          `json:"ALLOW_DELETION"`
 	Schema           string        `json:"SCHEMA"`
 	Timeout          time.Duration `json:"TIMEOUT"`
 	LogDir           string        `json:"LOG_DIR"`
@@ -29,12 +30,14 @@ type Config struct {
 
 func ConfigFromEnv() *Config {
 	group_id, _ := strconv.Atoi(os.Getenv("GROUP_ID"))
+	allow_deletion, _ := strconv.ParseBool(os.Getenv("ALLOW_DELETION"))
 
 	return &Config{
 		GroupID:          group_id,
 		SecretGroupToken: os.Getenv("SECRET_GROUP_TOKEN"),
 		SecretAdminToken: os.Getenv("SECRET_ADMIN_TOKEN"),
 		DB:               os.Getenv("DB"),
+		AllowDeletion:    allow_deletion,
 		Schema:           os.Getenv("SCHEMA"),
 		LogDir:           os.Getenv("LOG_DIR"),
 	}
@@ -74,6 +77,7 @@ func (c *Config) Validate() error {
 	if len(c.DB) == 0 {
 		return errors.New("database url is not provided")
 	}
+	// no need to check allow deletion, default is false
 	if len(c.Schema) == 0 {
 		return errors.New("database schema is not provided")
 	}
@@ -123,10 +127,12 @@ func main() {
 	// init db + migrate
 	db, err := NewDB(config.DB)
 	if err != nil {
-		log.Fatal(err)
+		zap.S().Fatalw("failed to create new db",
+			"error", err)
 	}
-	if err = db.Init(config.Schema); err != nil {
-		log.Fatal(err)
+	if err = db.Init(config.Schema, config.AllowDeletion); err != nil {
+		zap.S().Fatalw("failed to init db",
+			"error", err)
 	}
 
 	// make ask layer upon db
@@ -135,11 +141,13 @@ func main() {
 	// vk api's init
 	group, err := NewVKFromFile(config.SecretGroupToken, config.GroupID)
 	if err != nil {
-		log.Fatal(err)
+		zap.S().Fatalw("failed to create group vk api from file",
+			"error", err)
 	}
 	admin, err := NewVKFromFile(config.SecretAdminToken, config.GroupID)
 	if err != nil {
-		log.Fatal(err)
+		zap.S().Fatalw("failed to create admin vk api from file",
+			"error", err)
 	}
 
 	chat_bot := NewChatBot(ask, &InitNode{}, config.Timeout, group, bot_logger.Sugar())

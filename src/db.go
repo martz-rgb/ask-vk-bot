@@ -7,8 +7,10 @@ import (
 	"os"
 	"sync"
 
+	"github.com/hori-ryota/zaperr"
 	"github.com/jmoiron/sqlx"
 	_ "github.com/mattn/go-sqlite3"
+	"go.uber.org/zap"
 )
 
 type DB struct {
@@ -32,16 +34,21 @@ func NewDB(connection string) (*DB, error) {
 	}, nil
 }
 
-func (db *DB) Init(filename string) error {
-	schema, err := os.Open(filename)
+func (db *DB) Init(filename string, allow_deletion bool) error {
+	file, err := os.Open(filename)
 	if err != nil {
-		return err
+		return zaperr.Wrap(err, "failed to open file",
+			zap.String("filename", filename))
 	}
-	defer schema.Close()
 
-	sql, _ := io.ReadAll(schema)
+	schema, err := io.ReadAll(file)
+	file.Close()
+	if err != nil {
+		return zaperr.Wrap(err, "failed to  read all from file",
+			zap.String("filename", filename))
+	}
 
-	_, err = db.sql.Exec(string(sql))
+	err = db.Migrate(string(schema), allow_deletion)
 	if err != nil {
 		return err
 	}
