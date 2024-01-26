@@ -10,30 +10,35 @@ import (
 	"github.com/SevereCloud/vksdk/v2/api"
 )
 
-const MaxLengthHistory int = 10
+type DeadlineNode struct{}
 
-type KeyboardAction func(int, *Ask, *VK, *CallbackPayload) StateNode
-
-type PointsNode struct {
+func (node *DeadlineNode) ID() string {
+	return "deadline"
 }
 
-func (node *PointsNode) ID() string {
-	return "points"
-}
-
-func (node *PointsNode) Entry(user *User, ask *Ask, vk *VK, params Params) error {
-	points, err := ask.Points(user.id)
+func (node *DeadlineNode) Entry(user *User, ask *Ask, vk *VK, params Params) error {
+	members, err := ask.MembersById(user.id)
 	if err != nil {
 		return err
 	}
 
-	buttons := [][]Button{
-		{{
-			Label: "Потратить",
-			Color: SecondaryColor,
+	deadlines := []string{}
 
-			Command: "spend",
-		}},
+	for _, member := range members {
+		deadline, err := ask.Deadline(member.Id)
+		if err != nil {
+			return err
+		}
+
+		message := fmt.Sprintf("Ваш дедлайн за роль %s: %d %s %d",
+			member.Role,
+			deadline.Day(),
+			MonthGenitive(deadline.Month()),
+			deadline.Year())
+		deadlines = append(deadlines, message)
+	}
+
+	buttons := [][]Button{
 		{
 			{
 				Label: "История",
@@ -50,24 +55,18 @@ func (node *PointsNode) Entry(user *User, ask *Ask, vk *VK, params Params) error
 		},
 	}
 
-	message := fmt.Sprintf("Ваше текущее количество баллов: %d", points)
-
-	_, err = vk.SendMessage(user.id, message, CreateKeyboard(node, buttons), nil)
-	return err
+	_, err = vk.SendMessage(user.id, strings.Join(deadlines, "\n"), CreateKeyboard(node, buttons), nil)
+	return nil
 }
 
-func (node *PointsNode) NewMessage(user *User, ask *Ask, vk *VK, message string) (StateNode, error) {
+func (node *DeadlineNode) NewMessage(user *User, ask *Ask, vk *VK, message string) (StateNode, error) {
 	return nil, nil
 }
 
-func (node *PointsNode) KeyboardEvent(user *User, ask *Ask, vk *VK, payload *CallbackPayload) (StateNode, error) {
+func (node *DeadlineNode) KeyboardEvent(user *User, ask *Ask, vk *VK, payload *CallbackPayload) (StateNode, error) {
 	switch payload.Command {
-	case "spend":
-		message := `Пока что не на что тратить баллы.`
-		_, err := vk.SendMessage(user.id, message, "", nil)
-		return nil, err
 	case "history":
-		history, err := ask.HistoryPoints(user.id)
+		history, err := ask.HistoryDeadline(user.id)
 		if err != nil {
 			return nil, err
 		}
@@ -83,12 +82,12 @@ func (node *PointsNode) KeyboardEvent(user *User, ask *Ask, vk *VK, payload *Cal
 	return nil, nil
 }
 
-func (node *PointsNode) PrepareHistory(user_id int, ask *Ask, vk *VK, history []Points) (message string, attachment string, err error) {
+func (node *DeadlineNode) PrepareHistory(user_id int, ask *Ask, vk *VK, history []Deadline) (message string, attachment string, err error) {
 	if len(history) == 0 {
-		return "Вы еще не получали баллы в нашем сообществе.", "", nil
+		return "Нет событий.", "", nil
 	}
 
-	points_noun := PluralNoun("балл", "балла", "баллов")
+	points_noun := PluralNoun("секунда", "секунды", "секунд")
 
 	events := []string{}
 	for _, event := range history {

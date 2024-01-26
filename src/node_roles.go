@@ -4,7 +4,6 @@ import (
 	"errors"
 	"fmt"
 
-	"github.com/SevereCloud/vksdk/v2/events"
 	"github.com/hori-ryota/zaperr"
 	"go.uber.org/zap"
 )
@@ -22,7 +21,7 @@ func (node *RolesNode) ID() string {
 	return "roles"
 }
 
-func (node *RolesNode) Entry(user_id int, ask *Ask, vk *VK, params Params) error {
+func (node *RolesNode) Entry(user *User, ask *Ask, vk *VK, params Params) error {
 	roles, err := ask.Roles()
 	if err != nil {
 		return err
@@ -40,33 +39,11 @@ func (node *RolesNode) Entry(user_id int, ask *Ask, vk *VK, params Params) error
 	message := `Выберите нужную роль с помощи клавиатуры или начните вводить и отправьте часть, с которой начинается имя роли.
 				Отправьте специальный символ '%' для того, чтобы вернуться к полному списку ролей.`
 
-	_, err = vk.SendMessage(user_id, message, keyboard, nil)
+	_, err = vk.SendMessage(user.id, message, keyboard, nil)
 	return err
 }
 
-func (node *RolesNode) Do(user_id int, ask *Ask, vk *VK, input interface{}) (StateNode, error) {
-	switch obj := input.(type) {
-
-	case events.MessageNewObject:
-		return node.NewMessage(obj.Message.FromID, ask, vk, obj.Message.Text)
-
-	case events.MessageEventObject:
-		payload, err := UnmarshalPayload(node, obj.Payload)
-		if err != nil {
-			return nil, err
-		}
-
-		return node.KeyboardEvent(obj.UserID, ask, vk, payload)
-
-	default:
-		zap.S().Infow("failed to parse vk response to message event object",
-			"object", obj)
-	}
-
-	return nil, nil
-}
-
-func (node *RolesNode) NewMessage(user_id int, ask *Ask, vk *VK, message string) (StateNode, error) {
+func (node *RolesNode) NewMessage(user *User, ask *Ask, vk *VK, message string) (StateNode, error) {
 	roles, err := ask.RolesStartWith(message)
 	if err != nil {
 		return nil, err
@@ -81,10 +58,10 @@ func (node *RolesNode) NewMessage(user_id int, ask *Ask, vk *VK, message string)
 			zap.Any("roles", roles))
 	}
 
-	return nil, vk.ChangeKeyboard(user_id, keyboard)
+	return nil, vk.ChangeKeyboard(user.id, keyboard)
 }
 
-func (node *RolesNode) KeyboardEvent(user_id int, ask *Ask, vk *VK, payload *CallbackPayload) (StateNode, error) {
+func (node *RolesNode) KeyboardEvent(user *User, ask *Ask, vk *VK, payload *CallbackPayload) (StateNode, error) {
 	switch payload.Command {
 	case "roles":
 		var info *Role
@@ -105,7 +82,7 @@ func (node *RolesNode) KeyboardEvent(user_id int, ask *Ask, vk *VK, payload *Cal
 		message := fmt.Sprintf("Идентификатор: %s\nТег: %s\nИмя: %s\nЗаголовок: %s\n",
 			info.Name, info.Tag, info.ShownName, info.CaptionName.String)
 
-		_, err := vk.SendMessage(user_id, message, "", nil)
+		_, err := vk.SendMessage(user.id, message, "", nil)
 		return nil, err
 	case "previous":
 		node.page -= 1
@@ -120,7 +97,7 @@ func (node *RolesNode) KeyboardEvent(user_id int, ask *Ask, vk *VK, payload *Cal
 				zap.Any("roles", node.roles))
 		}
 
-		return nil, vk.ChangeKeyboard(user_id, keyboard)
+		return nil, vk.ChangeKeyboard(user.id, keyboard)
 	case "next":
 		node.page += 1
 		if node.page >= node.total_pages {
@@ -134,7 +111,7 @@ func (node *RolesNode) KeyboardEvent(user_id int, ask *Ask, vk *VK, payload *Cal
 				zap.Any("roles", node.roles))
 		}
 
-		return nil, vk.ChangeKeyboard(user_id, keyboard)
+		return nil, vk.ChangeKeyboard(user.id, keyboard)
 	case "back":
 		return &InitNode{}, nil
 	}

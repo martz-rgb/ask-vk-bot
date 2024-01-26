@@ -14,7 +14,7 @@ const (
 )
 
 type Chat struct {
-	user_id     int
+	user        *User
 	state       StateNode
 	reset_state StateNode
 
@@ -26,7 +26,9 @@ type Chat struct {
 
 func NewChat(user_id int, state StateNode, reset_state StateNode, timeout time.Duration, expired chan int) *Chat {
 	c := &Chat{
-		user_id:     user_id,
+		user: &User{
+			id: user_id,
+		},
 		in_use:      &sync.Mutex{},
 		state:       state,
 		reset_state: reset_state,
@@ -39,7 +41,7 @@ func NewChat(user_id int, state StateNode, reset_state StateNode, timeout time.D
 
 func (c *Chat) TimerFunc(expired chan int) func() {
 	return func() {
-		expired <- c.user_id
+		expired <- c.user.id
 	}
 }
 
@@ -51,25 +53,14 @@ func (c *Chat) ResetTimer(timeout time.Duration, expired chan int) {
 	}
 }
 
-func (c *Chat) Work(ask *Ask, vk *VK, input interface{}, init int) error {
-	switch event := input.(type) {
-	case events.MessageNewObject:
-		err := vk.MarkAsRead(c.user_id)
-		if err != nil {
-			c.Reset(vk)
-			return err
-		}
+const (
+	NewMessage = iota
+	KeyboardEvent
+)
 
-	case events.MessageEventObject:
-		err := vk.SendEventAnswer(event.EventID, c.user_id, event.PeerID)
-		if err != nil {
-			c.Reset(vk)
-			return err
-		}
-	}
-
+func (c *Chat) Work(ask *Ask, vk *VK, input interface{}, init int) (err error) {
 	if init != NoInit {
-		err := c.state.Entry(c.user_id, ask, vk, nil)
+		err := c.state.Entry(c.user, ask, vk, nil)
 		if err != nil {
 			c.Reset(vk)
 			return err
@@ -80,15 +71,37 @@ func (c *Chat) Work(ask *Ask, vk *VK, input interface{}, init int) error {
 		}
 	}
 
-	next, err := c.state.Do(c.user_id, ask, vk, input)
-	if err != nil {
-		c.Reset(vk)
-		return err
+	var next StateNode
+	switch event := input.(type) {
+	case events.MessageNewObject:
+		next, err = c.state.NewMessage(c.user, ask, vk, event.Message.Text)
+		if err != nil {
+			c.Reset(vk)
+			return err
+		}
+
+	case events.MessageEventObject:
+		payload, err := UnmarshalPayload(c.state, event.Payload)
+		if err != nil {
+			c.Reset(vk)
+			return err
+		}
+
+		// skip
+		if payload.Id != c.state.ID() {
+			return nil
+		}
+
+		next, err = c.state.KeyboardEvent(c.user, ask, vk, payload)
+		if err != nil {
+			c.Reset(vk)
+			return err
+		}
 	}
 
 	if next != nil {
 		c.state = next
-		err := c.state.Entry(c.user_id, ask, vk, Params{"silent": true})
+		err := c.state.Entry(c.user, ask, vk, Params{"silent": true})
 		if err != nil {
 			c.Reset(vk)
 			return err
@@ -102,5 +115,5 @@ func (c *Chat) Reset(vk *VK) {
 	c.state = c.reset_state
 
 	message := "В ходе работы произошла ошибка. Пожалуйста, попробуйте еще раз попозже."
-	vk.SendMessage(c.user_id, message, "", nil)
+	vk.SendMessage(c.user.id, message, "", nil)
 }

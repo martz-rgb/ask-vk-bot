@@ -28,6 +28,8 @@ func (bot *ChatBot) RunLongPoll(ctx context.Context, wg *sync.WaitGroup) {
 func (bot *ChatBot) MessageNew(ctx context.Context, obj events.MessageNewObject) {
 	user_id := obj.Message.FromID
 
+	bot.vk.MarkAsRead(user_id)
+
 	chat, existed := bot.GetChat(user_id)
 	defer bot.PutChat(user_id, chat)
 
@@ -49,6 +51,8 @@ func (bot *ChatBot) MessageNew(ctx context.Context, obj events.MessageNewObject)
 
 func (bot *ChatBot) MessageEvent(ctx context.Context, obj events.MessageEventObject) {
 	user_id := obj.UserID
+
+	bot.vk.SendEventAnswer(obj.EventID, user_id, obj.PeerID)
 
 	chat, existed := bot.GetChat(user_id)
 	defer bot.PutChat(user_id, chat)

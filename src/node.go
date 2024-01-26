@@ -2,7 +2,6 @@ package main
 
 import (
 	"encoding/json"
-	"errors"
 
 	"github.com/SevereCloud/vksdk/v2/object"
 	"github.com/hori-ryota/zaperr"
@@ -24,8 +23,9 @@ func (p Params) Bool(key string) (value bool, ok bool) {
 type StateNode interface {
 	ID() string
 
-	Entry(user_id int, ask *Ask, vk *VK, params Params) error
-	Do(user_id int, ask *Ask, vk *VK, input interface{}) (StateNode, error)
+	Entry(user *User, ask *Ask, vk *VK, params Params) error
+	NewMessage(user *User, ask *Ask, vk *VK, message string) (StateNode, error)
+	KeyboardEvent(user *User, ask *Ask, vk *VK, payload *CallbackPayload) (StateNode, error)
 }
 
 type CallbackPayload struct {
@@ -40,12 +40,6 @@ func UnmarshalPayload(node StateNode, message json.RawMessage) (*CallbackPayload
 	err := json.Unmarshal(message, &payload)
 	if err != nil {
 		return nil, zaperr.Wrap(err, "failed to unmarshal payload",
-			zap.Any("payload", payload))
-	}
-
-	if payload.Id != node.ID() {
-		err := errors.New("payload does not belong to node")
-		return nil, zaperr.Wrap(err, "",
 			zap.Any("payload", payload))
 	}
 

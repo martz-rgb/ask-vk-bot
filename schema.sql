@@ -25,8 +25,8 @@ CREATE TABLE IF NOT EXISTS points (
 
 CREATE INDEX IF NOT EXISTS idx_points_person ON points(person);
 
--- integer primary key -> alias to rowid, can automatically insert
 CREATE TABLE IF NOT EXISTS members (
+    -- integer primary key -> alias to rowid
     id INTEGER PRIMARY KEY NOT NULL,
     person INT REFERENCES persons(vk_id) NOT NULL,
     role TEXT REFERENCES roles(name) NOT NULL,
@@ -35,6 +35,7 @@ CREATE TABLE IF NOT EXISTS members (
 
 CREATE TABLE IF NOT EXISTS deadline (
     member INT REFERENCES members(id) NOT NULL,
+    -- unix time in seconds!
     diff INT NOT NULL DEFAULT 0,
     type TEXT CHECK(
         type IN (

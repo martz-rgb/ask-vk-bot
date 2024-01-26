@@ -1,41 +1,12 @@
 package main
 
 import (
-	"database/sql"
 	"time"
 
 	"github.com/hori-ryota/zaperr"
 	"github.com/leporo/sqlf"
 	"go.uber.org/zap"
 )
-
-type Administration struct {
-	VkID int `db:"vk_id"`
-}
-
-// TO-DO: time.Time is dangerous but i want to try
-type Person struct {
-	VkID     int            `db:"vk_id"`
-	Name     sql.NullString `db:"name"`
-	Gallery  sql.NullString `db:"gallery"`
-	Birthday sql.NullTime   `db:"birthday"`
-}
-
-type Role struct {
-	Name        string         `db:"name"`
-	Tag         string         `db:"tag"`
-	ShownName   string         `db:"shown_name"`
-	CaptionName sql.NullString `db:"caption_name"`
-	Album       sql.NullString `db:"album_link"`
-	Board       sql.NullString `db:"board_link"`
-}
-
-type Points struct {
-	Person    int       `db:"person"`
-	Diff      int       `db:"diff"`
-	Cause     string    `db:"cause"`
-	Timestamp time.Time `db:"timestamp"`
-}
 
 type AskConfig struct {
 }
@@ -54,6 +25,7 @@ func NewAsk(config *AskConfig, db *DB) *Ask {
 	}
 }
 
+// roles
 // TO-DO should roles be sorted alphabetically or by groups
 func (a *Ask) Roles() ([]Role, error) {
 	var roles []Role
@@ -82,6 +54,7 @@ func (a *Ask) RolesStartWith(prefix string) ([]Role, error) {
 	return roles, nil
 }
 
+// points
 func (a *Ask) Points(id int) (int, error) {
 	var points int
 
@@ -109,4 +82,68 @@ func (a *Ask) HistoryPoints(id int) ([]Points, error) {
 	}
 
 	return history, nil
+}
+
+// deadline
+func (a *Ask) Deadline(member int) (time.Time, error) {
+	var deadline int64
+
+	// should be at least one record
+	query := sqlf.From("deadline").Select("SUM(diff)").Where("member == ?", member)
+	err := a.db.QueryRow(&deadline, query.String(), query.Args()...)
+	if err != nil {
+		return time.Time{}, zaperr.Wrap(err, "failed to get deadline for memeber",
+			zap.Int("member", member),
+			zap.String("query", query.String()),
+			zap.Any("args", query.Args()))
+	}
+
+	return time.Unix(deadline, 0), nil
+}
+
+func (a *Ask) HistoryDeadline(member int) ([]Deadline, error) {
+	var history []Deadline
+
+	query := sqlf.From("deadline").Bind(&Deadline{}).Where("member == ?", member).OrderBy("timestamp DESC")
+	err := a.db.Select(&history, query.String(), query.Args()...)
+	if err != nil {
+		return nil, zaperr.Wrap(err, "failed to get history of deadline for member",
+			zap.Int("member", member),
+			zap.String("query", query.String()),
+			zap.Any("args", query.Args()))
+	}
+
+	return history, nil
+}
+
+// member
+// TO-DO possible no member
+func (a *Ask) MemberByRole(role string) (Member, error) {
+	var member Member
+
+	query := sqlf.From("members").Bind(&Member{}).Where("role == ?", role)
+	err := a.db.QueryRow(&member, query.String(), query.Args()...)
+	if err != nil {
+		return Member{}, zaperr.Wrap(err, "failed to get member by role",
+			zap.String("role", role),
+			zap.String("query", query.String()),
+			zap.Any("args", query.Args()))
+	}
+
+	return member, nil
+}
+
+func (a *Ask) MembersById(id int) ([]Member, error) {
+	var members []Member
+
+	query := sqlf.From("members").Bind(&Member{}).Where("person == ?", id)
+	err := a.db.Select(&members, query.String(), query.Args()...)
+	if err != nil {
+		return nil, zaperr.Wrap(err, "failed to get members by id",
+			zap.Int("id", id),
+			zap.String("query", query.String()),
+			zap.Any("args", query.Args()))
+	}
+
+	return members, nil
 }
