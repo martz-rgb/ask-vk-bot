@@ -17,21 +17,21 @@ func (node *DeadlineNode) ID() string {
 }
 
 func (node *DeadlineNode) Entry(user *User, ask *Ask, vk *VK, params Params) error {
-	members, err := ask.MembersById(user.id)
+	members, roles, err := user.MembersRoles(ask)
 	if err != nil {
 		return err
 	}
 
 	deadlines := []string{}
 
-	for _, member := range members {
-		deadline, err := ask.Deadline(member.Id)
+	for i := range members {
+		deadline, err := ask.Deadline(members[i].Id)
 		if err != nil {
 			return err
 		}
 
 		message := fmt.Sprintf("Ваш дедлайн за роль %s: %d %s %d",
-			member.Role,
+			roles[i].ShownName,
 			deadline.Day(),
 			MonthGenitive(deadline.Month()),
 			deadline.Year())
