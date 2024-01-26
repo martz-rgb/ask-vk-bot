@@ -54,13 +54,28 @@ func (a *Ask) RolesStartWith(prefix string) ([]Role, error) {
 	return roles, nil
 }
 
+func (a *Ask) Role(name string) (Role, error) {
+	var role Role
+
+	query := sqlf.From("roles").Bind(&Role{}).Where("name == ?", name)
+	err := a.db.Get(&role, query.String(), query.Args()...)
+	if err != nil {
+		return Role{}, zaperr.Wrap(err, "failed to get role",
+			zap.String("name", name),
+			zap.String("query", query.String()),
+			zap.Any("args", query.Args()))
+	}
+
+	return role, nil
+}
+
 // points
 func (a *Ask) Points(id int) (int, error) {
 	var points int
 
 	// zero is default value, it is not a error if it is null
 	query := sqlf.From("points").Select("COALESCE(SUM(diff), 0)").Where("person == ?", id)
-	err := a.db.QueryRow(&points, query.String(), query.Args()...)
+	err := a.db.Get(&points, query.String(), query.Args()...)
 	if err != nil {
 		return -1, zaperr.Wrap(err, "failed to get points for user",
 			zap.String("query", query.String()),
@@ -90,7 +105,7 @@ func (a *Ask) Deadline(member int) (time.Time, error) {
 
 	// should be at least one record
 	query := sqlf.From("deadline").Select("SUM(diff)").Where("member == ?", member)
-	err := a.db.QueryRow(&deadline, query.String(), query.Args()...)
+	err := a.db.Get(&deadline, query.String(), query.Args()...)
 	if err != nil {
 		return time.Time{}, zaperr.Wrap(err, "failed to get deadline for memeber",
 			zap.Int("member", member),
@@ -122,7 +137,7 @@ func (a *Ask) MemberByRole(role string) (Member, error) {
 	var member Member
 
 	query := sqlf.From("members").Bind(&Member{}).Where("role == ?", role)
-	err := a.db.QueryRow(&member, query.String(), query.Args()...)
+	err := a.db.Get(&member, query.String(), query.Args()...)
 	if err != nil {
 		return Member{}, zaperr.Wrap(err, "failed to get member by role",
 			zap.String("role", role),

@@ -100,6 +100,6 @@ func (db *DB) Select(dest interface{}, query string, args ...interface{}) error 
 	return db.sql.Select(dest, query, args...)
 }
 
-func (db *DB) QueryRow(dest interface{}, query string, args ...interface{}) error {
-	return db.sql.QueryRow(query, args...).Scan(dest)
+func (db *DB) Get(dest interface{}, query string, args ...interface{}) error {
+	return db.sql.Get(dest, query, args...)
 }
