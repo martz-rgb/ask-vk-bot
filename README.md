@@ -9,6 +9,8 @@ TO-DO list:
 - [ ] resetvations
 - [ ] listener time probably
 - [ ] points (spend)
+- [ ] timestamp timezone by default is gmt+0, should be gmt+3 probably?
+- [ ] roles groups + boards\albums
 - [ ] manage secrets with docker swarm? 
 - [ ] *maybe some collaborators support
 
