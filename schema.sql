@@ -44,9 +44,20 @@ CREATE TABLE IF NOT EXISTS deadline (
             'Delay',
             'Rest',
             'Freeze',
+					  'Timezone',
             'Other'
         )
     ) NOT NULL DEFAULT 'Other',
     cause TEXT NOT NULL,
     timestamp DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP
 );
+
+CREATE TRIGGER IF NOT EXISTS init_member_deadline 
+AFTER INSERT ON members
+	BEGIN
+		INSERT INTO deadline(member, diff, type, cause) 
+		VALUES (new.id, 
+						unixepoch(‘now’, ‘start of day’, ‘+1 day’, ‘-1 second’),
+						‘Init’,
+						‘init member deadline’);
+	END;
