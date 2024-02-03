@@ -76,19 +76,21 @@ type Member struct {
 type DeadlineCause string
 
 var DeadlineCauses = struct {
-	Init   DeadlineCause
-	Answer DeadlineCause
-	Delay  DeadlineCause
-	Rest   DeadlineCause
-	Freeze DeadlineCause
-	Other  DeadlineCause
+	Init     DeadlineCause
+	Answer   DeadlineCause
+	Delay    DeadlineCause
+	Rest     DeadlineCause
+	Freeze   DeadlineCause
+ Timezone DeadlineCause
+	Other    DeadlineCause
 }{
-	Init:   "Init",
-	Answer: "Answer",
-	Delay:  "Delay",
-	Rest:   "Rest",
-	Freeze: "Freeze",
-	Other:  "Other",
+	Init:     "Init",
+	Answer:   "Answer",
+	Delay:    "Delay",
+	Rest:     "Rest",
+	Freeze:   "Freeze",
+ Timezone: "Timezone",
+	Other:    "Other",
 }
 
 func (c DeadlineCause) Value() (driver.Value, error) {
@@ -107,6 +109,7 @@ func (c *DeadlineCause) Scan(value interface{}) error {
 				v != string(DeadlineCauses.Delay) &&
 				v != string(DeadlineCauses.Rest) &&
 				v != string(DeadlineCauses.Freeze) &&
+			 v != string(DeadlineCauses.Timezone) &&
 				v != string(DeadlineCauses.Other) {
 				return errors.New("value is not valid DeadlineCause value")
 			}
