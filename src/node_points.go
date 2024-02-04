@@ -73,6 +73,9 @@ func (node *PointsNode) KeyboardEvent(user *User, ask *Ask, vk *VK, payload *Cal
 		}
 
 		message, attachment, err := node.PrepareHistory(user.id, ask, vk, history)
+		if err != nil {
+			return nil, err
+		}
 
 		_, err = vk.SendMessage(user.id, message, "", api.Params{"attachment": attachment})
 		return nil, err

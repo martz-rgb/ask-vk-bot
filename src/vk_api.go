@@ -199,7 +199,7 @@ func (v *VK) GetLastBotMessage(user_id int) (*object.MessagesMessage, error) {
 
 	err = errors.New("unable to find last bot message")
 
-	return nil, zaperr.Wrap(nil, "",
+	return nil, zaperr.Wrap(err, "",
 		zap.Any("params", params),
 		zap.Any("response", response))
 }

@@ -56,7 +56,7 @@ func (node *DeadlineNode) Entry(user *User, ask *Ask, vk *VK, params Params) err
 	}
 
 	_, err = vk.SendMessage(user.id, strings.Join(deadlines, "\n"), CreateKeyboard(node, buttons), nil)
-	return nil
+	return err
 }
 
 func (node *DeadlineNode) NewMessage(user *User, ask *Ask, vk *VK, message string) (StateNode, error) {
@@ -72,6 +72,9 @@ func (node *DeadlineNode) KeyboardEvent(user *User, ask *Ask, vk *VK, payload *C
 		}
 
 		message, attachment, err := node.PrepareHistory(user.id, ask, vk, history)
+		if err != nil {
+			return nil, err
+		}
 
 		_, err = vk.SendMessage(user.id, message, "", api.Params{"attachment": attachment})
 		return nil, err
