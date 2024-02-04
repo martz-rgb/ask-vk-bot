@@ -71,25 +71,25 @@ type Member struct {
 	Person   int          `db:"person"`
 	Role     string       `db:"role"`
 	Status   MemberStatus `db:"status"`
- Timezone int          `db:"timezone"`
+	Timezone int          `db:"timezone"`
 }
 
 type DeadlineCause string
 
 var DeadlineCauses = struct {
-	Init     DeadlineCause
-	Answer   DeadlineCause
-	Delay    DeadlineCause
-	Rest     DeadlineCause
-	Freeze   DeadlineCause
-	Other    DeadlineCause
+	Init   DeadlineCause
+	Answer DeadlineCause
+	Delay  DeadlineCause
+	Rest   DeadlineCause
+	Freeze DeadlineCause
+	Other  DeadlineCause
 }{
-	Init:     "Init",
-	Answer:   "Answer",
-	Delay:    "Delay",
-	Rest:     "Rest",
-	Freeze:   "Freeze",
-	Other:    "Other",
+	Init:   "Init",
+	Answer: "Answer",
+	Delay:  "Delay",
+	Rest:   "Rest",
+	Freeze: "Freeze",
+	Other:  "Other",
 }
 
 func (c DeadlineCause) Value() (driver.Value, error) {
@@ -121,7 +121,7 @@ func (c *DeadlineCause) Scan(value interface{}) error {
 type Deadline struct {
 	Member    int           `db:"member"`
 	Diff      int           `db:"diff"` // unix time in seconds!
-	Type      DeadlineCause `db:"type"`
+	Kind      DeadlineCause `db:"kind"`
 	Cause     string        `db:"cause"`
 	Timestamp time.Time     `db:"timestamp"`
 }
