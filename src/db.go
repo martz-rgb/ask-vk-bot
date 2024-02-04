@@ -1,6 +1,7 @@
 package main
 
 import (
+	"database/sql"
 	"encoding/csv"
 	"fmt"
 	"io"
@@ -14,8 +15,8 @@ import (
 )
 
 type DB struct {
-	mu  sync.Mutex
-	sql *sqlx.DB
+	write sync.Mutex
+	sql   *sqlx.DB
 }
 
 func NewDB(connection string) (*DB, error) {
@@ -102,4 +103,12 @@ func (db *DB) Select(dest interface{}, query string, args ...interface{}) error 
 
 func (db *DB) Get(dest interface{}, query string, args ...interface{}) error {
 	return db.sql.Get(dest, query, args...)
+}
+
+// write is not concurrency safe
+func (db *DB) Exec(query string, args ...interface{}) (sql.Result, error) {
+	db.write.Lock()
+	defer db.write.Unlock()
+
+	return db.sql.Exec(query, args...)
 }
