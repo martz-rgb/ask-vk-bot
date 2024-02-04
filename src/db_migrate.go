@@ -13,18 +13,13 @@ import (
 	"go.uber.org/zap"
 )
 
-type Table struct {
+type Object struct {
 	Name string `db:"name"`
 	Sql  string `db:"sql"`
 }
 
 type Column struct {
 	Name string `db:"name"`
-}
-
-type Index struct {
-	Name string `db:"name"`
-	Sql  string `db:"sql"`
 }
 
 func (db *DB) Migrate(schema string, allow_deletion bool) error {
@@ -39,11 +34,11 @@ func (db *DB) Migrate(schema string, allow_deletion bool) error {
 			zap.String("schema", schema))
 	}
 
-	actual_tables := []Table{}
-	desired_tables := []Table{}
+	actual_tables := []Object{}
+	desired_tables := []Object{}
 
 	query := sqlf.From("sqlite_schema").
-		Bind(&Table{}).
+		Bind(&Object{}).
 		Where("type = 'table'").
 		Where("name != 'sqlite_sequence'").
 		OrderBy("name")
@@ -62,38 +57,9 @@ func (db *DB) Migrate(schema string, allow_deletion bool) error {
 			zap.Any("args", query.Args()))
 	}
 
-	new_tables := []Table{}
-	delete_tables := []Table{}
-	modified_tables := []Table{}
+	new_tables, old_tables, modified_tables := getDifference(actual_tables, desired_tables)
 
-	i, j := 0, 0
-	for i < len(desired_tables) && j < len(actual_tables) {
-		if desired_tables[i].Name == actual_tables[j].Name {
-			if normalise(desired_tables[i].Sql) != normalise(actual_tables[j].Sql) {
-				modified_tables = append(modified_tables, desired_tables[i])
-			}
-
-			i, j = i+1, j+1
-			continue
-		}
-
-		if desired_tables[i].Name < actual_tables[j].Name {
-			new_tables = append(new_tables, desired_tables[i])
-			i++
-		} else {
-			delete_tables = append(delete_tables, actual_tables[j])
-			j++
-		}
-	}
-
-	if i < len(desired_tables) {
-		new_tables = append(new_tables, desired_tables[i:]...)
-	}
-	if j < len(actual_tables) {
-		delete_tables = append(delete_tables, actual_tables[j:]...)
-	}
-
-	zap.S().Debugw("", "new", new_tables, "delete", delete_tables, "modified", modified_tables)
+	zap.S().Debugw("", "new", new_tables, "delete", old_tables, "modified", modified_tables)
 
 	// start process
 	_, err = db.sql.Exec("PRAGMA foreign_keys=off")
@@ -107,40 +73,40 @@ func (db *DB) Migrate(schema string, allow_deletion bool) error {
 	}
 
 	// create new tables
-	for i := range new_tables {
+	for _, table := range new_tables {
 		zap.S().Infow("create new table",
-			"name", new_tables[i].Name,
-			"statement", new_tables[i].Sql)
+			"name", table.Name,
+			"statement", table.Sql)
 
-		_, err := db.sql.Exec(new_tables[i].Sql)
+		_, err := db.sql.Exec(table.Sql)
 		if err != nil {
 			transaction.Rollback()
 			return zaperr.Wrap(err, "failed to create new table",
-				zap.String("name", new_tables[i].Name),
-				zap.String("statement", new_tables[i].Sql))
+				zap.String("name", table.Name),
+				zap.String("statement", table.Sql))
 		}
 	}
 
 	// delete tables
-	for i := range delete_tables {
+	for _, table := range old_tables {
 		if allow_deletion {
-			query := fmt.Sprintf("DROP TABLE %s", delete_tables[i].Name)
+			query := fmt.Sprintf("DROP TABLE %s", table.Name)
 
 			zap.S().Infow("delete old table",
-				"name", delete_tables[i].Name,
+				"name", table.Name,
 				"statement", query)
 
 			_, err := db.sql.Exec(query)
 			if err != nil {
 				transaction.Rollback()
 				return zaperr.Wrap(err, "failed to delete old table",
-					zap.String("name", delete_tables[i].Name),
+					zap.String("name", table.Name),
 					zap.String("statement", query))
 			}
 		} else {
 			zap.S().Infow("deletion is not allowed; skip removed table",
-				"name", delete_tables[i].Name,
-				"statement", delete_tables[i].Sql)
+				"name", table.Name,
+				"statement", table.Sql)
 		}
 	}
 
@@ -153,13 +119,24 @@ func (db *DB) Migrate(schema string, allow_deletion bool) error {
 		}
 	}
 
-	err = db.migrateIndices(desired, allow_deletion)
+	// migrate indices, triggers and views
+	err = db.migrateObjects("index", desired, allow_deletion)
 	if err != nil {
 		transaction.Rollback()
 		return err
 	}
 
-	// add views and trigger probably
+	err = db.migrateObjects("trigger", desired, allow_deletion)
+	if err != nil {
+		transaction.Rollback()
+		return err
+	}
+
+	err = db.migrateObjects("view", desired, allow_deletion)
+	if err != nil {
+		transaction.Rollback()
+		return err
+	}
 
 	err = transaction.Commit()
 	if err != nil {
@@ -175,7 +152,7 @@ func (db *DB) Migrate(schema string, allow_deletion bool) error {
 }
 
 // procedure: https://www.sqlite.org/lang_altertable.html#otheralter
-func (db *DB) migrateModified(desired *sqlx.DB, table Table, allow_deletion bool) error {
+func (db *DB) migrateModified(desired *sqlx.DB, table Object, allow_deletion bool) error {
 	// check if no removing is meant
 	actual_cols := []Column{}
 	desired_cols := []Column{}
@@ -297,125 +274,108 @@ func (db *DB) migrateModified(desired *sqlx.DB, table Table, allow_deletion bool
 	return nil
 }
 
-func (db *DB) migrateIndices(desired *sqlx.DB, allow_deletion bool) error {
-	// migrate indices
-	actual_indices := []Index{}
-	desired_indices := []Index{}
+func (db *DB) migrateObjects(kind string, desired *sqlx.DB, allow_deletion bool) error {
+	actual_objects := []Object{}
+	desired_objects := []Object{}
 
-	// pnly user-defined indices
 	query := sqlf.From("sqlite_master").
-		Bind(&Index{}).
-		Where("type = 'index'").
+		Bind(&Object{}).
+		Where("type = ?", kind).
 		Where("sql IS NOT NULL").
 		OrderBy("name")
 
-	err := db.Select(&actual_indices, query.String(), query.Args()...)
+	err := db.Select(&actual_objects, query.String(), query.Args()...)
 	if err != nil {
-		return zaperr.Wrap(err, "failed to get actual indices",
+		return zaperr.Wrap(err, "failed to get actual objects",
+			zap.String("kind", kind),
 			zap.String("statement", query.String()),
 			zap.Any("args", query.Args()))
 	}
 
-	err = desired.Select(&desired_indices, query.String(), query.Args()...)
+	err = desired.Select(&desired_objects, query.String(), query.Args()...)
 	if err != nil {
-		return zaperr.Wrap(err, "failed to get desired indices",
+		return zaperr.Wrap(err, "failed to get desired objects",
+			zap.String("kind", kind),
 			zap.String("statement", query.String()),
 			zap.Any("args", query.Args()))
 	}
 
-	new_indices := []Index{}
-	delete_indices := []Index{}
-	modified_indices := []Index{}
+	new, old, modified := getDifference(actual_objects, desired_objects)
 
-	i, j := 0, 0
-	for i < len(desired_indices) && j < len(actual_indices) {
-		if desired_indices[i].Name == actual_indices[j].Name {
-			if normalise(desired_indices[i].Sql) != normalise(actual_indices[j].Sql) {
-				modified_indices = append(modified_indices, desired_indices[i])
-			}
-
-			i, j = i+1, j+1
+	for _, object := range new {
+		if len(object.Sql) == 0 {
 			continue
 		}
 
-		if desired_indices[i].Name < actual_indices[j].Name {
-			new_indices = append(new_indices, desired_indices[i])
-			i++
-		} else {
-			delete_indices = append(delete_indices, actual_indices[j])
-			j++
-		}
-	}
+		zap.S().Infow("create new object",
+			"kind", kind,
+			"name", object.Name,
+			"statement", object.Sql)
 
-	if i < len(desired_indices) {
-		new_indices = append(new_indices, desired_indices[i:]...)
-	}
-	if j < len(actual_indices) {
-		delete_indices = append(delete_indices, actual_indices[j:]...)
-	}
-
-	for _, index := range new_indices {
-		if len(index.Sql) == 0 {
-			continue
-		}
-
-		zap.S().Infow("create new index",
-			"name", index.Name,
-			"statement", index.Sql)
-
-		_, err = db.sql.Exec(index.Sql)
+		_, err = db.sql.Exec(object.Sql)
 		if err != nil {
-			return zaperr.Wrap(err, "failed to create new index",
-				zap.String("index name", index.Name),
-				zap.String("statement", index.Sql))
+			return zaperr.Wrap(err, "failed to create new object",
+				zap.String("kind", kind),
+				zap.String("name", object.Name),
+				zap.String("statement", object.Sql))
 		}
 	}
 
-	for _, index := range delete_indices {
-		query := fmt.Sprintf("DROP INDEX %s", index.Name)
+	for _, object := range old {
+		query := fmt.Sprintf("DROP %s %s",
+			strings.ToUpper(kind),
+			object.Name)
 
-		zap.S().Infow("delete old index",
-			"name", index.Name,
-			"statement", index.Sql,
+		zap.S().Infow("delete old object",
+			"kind", kind,
+			"name", object.Name,
+			"statement", object.Sql,
 			"query", query)
 
 		_, err = db.sql.Exec(query)
 		if err != nil {
-			return zaperr.Wrap(err, "failed to delete old index",
-				zap.String("index name", index.Name),
+			return zaperr.Wrap(err, "failed to delete old object",
+				zap.String("kind", kind),
+				zap.String("name", object.Name),
 				zap.String("statement", query))
 		}
 	}
 
-	for _, index := range modified_indices {
-		if len(index.Sql) == 0 {
+	for _, object := range modified {
+		if len(object.Sql) == 0 {
 			continue
 		}
 
-		query := fmt.Sprintf("DROP INDEX %s", index.Name)
+		query := fmt.Sprintf("DROP %s %s",
+			strings.ToUpper(kind),
+			object.Name)
 
-		zap.S().Infow("drop modified index",
-			"name", index.Name,
-			"statement", index.Sql,
+		zap.S().Infow("drop modified object",
+			"kind", kind,
+			"name", object.Name,
+			"statement", object.Sql,
 			"query", query)
 
 		_, err = db.sql.Exec(query)
 		if err != nil {
-			return zaperr.Wrap(err, "failed to delete old modified index",
-				zap.String("index name", index.Name),
+			return zaperr.Wrap(err, "failed to delete old modified object",
+				zap.String("kind", kind),
+				zap.String("index name", object.Name),
 				zap.String("statement", query))
 		}
 
-		_, err = db.sql.Exec(index.Sql)
+		_, err = db.sql.Exec(object.Sql)
 
-		zap.S().Infow("create new modified index",
-			"name", index.Name,
-			"statement", index.Sql)
+		zap.S().Infow("create new modified object",
+			"kind", kind,
+			"name", object.Name,
+			"statement", object.Sql)
 
 		if err != nil {
-			return zaperr.Wrap(err, "failed to create new modified index",
-				zap.String("index name", index.Name),
-				zap.String("statement", index.Sql))
+			return zaperr.Wrap(err, "failed to create new modified object",
+				zap.String("kind", kind),
+				zap.String("name", object.Name),
+				zap.String("statement", object.Sql))
 		}
 	}
 	return nil
@@ -437,4 +397,35 @@ func normalise(query string) string {
 	query = regexp.MustCompile(`\"(\w+)\"`).ReplaceAllString(query, `$1`)
 
 	return strings.TrimSpace(query)
+}
+
+func getDifference(actual []Object, desired []Object) (new []Object, old []Object, modified []Object) {
+	i, j := 0, 0
+	for i < len(desired) && j < len(actual) {
+		if desired[i].Name == actual[j].Name {
+			if normalise(desired[i].Sql) != normalise(actual[j].Sql) {
+				modified = append(modified, desired[i])
+			}
+
+			i, j = i+1, j+1
+			continue
+		}
+
+		if desired[i].Name < actual[j].Name {
+			new = append(new, desired[i])
+			i++
+		} else {
+			old = append(old, actual[j])
+			j++
+		}
+	}
+
+	if i < len(desired) {
+		new = append(new, desired[i:]...)
+	}
+	if j < len(actual) {
+		old = append(old, actual[j:]...)
+	}
+
+	return
 }
