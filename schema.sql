@@ -30,7 +30,8 @@ CREATE TABLE IF NOT EXISTS members (
     id INTEGER PRIMARY KEY NOT NULL,
     person INT REFERENCES persons(vk_id) NOT NULL,
     role TEXT REFERENCES roles(name) NOT NULL,
-    status TEXT CHECK(status IN ('Active', 'Freeze')) NOT NULL DEFAULT 'Active'
+    status TEXT CHECK(status IN ('Active', 'Freeze')) NOT NULL DEFAULT 'Active',
+		timezone INT NOT NULL DEFAULT 0
 );
 
 CREATE TABLE IF NOT EXISTS deadline (
@@ -44,7 +45,6 @@ CREATE TABLE IF NOT EXISTS deadline (
             'Delay',
             'Rest',
             'Freeze',
-					  'Timezone',
             'Other'
         )
     ) NOT NULL DEFAULT 'Other',
