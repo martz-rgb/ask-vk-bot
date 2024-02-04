@@ -31,15 +31,15 @@ CREATE TABLE IF NOT EXISTS members (
     person INT REFERENCES persons(vk_id) NOT NULL,
     role TEXT REFERENCES roles(name) NOT NULL,
     status TEXT CHECK(status IN ('Active', 'Freeze')) NOT NULL DEFAULT 'Active',
-		timezone INT NOT NULL DEFAULT 0
+	timezone INT NOT NULL DEFAULT 0
 );
 
 CREATE TABLE IF NOT EXISTS deadline (
     member INT REFERENCES members(id) NOT NULL,
     -- unix time in seconds!
     diff INT NOT NULL DEFAULT 0,
-    type TEXT CHECK(
-        type IN (
+    kind TEXT CHECK(
+        kind IN (
             'Init',
             'Answer',
             'Delay',
@@ -55,9 +55,12 @@ CREATE TABLE IF NOT EXISTS deadline (
 CREATE TRIGGER IF NOT EXISTS init_member_deadline 
 AFTER INSERT ON members
 	BEGIN
-		INSERT INTO deadline(member, diff, type, cause) 
+		INSERT INTO deadline(member, diff, kind, cause) 
 		VALUES (new.id, 
-						unixepoch(‘now’, ‘start of day’, ‘+1 day’, ‘-1 second’),
-						‘Init’,
-						‘init member deadline’);
+                unixepoch('now', 
+                    'start of day', 
+                    '+1 day', 
+                    '-1 second'),
+                'Init',
+                'init member deadline');
 	END;
