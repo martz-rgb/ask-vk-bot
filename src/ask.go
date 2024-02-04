@@ -8,9 +8,6 @@ import (
 	"go.uber.org/zap"
 )
 
-type AskConfig struct {
-}
-
 type Ask struct {
 	config *AskConfig
 	db     *DB
@@ -131,6 +128,28 @@ func (a *Ask) HistoryDeadline(member int) ([]Deadline, error) {
 	return history, nil
 }
 
+// TO-DO maybe another way to insert
+func (a *Ask) ChangeDeadline(member int, diff time.Duration, kind DeadlineCause, cause string) error {
+	query := sqlf.InsertInto("deadline").
+		Set("member", member).
+		Set("diff", diff.Seconds()).
+		Set("kind", kind).
+		Set("cause", cause)
+
+	_, err := a.db.Exec(query.String(), query.Args()...)
+	if err != nil {
+		return zaperr.Wrap(err, "failed to insert deadline event",
+			zap.Int("member", member),
+			zap.Duration("diff", diff),
+			zap.Any("kind", kind),
+			zap.String("cause", cause),
+			zap.String("query", query.String()),
+			zap.Any("args", query.Args()))
+	}
+
+	return nil
+}
+
 // member
 // TO-DO possible no member
 func (a *Ask) MemberByRole(role string) (Member, error) {
@@ -161,4 +180,46 @@ func (a *Ask) MembersById(id int) ([]Member, error) {
 	}
 
 	return members, nil
+}
+
+func (a *Ask) AddMember(person int, role string) error {
+	query := sqlf.InsertInto("members").
+		Set("person", person).
+		Set("role", role).
+		Set("timezone", a.config.Timezone)
+
+	result, err := a.db.Exec(query.String(), query.Args()...)
+	if err != nil {
+		return zaperr.Wrap(err, "failed to add member",
+			zap.Int("person", person),
+			zap.String("role", role),
+			zap.Int("timezone", a.config.Timezone),
+			zap.String("query", query.String()),
+			zap.Any("args", query.Args()))
+	}
+
+	member, err := result.LastInsertId()
+	if err != nil {
+		return zaperr.Wrap(err, "failed to get last inserted id",
+			zap.Int("person", person),
+			zap.String("role", role),
+			zap.Int("timezone", a.config.Timezone),
+			zap.String("query", query.String()),
+			zap.Any("args", query.Args()))
+	}
+
+	// init deadline
+	err = a.ChangeDeadline(int(member),
+		a.config.Deadline,
+		DeadlineCauses.Init,
+		"init deadline")
+	if err != nil {
+		return err
+	}
+
+	// init default timezone
+	return a.ChangeDeadline(int(member),
+		time.Duration(a.config.Timezone)*time.Hour,
+		DeadlineCauses.Init,
+		"init default timezone")
 }

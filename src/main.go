@@ -6,7 +6,6 @@ import (
 	"errors"
 	"fmt"
 	"io"
-	"log"
 	"os"
 	"os/signal"
 	"path/filepath"
@@ -29,7 +28,12 @@ type Config struct {
 }
 
 func ConfigFromEnv() *Config {
-	group_id, _ := strconv.Atoi(os.Getenv("GROUP_ID"))
+	group_id, err := strconv.Atoi(os.Getenv("GROUP_ID"))
+	if err != nil {
+		zap.S().Warnw("failed to parse group id",
+			"error", err,
+			"group id", os.Getenv("GROUP_ID"))
+	}
 	allow_deletion, _ := strconv.ParseBool(os.Getenv("ALLOW_DELETION"))
 
 	return &Config{
@@ -44,7 +48,7 @@ func ConfigFromEnv() *Config {
 }
 
 func ConfigFromFile(name string) (*Config, error) {
-	file, err := os.Open("../config.json")
+	file, err := os.Open(name)
 	if err != nil {
 		return nil, err
 	}
@@ -96,14 +100,14 @@ func main() {
 	config := ConfigFromEnv()
 
 	// development purposes
-	dev, err := ConfigFromFile("../config.json")
-	if err == nil {
+	if dev, err := ConfigFromFile("../config.json"); err == nil {
 		config = dev
 	}
 
-	err = config.Validate()
+	err := config.Validate()
 	if err != nil {
-		log.Fatal(err)
+		zap.S().Fatalw("failed to validate config",
+			"error", err)
 	}
 
 	// make debug log
@@ -136,7 +140,19 @@ func main() {
 	}
 
 	// make ask layer upon db
-	ask := NewAsk(nil, db)
+	ask_config := AskConfigFromEnv()
+	// development purposes
+	if dev, err := AskConfigFromFile("../ask_config.json"); err == nil {
+		fmt.Println("dev", dev)
+		ask_config = dev
+	}
+
+	err = ask_config.Validate()
+	if err != nil {
+		zap.S().Fatalw("failed to validate ask config",
+			"error", err)
+	}
+	ask := NewAsk(ask_config, db)
 
 	// vk api's init
 	group, err := NewVKFromFile(config.SecretGroupToken, config.GroupID)

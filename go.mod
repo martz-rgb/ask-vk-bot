@@ -10,12 +10,13 @@ require (
 	go.uber.org/zap v1.26.0
 )
 
-require github.com/rb-go/plural-ru v1.0.1
-
 require (
-	github.com/hori-ryota/zaperr v0.0.0-20210301022522-bfd0551d7f64 // indirect
-	github.com/pkg/errors v0.9.1 // indirect
+	github.com/hori-ryota/zaperr v0.0.0-20210301022522-bfd0551d7f64
+	github.com/rb-go/plural-ru v1.0.1
+	github.com/xhit/go-str2duration/v2 v2.1.0
 )
+
+require github.com/pkg/errors v0.9.1 // indirect
 
 require (
 	github.com/awnumar/memcall v0.2.0 // indirect
