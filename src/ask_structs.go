@@ -67,10 +67,11 @@ func (s *MemberStatus) Scan(value interface{}) error {
 }
 
 type Member struct {
-	Id     int          `db:"id"`
-	Person int          `db:"person"`
-	Role   string       `db:"role"`
-	Status MemberStatus `db:"status"`
+	Id       int          `db:"id"`
+	Person   int          `db:"person"`
+	Role     string       `db:"role"`
+	Status   MemberStatus `db:"status"`
+ Timezone int          `db:"timezone"`
 }
 
 type DeadlineCause string
@@ -81,7 +82,6 @@ var DeadlineCauses = struct {
 	Delay    DeadlineCause
 	Rest     DeadlineCause
 	Freeze   DeadlineCause
- Timezone DeadlineCause
 	Other    DeadlineCause
 }{
 	Init:     "Init",
@@ -89,7 +89,6 @@ var DeadlineCauses = struct {
 	Delay:    "Delay",
 	Rest:     "Rest",
 	Freeze:   "Freeze",
- Timezone: "Timezone",
 	Other:    "Other",
 }
 
@@ -109,7 +108,6 @@ func (c *DeadlineCause) Scan(value interface{}) error {
 				v != string(DeadlineCauses.Delay) &&
 				v != string(DeadlineCauses.Rest) &&
 				v != string(DeadlineCauses.Freeze) &&
-			 v != string(DeadlineCauses.Timezone) &&
 				v != string(DeadlineCauses.Other) {
 				return errors.New("value is not valid DeadlineCause value")
 			}
