@@ -2,6 +2,12 @@ about logging:
 1) if there is an error from others code or there is new specific error, it should be wrapped
 2) if there is an error from this project's parts (like *Ask, *VK and others), it should be taken as it is without wrapping
 
+about timezone:
+даты в базе данных лежат в UTC и не зависят от часового пояса аска. Слой аска же выдает даты в нужном часовом поясе.
+
+about reservation:
+не больше одной брони на человека?
+
 TO-DO list:
 
 - [ ] deadline + member system 
