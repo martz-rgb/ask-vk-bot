@@ -141,11 +141,6 @@ func main() {
 
 	// make ask layer upon db
 	ask_config := AskConfigFromEnv()
-	// development purposes
-	if dev, err := AskConfigFromFile("../ask_config.json"); err == nil {
-		fmt.Println("dev", dev)
-		ask_config = dev
-	}
 
 	err = ask_config.Validate()
 	if err != nil {

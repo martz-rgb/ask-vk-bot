@@ -12,9 +12,8 @@ type Administration struct {
 }
 
 // TO-DO: time.Time is dangerous but i want to try
-type Person struct {
+type Info struct {
 	VkID     int            `db:"vk_id"`
-	Name     sql.NullString `db:"name"`
 	Gallery  sql.NullString `db:"gallery"`
 	Birthday sql.NullTime   `db:"birthday"`
 }
@@ -29,7 +28,7 @@ type Role struct {
 }
 
 type Points struct {
-	Person    int       `db:"person"`
+	VkID      int       `db:"vk_id"`
 	Diff      int       `db:"diff"`
 	Cause     string    `db:"cause"`
 	Timestamp time.Time `db:"timestamp"`
@@ -68,7 +67,7 @@ func (s *MemberStatus) Scan(value interface{}) error {
 
 type Member struct {
 	Id       int          `db:"id"`
-	Person   int          `db:"person"`
+	VkID     int          `db:"vk_id"`
 	Role     string       `db:"role"`
 	Status   MemberStatus `db:"status"`
 	Timezone int          `db:"timezone"`
@@ -124,4 +123,50 @@ type Deadline struct {
 	Kind      DeadlineCause `db:"kind"`
 	Cause     string        `db:"cause"`
 	Timestamp time.Time     `db:"timestamp"`
+}
+
+type ReservationStatus string
+
+var ReservationStatuses = struct {
+	UnderConsideration ReservationStatus
+	InProgress         ReservationStatus
+	Done               ReservationStatus
+}{
+	UnderConsideration: "Under Consideration",
+	InProgress:         "In Progress",
+	Done:               "Done",
+}
+
+func (s ReservationStatus) Value() (driver.Value, error) {
+	return string(s), nil
+}
+
+func (s *ReservationStatus) Scan(value interface{}) error {
+	if value == nil {
+		return errors.New("ReservationStatus is not nullable")
+	}
+
+	if str, err := driver.String.ConvertValue(value); err == nil {
+		if v, ok := str.(string); ok {
+			if v != string(ReservationStatuses.UnderConsideration) &&
+				v != string(ReservationStatuses.InProgress) &&
+				v != string(ReservationStatuses.Done) {
+				return errors.New("value is not valid ReservationStatus value")
+			}
+
+			*s = ReservationStatus(v)
+			return nil
+		}
+
+	}
+	return errors.New("failed to scan ReservationStatus")
+}
+
+type Reservation struct {
+	Id        int               `db:"id"`
+	Role      string            `db:"role"`
+	VkID      int               `db:"vk_id"`
+	Deadline  time.Time         `db:"deadline"`
+	Status    ReservationStatus `db:"status"`
+	Timestamp time.Time         `db:"timestamp"`
 }

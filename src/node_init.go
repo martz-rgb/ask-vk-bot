@@ -14,6 +14,11 @@ func (node *InitNode) Entry(user *User, ask *Ask, vk *VK, params Params) error {
 			Command: (&RolesNode{}).ID(),
 		},
 		{
+			Label:   "Бронь",
+			Color:   "secondary",
+			Command: (&ReservationNode{}).ID(),
+		},
+		{
 			Label:   "Баллы",
 			Color:   "secondary",
 			Command: (&PointsNode{}).ID(),
@@ -50,6 +55,8 @@ func (node *InitNode) KeyboardEvent(user *User, ask *Ask, vk *VK, payload *Callb
 		return &FAQNode{}, nil
 	case (&RolesNode{}).ID():
 		return &RolesNode{}, nil
+	case (&ReservationNode{}).ID():
+		return &ReservationNode{}, nil
 	case (&PointsNode{}).ID():
 		return &PointsNode{}, nil
 	case (&DeadlineNode{}).ID():

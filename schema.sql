@@ -9,26 +9,25 @@ CREATE TABLE IF NOT EXISTS roles (
     board_link TEXT
 );
 
-CREATE TABLE IF NOT EXISTS persons (
+CREATE TABLE IF NOT EXISTS info (
     vk_id INT PRIMARY KEY NOT NULL,
-    name TEXT,
     gallery TEXT,
     birthday TEXT
 );
 
 CREATE TABLE IF NOT EXISTS points (
-    person INT REFERENCES persons(vk_id) NOT NULL,
+    vk_id INT NOT NULL,
     diff INT NOT NULL DEFAULT 0,
     cause TEXT NOT NULL,
     timestamp DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP
 );
 
-CREATE INDEX IF NOT EXISTS idx_points_person ON points(person);
+CREATE INDEX IF NOT EXISTS idx_points_vk_id ON points(vk_id);
 
 CREATE TABLE IF NOT EXISTS members (
     -- integer primary key -> alias to rowid
     id INTEGER PRIMARY KEY NOT NULL,
-    person INT REFERENCES persons(vk_id) NOT NULL,
+    vk_id INT,
     role TEXT REFERENCES roles(name) NOT NULL,
     status TEXT CHECK(status IN ('Active', 'Freeze')) NOT NULL DEFAULT 'Active',
 	timezone INT NOT NULL DEFAULT 0
@@ -52,6 +51,7 @@ CREATE TABLE IF NOT EXISTS deadline (
     timestamp DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP
 );
 
+
 CREATE TRIGGER IF NOT EXISTS init_member_deadline 
 AFTER INSERT ON members
 	BEGIN
@@ -64,3 +64,15 @@ AFTER INSERT ON members
                 'Init',
                 'init member deadline');
 	END;
+
+
+
+CREATE TABLE IF NOT EXISTS reservations (
+    -- alias to rowid
+    id INTEGER PRIMARY KEY NOT NULL,
+    role TEXT REFERENCES roles(name) NOT NULL,
+    vk_id INT NOT NULL,
+    deadline DATETIME NOT NULL,
+    status TEXT CHECK(status IN ('Under Consideration', 'In Progress', 'Done')) NOT NULL DEFAULT 'Under Consideration',
+    timestamp DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP
+);

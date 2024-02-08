@@ -9,7 +9,7 @@ type User struct {
 }
 
 func (u *User) fill(ask *Ask) error {
-	members, err := ask.MembersById(u.id)
+	members, err := ask.MembersByVkID(u.id)
 	if err != nil {
 		return err
 	}

@@ -11,14 +11,17 @@ import (
 type Ask struct {
 	config *AskConfig
 	db     *DB
+
+	timezone time.Duration
 }
 
 func NewAsk(config *AskConfig, db *DB) *Ask {
 	sqlf.SetDialect(sqlf.NoDialect)
 
 	return &Ask{
-		config: config,
-		db:     db,
+		config:   config,
+		db:       db,
+		timezone: time.Duration(config.Timezone) * time.Hour,
 	}
 }
 
@@ -37,10 +40,60 @@ func (a *Ask) Roles() ([]Role, error) {
 	return roles, nil
 }
 
+func (a *Ask) AvailableRoles() ([]Role, error) {
+	var roles []Role
+
+	query := sqlf.From("roles").
+		Bind(&Role{}).
+		With("busy_roles",
+			sqlf.From("members").
+				Select("role")).
+		With("reserved_roles",
+			sqlf.From("reservations").
+				Select("role").
+				Where("status == ?", ReservationStatuses.Done)).
+		Where("name NOT IN busy_roles").
+		Where("name NOT IN reserved_roles")
+
+	err := a.db.Select(&roles, query.String(), query.Args()...)
+	if err != nil {
+		return nil, zaperr.Wrap(err, "failed to get available roles",
+			zap.String("query", query.String()),
+			zap.Any("args", query.Args()))
+	}
+
+	return roles, nil
+}
+
 func (a *Ask) RolesStartWith(prefix string) ([]Role, error) {
 	var roles []Role
 
 	query := sqlf.From("roles").Bind(&Role{}).Where("shown_name like ?", prefix+"%")
+	err := a.db.Select(&roles, query.String(), query.Args()...)
+	if err != nil {
+		return nil, zaperr.Wrap(err, "failed to get roles starts with",
+			zap.String("query", query.String()),
+			zap.Any("args", query.Args()))
+	}
+
+	return roles, nil
+}
+
+func (a *Ask) AvailableRolesStartWith(prefix string) ([]Role, error) {
+	var roles []Role
+	query := sqlf.From("roles").
+		Bind(&Role{}).
+		With("busy_roles",
+			sqlf.From("members").
+				Select("role")).
+		With("reserved_roles",
+			sqlf.From("reservations").
+				Select("role").
+				Where("status == ?", ReservationStatuses.Done)).
+		Where("name NOT IN busy_roles").
+		Where("name NOT IN reserved_roles").
+		Where("shown_name like ?", prefix+"%")
+
 	err := a.db.Select(&roles, query.String(), query.Args()...)
 	if err != nil {
 		return nil, zaperr.Wrap(err, "failed to get roles starts with",
@@ -67,11 +120,11 @@ func (a *Ask) Role(name string) (Role, error) {
 }
 
 // points
-func (a *Ask) Points(id int) (int, error) {
+func (a *Ask) Points(vk_id int) (int, error) {
 	var points int
 
 	// zero is default value, it is not a error if it is null
-	query := sqlf.From("points").Select("COALESCE(SUM(diff), 0)").Where("person == ?", id)
+	query := sqlf.From("points").Select("COALESCE(SUM(diff), 0)").Where("vk_id == ?", vk_id)
 	err := a.db.Get(&points, query.String(), query.Args()...)
 	if err != nil {
 		return -1, zaperr.Wrap(err, "failed to get points for user",
@@ -82,10 +135,10 @@ func (a *Ask) Points(id int) (int, error) {
 	return points, nil
 }
 
-func (a *Ask) HistoryPoints(id int) ([]Points, error) {
+func (a *Ask) HistoryPoints(vk_id int) ([]Points, error) {
 	var history []Points
 
-	query := sqlf.From("points").Bind(&Points{}).Where("person == ?", id).OrderBy("timestamp DESC")
+	query := sqlf.From("points").Bind(&Points{}).Where("vk_id == ?", vk_id).OrderBy("timestamp DESC")
 	err := a.db.Select(&history, query.String(), query.Args()...)
 	if err != nil {
 		return nil, zaperr.Wrap(err, "failed to get history of points for user",
@@ -110,7 +163,7 @@ func (a *Ask) Deadline(member int) (time.Time, error) {
 			zap.Any("args", query.Args()))
 	}
 
-	return time.Unix(deadline, 0), nil
+	return time.Unix(deadline, 0).Add(a.timezone), nil
 }
 
 func (a *Ask) HistoryDeadline(member int) ([]Deadline, error) {
@@ -167,14 +220,13 @@ func (a *Ask) MemberByRole(role string) (Member, error) {
 	return member, nil
 }
 
-func (a *Ask) MembersById(id int) ([]Member, error) {
+func (a *Ask) MembersByVkID(vk_id int) ([]Member, error) {
 	var members []Member
 
-	query := sqlf.From("members").Bind(&Member{}).Where("person == ?", id)
+	query := sqlf.From("members").Bind(&Member{}).Where("vk_id == ?", vk_id)
 	err := a.db.Select(&members, query.String(), query.Args()...)
 	if err != nil {
-		return nil, zaperr.Wrap(err, "failed to get members by id",
-			zap.Int("id", id),
+		return nil, zaperr.Wrap(err, "failed to get members by vk_id",
 			zap.String("query", query.String()),
 			zap.Any("args", query.Args()))
 	}
@@ -182,18 +234,16 @@ func (a *Ask) MembersById(id int) ([]Member, error) {
 	return members, nil
 }
 
-func (a *Ask) AddMember(person int, role string) error {
+func (a *Ask) AddMember(vk_id int, role string) error {
 	query := sqlf.InsertInto("members").
-		Set("person", person).
-		Set("role", role).
-		Set("timezone", a.config.Timezone)
+		Set("vk_id", vk_id).
+		Set("role", role)
 
 	result, err := a.db.Exec(query.String(), query.Args()...)
 	if err != nil {
 		return zaperr.Wrap(err, "failed to add member",
-			zap.Int("person", person),
+			zap.Int("vk_id", vk_id),
 			zap.String("role", role),
-			zap.Int("timezone", a.config.Timezone),
 			zap.String("query", query.String()),
 			zap.Any("args", query.Args()))
 	}
@@ -201,25 +251,49 @@ func (a *Ask) AddMember(person int, role string) error {
 	member, err := result.LastInsertId()
 	if err != nil {
 		return zaperr.Wrap(err, "failed to get last inserted id",
-			zap.Int("person", person),
+			zap.Int("vk_id", vk_id),
 			zap.String("role", role),
-			zap.Int("timezone", a.config.Timezone),
 			zap.String("query", query.String()),
 			zap.Any("args", query.Args()))
 	}
 
 	// init deadline
-	err = a.ChangeDeadline(int(member),
+	return a.ChangeDeadline(int(member),
 		a.config.Deadline,
 		DeadlineCauses.Init,
 		"init deadline")
+}
+
+// reservations
+func (a *Ask) AddReservation(role string, vk_id int) (time.Time, error) {
+	// got right date
+	now := time.Now().
+		UTC().
+		Add(a.timezone)
+
+	deadline := time.Date(now.Year(),
+		now.Month(),
+		now.Day(),
+		23,
+		59,
+		59,
+		0,
+		time.UTC).
+		Add(a.config.ReservationDuration)
+
+	query := sqlf.InsertInto("reservations").
+		Set("role", role).
+		Set("vk_id", vk_id).
+		Set("deadline", deadline)
+	_, err := a.db.Exec(query.String(), query.Args()...)
 	if err != nil {
-		return err
+		return time.Time{}, zaperr.Wrap(err, "failed to add reservation",
+			zap.String("role", role),
+			zap.Int("vk_id", vk_id),
+			zap.Time("deadline", deadline),
+			zap.String("query", query.String()),
+			zap.Any("args", query.Args()))
 	}
 
-	// init default timezone
-	return a.ChangeDeadline(int(member),
-		time.Duration(a.config.Timezone)*time.Hour,
-		DeadlineCauses.Init,
-		"init default timezone")
+	return deadline, nil
 }
