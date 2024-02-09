@@ -15,7 +15,7 @@ const (
 
 type Chat struct {
 	user        *User
-	state       StateNode
+	stack       *StateStack
 	reset_state StateNode
 
 	in_use *sync.Mutex
@@ -30,7 +30,7 @@ func NewChat(user_id int, state StateNode, reset_state StateNode, timeout time.D
 			id: user_id,
 		},
 		in_use:      &sync.Mutex{},
-		state:       state,
+		stack:       &StateStack{state},
 		reset_state: reset_state,
 		expired:     time.Now().Add(timeout),
 	}
@@ -60,7 +60,7 @@ const (
 
 func (c *Chat) Work(ask *Ask, vk *VK, input interface{}, init int) (err error) {
 	if init != NoInit {
-		err := c.state.Entry(c.user, ask, vk, nil)
+		err := c.stack.Peek().Entry(c.user, ask, vk)
 		if err != nil {
 			c.Reset(vk)
 			return err
@@ -72,27 +72,28 @@ func (c *Chat) Work(ask *Ask, vk *VK, input interface{}, init int) (err error) {
 	}
 
 	var next StateNode
+	var back bool
 	switch event := input.(type) {
 	case events.MessageNewObject:
-		next, err = c.state.NewMessage(c.user, ask, vk, event.Message.Text)
+		next, back, err = c.stack.Peek().NewMessage(c.user, ask, vk, event.Message.Text)
 		if err != nil {
 			c.Reset(vk)
 			return err
 		}
 
 	case events.MessageEventObject:
-		payload, err := UnmarshalPayload(c.state, event.Payload)
+		payload, err := UnmarshalPayload(c.stack.Peek(), event.Payload)
 		if err != nil {
 			c.Reset(vk)
 			return err
 		}
 
 		// skip
-		if payload.Id != c.state.ID() {
+		if payload.Id != c.stack.Peek().ID() {
 			return nil
 		}
 
-		next, err = c.state.KeyboardEvent(c.user, ask, vk, payload)
+		next, back, err = c.stack.Peek().KeyboardEvent(c.user, ask, vk, payload)
 		if err != nil {
 			c.Reset(vk)
 			return err
@@ -100,8 +101,15 @@ func (c *Chat) Work(ask *Ask, vk *VK, input interface{}, init int) (err error) {
 	}
 
 	if next != nil {
-		c.state = next
-		err := c.state.Entry(c.user, ask, vk, Params{"silent": true})
+		c.stack.Push(next)
+		err := c.stack.Peek().Entry(c.user, ask, vk)
+		if err != nil {
+			c.Reset(vk)
+			return err
+		}
+	} else if back {
+		prev := c.stack.Pop()
+		err := c.stack.Peek().Back(c.user, ask, vk, prev)
 		if err != nil {
 			c.Reset(vk)
 			return err
@@ -112,7 +120,7 @@ func (c *Chat) Work(ask *Ask, vk *VK, input interface{}, init int) (err error) {
 }
 
 func (c *Chat) Reset(vk *VK) {
-	c.state = c.reset_state
+	c.stack = &StateStack{c.reset_state}
 
 	message := "В ходе работы произошла ошибка. Пожалуйста, попробуйте еще раз попозже."
 	vk.SendMessage(c.user.id, message, "", nil)

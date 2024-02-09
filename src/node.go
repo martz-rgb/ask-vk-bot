@@ -23,9 +23,10 @@ func (p Params) Bool(key string) (value bool, ok bool) {
 type StateNode interface {
 	ID() string
 
-	Entry(user *User, ask *Ask, vk *VK, params Params) error
-	NewMessage(user *User, ask *Ask, vk *VK, message string) (StateNode, error)
-	KeyboardEvent(user *User, ask *Ask, vk *VK, payload *CallbackPayload) (StateNode, error)
+	Entry(user *User, ask *Ask, vk *VK) error
+	Back(user *User, ask *Ask, vk *VK, prev_state StateNode) error
+	NewMessage(user *User, ask *Ask, vk *VK, message string) (StateNode, bool, error)
+	KeyboardEvent(user *User, ask *Ask, vk *VK, payload *CallbackPayload) (StateNode, bool, error)
 }
 
 type CallbackPayload struct {

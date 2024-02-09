@@ -18,7 +18,7 @@ func (node *ReservationNode) ID() string {
 	return "reservation"
 }
 
-func (node *ReservationNode) Entry(user *User, ask *Ask, vk *VK, params Params) error {
+func (node *ReservationNode) Entry(user *User, ask *Ask, vk *VK) error {
 	roles, err := ask.AvailableRoles()
 	if err != nil {
 		return err
@@ -33,23 +33,23 @@ func (node *ReservationNode) Entry(user *User, ask *Ask, vk *VK, params Params) 
 	return err
 }
 
-func (node *ReservationNode) NewMessage(user *User, ask *Ask, vk *VK, message string) (StateNode, error) {
+func (node *ReservationNode) NewMessage(user *User, ask *Ask, vk *VK, message string) (StateNode, bool, error) {
 	roles, err := ask.AvailableRolesStartWith(message)
 	if err != nil {
-		return nil, err
+		return nil, false, err
 	}
 
 	node.paginator.ChangeRoles(roles)
 
-	return nil, vk.ChangeKeyboard(user.id, CreateKeyboard(node, node.paginator.Buttons()))
+	return nil, false, vk.ChangeKeyboard(user.id, CreateKeyboard(node, node.paginator.Buttons()))
 }
 
-func (node *ReservationNode) KeyboardEvent(user *User, ask *Ask, vk *VK, payload *CallbackPayload) (StateNode, error) {
+func (node *ReservationNode) KeyboardEvent(user *User, ask *Ask, vk *VK, payload *CallbackPayload) (StateNode, bool, error) {
 	switch payload.Command {
 	case "roles":
 		role, err := node.paginator.Role(payload.Value)
 		if err != nil {
-			return nil, err
+			return nil, false, err
 		}
 
 		node.role = role
@@ -71,26 +71,26 @@ func (node *ReservationNode) KeyboardEvent(user *User, ask *Ask, vk *VK, payload
 		}
 
 		_, err = vk.SendMessage(user.id, message, CreateKeyboard(node, buttons), nil)
-		return nil, err
+		return nil, false, err
 	case "previous":
 		node.paginator.Previous()
 
-		return nil, vk.ChangeKeyboard(user.id, CreateKeyboard(node, node.paginator.Buttons()))
+		return nil, false, vk.ChangeKeyboard(user.id, CreateKeyboard(node, node.paginator.Buttons()))
 	case "next":
 		node.paginator.Next()
 
-		return nil, vk.ChangeKeyboard(user.id, CreateKeyboard(node, node.paginator.Buttons()))
+		return nil, false, vk.ChangeKeyboard(user.id, CreateKeyboard(node, node.paginator.Buttons()))
 	case "back":
-		return &InitNode{}, nil
+		return nil, true, nil
 	case "yes":
 		if node.role == nil {
 			err := errors.New("no role was chosen to confirm")
-			return nil, zaperr.Wrap(err, "")
+			return nil, false, zaperr.Wrap(err, "")
 		}
 
 		deadline, err := ask.AddReservation(node.role.Name, user.id)
 		if err != nil {
-			return nil, err
+			return nil, false, err
 		}
 
 		message := fmt.Sprintf("Роль %s забронирована до %s.",
@@ -99,12 +99,16 @@ func (node *ReservationNode) KeyboardEvent(user *User, ask *Ask, vk *VK, payload
 		)
 
 		_, err = vk.SendMessage(user.id, message, "", nil)
-		return &InitNode{}, err
+		return nil, true, err
 	case "no":
 		node.role = nil
-		err := node.Entry(user, ask, vk, nil)
-		return nil, err
+		err := node.Entry(user, ask, vk)
+		return nil, false, err
 	}
 
-	return nil, nil
+	return nil, false, nil
+}
+
+func (node *ReservationNode) Back(user *User, ask *Ask, vk *VK, prev_state StateNode) error {
+	return nil
 }

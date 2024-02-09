@@ -21,7 +21,7 @@ func (node *PointsNode) ID() string {
 	return "points"
 }
 
-func (node *PointsNode) Entry(user *User, ask *Ask, vk *VK, params Params) error {
+func (node *PointsNode) Entry(user *User, ask *Ask, vk *VK) error {
 	points, err := ask.Points(user.id)
 	if err != nil {
 		return err
@@ -56,34 +56,38 @@ func (node *PointsNode) Entry(user *User, ask *Ask, vk *VK, params Params) error
 	return err
 }
 
-func (node *PointsNode) NewMessage(user *User, ask *Ask, vk *VK, message string) (StateNode, error) {
-	return nil, nil
+func (node *PointsNode) NewMessage(user *User, ask *Ask, vk *VK, message string) (StateNode, bool, error) {
+	return nil, false, nil
 }
 
-func (node *PointsNode) KeyboardEvent(user *User, ask *Ask, vk *VK, payload *CallbackPayload) (StateNode, error) {
+func (node *PointsNode) KeyboardEvent(user *User, ask *Ask, vk *VK, payload *CallbackPayload) (StateNode, bool, error) {
 	switch payload.Command {
 	case "spend":
 		message := `Пока что не на что тратить баллы.`
 		_, err := vk.SendMessage(user.id, message, "", nil)
-		return nil, err
+		return nil, false, err
 	case "history":
 		history, err := ask.HistoryPoints(user.id)
 		if err != nil {
-			return nil, err
+			return nil, false, err
 		}
 
 		message, attachment, err := node.PrepareHistory(user.id, ask, vk, history)
 		if err != nil {
-			return nil, err
+			return nil, false, err
 		}
 
 		_, err = vk.SendMessage(user.id, message, "", api.Params{"attachment": attachment})
-		return nil, err
+		return nil, false, err
 	case "back":
-		return &InitNode{}, nil
+		return nil, true, nil
 	}
 
-	return nil, nil
+	return nil, false, nil
+}
+
+func (node *PointsNode) Back(user *User, ask *Ask, vk *VK, prev_state StateNode) error {
+	return nil
 }
 
 func (node *PointsNode) PrepareHistory(user_id int, ask *Ask, vk *VK, history []Points) (message string, attachment string, err error) {

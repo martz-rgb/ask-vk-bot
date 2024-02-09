@@ -44,7 +44,7 @@ func (bot *ChatBot) MessageNew(ctx context.Context, obj events.MessageNewObject)
 	if err != nil {
 		bot.log.Errorw("error occured while new message",
 			"user_id", user_id,
-			"state", chat.state.ID(),
+			"state", chat.stack.Peek().ID(),
 			"error", err)
 	}
 }
@@ -68,7 +68,7 @@ func (bot *ChatBot) MessageEvent(ctx context.Context, obj events.MessageEventObj
 	if err != nil {
 		bot.log.Errorw("error occured while message event",
 			"user_id", user_id,
-			"state", chat.state.ID(),
+			"state", chat.stack.Peek().ID(),
 			"error", err)
 	}
 }

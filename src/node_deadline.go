@@ -16,7 +16,7 @@ func (node *DeadlineNode) ID() string {
 	return "deadline"
 }
 
-func (node *DeadlineNode) Entry(user *User, ask *Ask, vk *VK, params Params) error {
+func (node *DeadlineNode) Entry(user *User, ask *Ask, vk *VK) error {
 	members, roles, err := user.MembersRoles(ask)
 	if err != nil {
 		return err
@@ -59,30 +59,34 @@ func (node *DeadlineNode) Entry(user *User, ask *Ask, vk *VK, params Params) err
 	return err
 }
 
-func (node *DeadlineNode) NewMessage(user *User, ask *Ask, vk *VK, message string) (StateNode, error) {
-	return nil, nil
+func (node *DeadlineNode) NewMessage(user *User, ask *Ask, vk *VK, message string) (StateNode, bool, error) {
+	return nil, false, nil
 }
 
-func (node *DeadlineNode) KeyboardEvent(user *User, ask *Ask, vk *VK, payload *CallbackPayload) (StateNode, error) {
+func (node *DeadlineNode) KeyboardEvent(user *User, ask *Ask, vk *VK, payload *CallbackPayload) (StateNode, bool, error) {
 	switch payload.Command {
 	case "history":
 		history, err := ask.HistoryDeadline(user.id)
 		if err != nil {
-			return nil, err
+			return nil, false, err
 		}
 
 		message, attachment, err := node.PrepareHistory(user.id, ask, vk, history)
 		if err != nil {
-			return nil, err
+			return nil, false, err
 		}
 
 		_, err = vk.SendMessage(user.id, message, "", api.Params{"attachment": attachment})
-		return nil, err
+		return nil, false, err
 	case "back":
-		return &InitNode{}, nil
+		return nil, true, nil
 	}
 
-	return nil, nil
+	return nil, false, nil
+}
+
+func (node *DeadlineNode) Back(user *User, ask *Ask, vk *VK, prev_state StateNode) error {
+	return nil
 }
 
 func (node *DeadlineNode) PrepareHistory(user_id int, ask *Ask, vk *VK, history []Deadline) (message string, attachment string, err error) {

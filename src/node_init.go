@@ -6,8 +6,8 @@ func (node *InitNode) ID() string {
 	return "init"
 }
 
-func (node *InitNode) Entry(user *User, ask *Ask, vk *VK, params Params) error {
-	buttons := [][]Button{{
+func (node *InitNode) buttons() [][]Button {
+	return [][]Button{{
 		{
 			Label:   "Список ролей",
 			Color:   "secondary",
@@ -34,34 +34,34 @@ func (node *InitNode) Entry(user *User, ask *Ask, vk *VK, params Params) error {
 				Command: (&FAQNode{}).ID(),
 			},
 		}}
+}
 
-	silent, ok := params.Bool("silent")
+func (node *InitNode) Back(user *User, ask *Ask, vk *VK, prev StateNode) error {
+	return vk.ChangeKeyboard(user.id, CreateKeyboard(node, node.buttons()))
+}
 
-	if ok && silent {
-		return vk.ChangeKeyboard(user.id, CreateKeyboard(node, buttons))
-	}
-
-	_, err := vk.SendMessage(user.id, "Здравствуйте!", CreateKeyboard(node, buttons), nil)
+func (node *InitNode) Entry(user *User, ask *Ask, vk *VK) error {
+	_, err := vk.SendMessage(user.id, "Здравствуйте!", CreateKeyboard(node, node.buttons()), nil)
 	return err
 }
 
-func (node *InitNode) NewMessage(user *User, ask *Ask, vk *VK, message string) (StateNode, error) {
-	return nil, nil
+func (node *InitNode) NewMessage(user *User, ask *Ask, vk *VK, message string) (StateNode, bool, error) {
+	return nil, false, nil
 }
 
-func (node *InitNode) KeyboardEvent(user *User, ask *Ask, vk *VK, payload *CallbackPayload) (StateNode, error) {
+func (node *InitNode) KeyboardEvent(user *User, ask *Ask, vk *VK, payload *CallbackPayload) (StateNode, bool, error) {
 	switch payload.Command {
 	case (&FAQNode{}).ID():
-		return &FAQNode{}, nil
+		return &FAQNode{}, false, nil
 	case (&RolesNode{}).ID():
-		return &RolesNode{}, nil
+		return &RolesNode{}, false, nil
 	case (&ReservationNode{}).ID():
-		return &ReservationNode{}, nil
+		return &ReservationNode{}, false, nil
 	case (&PointsNode{}).ID():
-		return &PointsNode{}, nil
+		return &PointsNode{}, false, nil
 	case (&DeadlineNode{}).ID():
-		return &DeadlineNode{}, nil
+		return &DeadlineNode{}, false, nil
 	}
 
-	return nil, nil
+	return nil, false, nil
 }

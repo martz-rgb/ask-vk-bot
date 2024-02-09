@@ -12,7 +12,7 @@ func (node *RolesNode) ID() string {
 	return "roles"
 }
 
-func (node *RolesNode) Entry(user *User, ask *Ask, vk *VK, params Params) error {
+func (node *RolesNode) Entry(user *User, ask *Ask, vk *VK) error {
 	roles, err := ask.Roles()
 	if err != nil {
 		return err
@@ -27,41 +27,45 @@ func (node *RolesNode) Entry(user *User, ask *Ask, vk *VK, params Params) error 
 	return err
 }
 
-func (node *RolesNode) NewMessage(user *User, ask *Ask, vk *VK, message string) (StateNode, error) {
+func (node *RolesNode) NewMessage(user *User, ask *Ask, vk *VK, message string) (StateNode, bool, error) {
 	roles, err := ask.RolesStartWith(message)
 	if err != nil {
-		return nil, err
+		return nil, false, err
 	}
 
 	node.paginator.ChangeRoles(roles)
 
-	return nil, vk.ChangeKeyboard(user.id, CreateKeyboard(node, node.paginator.Buttons()))
+	return nil, false, vk.ChangeKeyboard(user.id, CreateKeyboard(node, node.paginator.Buttons()))
 }
 
-func (node *RolesNode) KeyboardEvent(user *User, ask *Ask, vk *VK, payload *CallbackPayload) (StateNode, error) {
+func (node *RolesNode) KeyboardEvent(user *User, ask *Ask, vk *VK, payload *CallbackPayload) (StateNode, bool, error) {
 	switch payload.Command {
 	case "roles":
 		role, err := node.paginator.Role(payload.Value)
 		if err != nil {
-			return nil, err
+			return nil, false, err
 		}
 
 		message := fmt.Sprintf("Идентификатор: %s\nТег: %s\nИмя: %s\nЗаголовок: %s\n",
 			role.Name, role.Tag, role.ShownName, role.CaptionName.String)
 
 		_, err = vk.SendMessage(user.id, message, "", nil)
-		return nil, err
+		return nil, false, err
 	case "previous":
 		node.paginator.Previous()
 
-		return nil, vk.ChangeKeyboard(user.id, CreateKeyboard(node, node.paginator.Buttons()))
+		return nil, false, vk.ChangeKeyboard(user.id, CreateKeyboard(node, node.paginator.Buttons()))
 	case "next":
 		node.paginator.Next()
 
-		return nil, vk.ChangeKeyboard(user.id, CreateKeyboard(node, node.paginator.Buttons()))
+		return nil, false, vk.ChangeKeyboard(user.id, CreateKeyboard(node, node.paginator.Buttons()))
 	case "back":
-		return &InitNode{}, nil
+		return nil, true, nil
 	}
 
-	return nil, nil
+	return nil, false, nil
+}
+
+func (node *RolesNode) Back(user *User, ask *Ask, vk *VK, prev_state StateNode) error {
+	return nil
 }
