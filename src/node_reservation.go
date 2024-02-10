@@ -56,22 +56,9 @@ func (node *ReservationNode) KeyboardEvent(user *User, ask *Ask, vk *VK, payload
 		message := fmt.Sprintf("Вы хотите забронировать роль %s?",
 			role.ShownName)
 
-		buttons := [][]Button{{
-			{
-				Label:   "Да",
-				Color:   "primary",
-				Command: "yes",
-			},
-			{
-				Label:   "Нет",
-				Color:   "negative",
-				Command: "no",
-			},
-		},
-		}
-
-		_, err = vk.SendMessage(user.id, message, CreateKeyboard(node, buttons), nil)
-		return nil, false, err
+		return &ConfirmationNode{
+			Message: message,
+		}, false, err
 	case "previous":
 		node.paginator.Previous()
 
@@ -82,15 +69,26 @@ func (node *ReservationNode) KeyboardEvent(user *User, ask *Ask, vk *VK, payload
 		return nil, false, vk.ChangeKeyboard(user.id, CreateKeyboard(node, node.paginator.Buttons()))
 	case "back":
 		return nil, true, nil
-	case "yes":
+	}
+
+	return nil, false, nil
+}
+
+func (node *ReservationNode) Back(user *User, ask *Ask, vk *VK, prev_state StateNode) error {
+	confirmation, ok := prev_state.(*ConfirmationNode)
+	if !ok {
+		return nil
+	}
+
+	if confirmation.Answer {
 		if node.role == nil {
 			err := errors.New("no role was chosen to confirm")
-			return nil, false, zaperr.Wrap(err, "")
+			return zaperr.Wrap(err, "")
 		}
 
 		deadline, err := ask.AddReservation(node.role.Name, user.id)
 		if err != nil {
-			return nil, false, err
+			return err
 		}
 
 		message := fmt.Sprintf("Роль %s забронирована до %s.",
@@ -99,16 +97,9 @@ func (node *ReservationNode) KeyboardEvent(user *User, ask *Ask, vk *VK, payload
 		)
 
 		_, err = vk.SendMessage(user.id, message, "", nil)
-		return nil, true, err
-	case "no":
-		node.role = nil
-		err := node.Entry(user, ask, vk)
-		return nil, false, err
+		return err
 	}
 
-	return nil, false, nil
-}
-
-func (node *ReservationNode) Back(user *User, ask *Ask, vk *VK, prev_state StateNode) error {
-	return nil
+	node.role = nil
+	return node.Entry(user, ask, vk)
 }
