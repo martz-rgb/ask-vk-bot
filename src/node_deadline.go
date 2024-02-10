@@ -85,8 +85,8 @@ func (node *DeadlineNode) KeyboardEvent(user *User, ask *Ask, vk *VK, payload *C
 	return nil, false, nil
 }
 
-func (node *DeadlineNode) Back(user *User, ask *Ask, vk *VK, prev_state StateNode) error {
-	return nil
+func (node *DeadlineNode) Back(user *User, ask *Ask, vk *VK, prev_state StateNode) (bool, error) {
+	return false,nil
 }
 
 func (node *DeadlineNode) PrepareHistory(user_id int, ask *Ask, vk *VK, history []Deadline) (message string, attachment string, err error) {

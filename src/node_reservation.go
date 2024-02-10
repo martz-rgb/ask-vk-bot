@@ -74,21 +74,21 @@ func (node *ReservationNode) KeyboardEvent(user *User, ask *Ask, vk *VK, payload
 	return nil, false, nil
 }
 
-func (node *ReservationNode) Back(user *User, ask *Ask, vk *VK, prev_state StateNode) error {
+func (node *ReservationNode) Back(user *User, ask *Ask, vk *VK, prev_state StateNode) (bool, error) {
 	confirmation, ok := prev_state.(*ConfirmationNode)
 	if !ok {
-		return nil
+		return false, nil
 	}
 
 	if confirmation.Answer {
 		if node.role == nil {
 			err := errors.New("no role was chosen to confirm")
-			return zaperr.Wrap(err, "")
+			return false, zaperr.Wrap(err, "")
 		}
 
 		deadline, err := ask.AddReservation(node.role.Name, user.id)
 		if err != nil {
-			return err
+			return false, err
 		}
 
 		message := fmt.Sprintf("Роль %s забронирована до %s.",
@@ -97,9 +97,9 @@ func (node *ReservationNode) Back(user *User, ask *Ask, vk *VK, prev_state State
 		)
 
 		_, err = vk.SendMessage(user.id, message, "", nil)
-		return err
+		return true, err
 	}
 
 	node.role = nil
-	return node.Entry(user, ask, vk)
+	return false, node.Entry(user, ask, vk)
 }

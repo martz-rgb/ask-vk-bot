@@ -36,8 +36,8 @@ func (node *InitNode) buttons() [][]Button {
 		}}
 }
 
-func (node *InitNode) Back(user *User, ask *Ask, vk *VK, prev StateNode) error {
-	return vk.ChangeKeyboard(user.id, CreateKeyboard(node, node.buttons()))
+func (node *InitNode) Back(user *User, ask *Ask, vk *VK, prev StateNode) (bool, error) {
+	return false, vk.ChangeKeyboard(user.id, CreateKeyboard(node, node.buttons()))
 }
 
 func (node *InitNode) Entry(user *User, ask *Ask, vk *VK) error {

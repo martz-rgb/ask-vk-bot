@@ -24,7 +24,7 @@ type StateNode interface {
 	ID() string
 
 	Entry(user *User, ask *Ask, vk *VK) error
-	Back(user *User, ask *Ask, vk *VK, prev_state StateNode) error
+	Back(user *User, ask *Ask, vk *VK, prev_state StateNode) (bool, error)
 	NewMessage(user *User, ask *Ask, vk *VK, message string) (StateNode, bool, error)
 	KeyboardEvent(user *User, ask *Ask, vk *VK, payload *CallbackPayload) (StateNode, bool, error)
 }

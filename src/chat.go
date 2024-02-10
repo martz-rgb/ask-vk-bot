@@ -73,6 +73,7 @@ func (c *Chat) Work(ask *Ask, vk *VK, input interface{}, init int) (err error) {
 
 	var next StateNode
 	var back bool
+
 	switch event := input.(type) {
 	case events.MessageNewObject:
 		next, back, err = c.stack.Peek().NewMessage(c.user, ask, vk, event.Message.Text)
@@ -108,11 +109,13 @@ func (c *Chat) Work(ask *Ask, vk *VK, input interface{}, init int) (err error) {
 			return err
 		}
 	} else if back {
-		prev := c.stack.Pop()
-		err := c.stack.Peek().Back(c.user, ask, vk, prev)
-		if err != nil {
-			c.Reset(vk)
-			return err
+		for back {
+			prev := c.stack.Pop()
+			back, err = c.stack.Peek().Back(c.user, ask, vk, prev)
+			if err != nil {
+				c.Reset(vk)
+				return err
+			}
 		}
 	}
 

@@ -53,6 +53,6 @@ func (node *FAQNode) KeyboardEvent(user *User, ask *Ask, vk *VK, payload *Callba
 	return nil, false, nil
 }
 
-func (node *FAQNode) Back(user *User, ask *Ask, vk *VK, prev_state StateNode) error {
-	return nil
+func (node *FAQNode) Back(user *User, ask *Ask, vk *VK, prev_state StateNode) (bool, error) {
+	return false, nil
 }

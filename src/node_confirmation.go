@@ -29,8 +29,8 @@ func (node *ConfirmationNode) Entry(user *User, ask *Ask, vk *VK) error {
 	return err
 }
 
-func (node *ConfirmationNode) Back(user *User, ask *Ask, vk *VK, prev_state StateNode) error {
-	return nil
+func (node *ConfirmationNode) Back(user *User, ask *Ask, vk *VK, prev_state StateNode) (bool, error) {
+	return false, nil
 }
 
 func (node *ConfirmationNode) NewMessage(user *User, ask *Ask, vk *VK, message string) (StateNode, bool, error) {
