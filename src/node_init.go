@@ -50,6 +50,9 @@ func (node *InitNode) buttons(is_admin bool) [][]Button {
 
 func (node *InitNode) Entry(user *User, ask *Ask, vk *VK) error {
 	is_admin, err := ask.IsAdmin(user.id)
+	if err != nil {
+		return err
+	}
 
 	_, err = vk.SendMessage(user.id, "Здравствуйте!", CreateKeyboard(node, node.buttons(is_admin)), nil)
 	return err
