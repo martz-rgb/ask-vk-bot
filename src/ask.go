@@ -25,6 +25,23 @@ func NewAsk(config *AskConfig, db *DB) *Ask {
 	}
 }
 
+// administration
+func (a *Ask) IsAdmin(vk_id int) (bool, error) {
+	var admin []Administration
+
+	query := sqlf.From("administration").
+		Bind(&Administration{}).
+		Where("vk_id == ?", vk_id)
+
+	err := a.db.Select(&admin, query.String(), query.Args()...)
+	if err != nil {
+		return false, zaperr.Wrap(err, "failed to get administration",
+			zap.String("query", query.String()))
+	}
+
+	return len(admin) > 0, nil
+}
+
 // roles
 // TO-DO should roles be sorted alphabetically or by groups
 func (a *Ask) Roles() ([]Role, error) {
@@ -265,7 +282,7 @@ func (a *Ask) AddMember(vk_id int, role string) error {
 }
 
 // reservations
-func (a *Ask) AddReservation(role string, vk_id int) (time.Time, error) {
+func (a *Ask) AddReservation(role string, vk_id int, info int) (time.Time, error) {
 	// got right date
 	now := time.Now().
 		UTC().
@@ -284,7 +301,8 @@ func (a *Ask) AddReservation(role string, vk_id int) (time.Time, error) {
 	query := sqlf.InsertInto("reservations").
 		Set("role", role).
 		Set("vk_id", vk_id).
-		Set("deadline", deadline)
+		Set("deadline", deadline).
+		Set("info", info)
 	_, err := a.db.Exec(query.String(), query.Args()...)
 	if err != nil {
 		return time.Time{}, zaperr.Wrap(err, "failed to add reservation",
@@ -292,8 +310,55 @@ func (a *Ask) AddReservation(role string, vk_id int) (time.Time, error) {
 			zap.Int("vk_id", vk_id),
 			zap.Time("deadline", deadline),
 			zap.String("query", query.String()),
+			zap.Int("info", info),
 			zap.Any("args", query.Args()))
 	}
 
 	return deadline, nil
+}
+
+func (a *Ask) UnderConsiderationReservations() ([]Reservation, error) {
+	var reservations []Reservation
+
+	query := sqlf.From("reservations").
+		Bind(&Reservation{}).
+		Where("status == ?", ReservationStatuses.UnderConsideration)
+
+	err := a.db.Select(reservations, query.String(), query.Args()...)
+	if err != nil {
+		return nil, zaperr.Wrap(err, "failed to get reservations under consideration",
+			zap.String("query", query.String()),
+			zap.Any("args", query.Args()))
+	}
+
+	return reservations, nil
+}
+
+func (a *Ask) ChangeReservationStatus(id int, status ReservationStatus) error {
+	query := sqlf.Update("reservations").
+		Set("status", status).
+		Where("id == ?", id)
+
+	_, err := a.db.Exec(query.String(), query.Args()...)
+	if err != nil {
+		return zaperr.Wrap(err, "failed to change reservation status",
+			zap.String("query", query.String()),
+			zap.Any("args", query.Args()))
+	}
+
+	return nil
+}
+
+func (a *Ask) DeleteReservation(id int) error {
+	query := sqlf.DeleteFrom("reservation").
+		Where("id == ?", id)
+
+	_, err := a.db.Exec(query.String(), query.Args()...)
+	if err != nil {
+		return zaperr.Wrap(err, "failed to delete reservation",
+			zap.String("query", query.String()),
+			zap.Any("args", query.Args()))
+	}
+
+	return nil
 }

@@ -168,5 +168,6 @@ type Reservation struct {
 	VkID      int               `db:"vk_id"`
 	Deadline  time.Time         `db:"deadline"`
 	Status    ReservationStatus `db:"status"`
+	Info      int               `db:"info"` // id of vk message contained information
 	Timestamp time.Time         `db:"timestamp"`
 }

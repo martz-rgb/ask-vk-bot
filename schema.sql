@@ -74,5 +74,7 @@ CREATE TABLE IF NOT EXISTS reservations (
     vk_id INT NOT NULL,
     deadline DATETIME NOT NULL,
     status TEXT CHECK(status IN ('Under Consideration', 'In Progress', 'Done')) NOT NULL DEFAULT 'Under Consideration',
+    -- id of vk message contained information
+    info INT NOT NULL,
     timestamp DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP
 );
