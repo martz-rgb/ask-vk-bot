@@ -113,12 +113,14 @@ func (v *VK) SendMessage(user_id int, message string, keyboard string, args api.
 	return response, nil
 }
 
-func (v *VK) EditMessage(peer_id int, message_id int, message string, keyboard string) error {
+func (v *VK) EditMessage(peer_id int, message_id int, message string, keyboard string, attachments string) error {
 	params := api.Params{
-		"peer_id":    peer_id,
-		"message_id": message_id,
-		"message":    message,
-		"keyboard":   keyboard,
+		"peer_id":               peer_id,
+		"message_id":            message_id,
+		"message":               message,
+		"keyboard":              keyboard,
+		"attachment":            attachments,
+		"keep_forward_messages": true,
 	}
 
 	response, err := v.api.MessagesEdit(params)
@@ -230,7 +232,9 @@ func (v *VK) ChangeKeyboardWithoutDelete(user_id int, keyboard string) error {
 	}
 
 	// vk allows edit any group's message somehow
-	return v.EditMessage(user_id, message.ID, message.Text, keyboard)
+	attachments := message.Attachments
+
+	return v.EditMessage(user_id, message.ID, message.Text, keyboard, ToAttachments(attachments))
 }
 
 func (v *VK) WallPostNew(group_id int, message string, attachments string, signed bool, publish_date int64) error {
@@ -270,4 +274,37 @@ func (v *VK) UploadDocument(peer_id int, name string, file io.Reader) (int, erro
 		"response", response)
 
 	return response.Doc.ID, nil
+}
+
+func ToAttachments(attachments []object.MessagesMessageAttachment) string {
+	result := []string{}
+
+	for _, a := range attachments {
+		switch a.Type {
+		case "photo":
+			result = append(result, a.Photo.ToAttachment())
+		case "video":
+			result = append(result, a.Video.ToAttachment())
+		case "audio":
+			result = append(result, a.Audio.ToAttachment())
+		case "doc":
+			result = append(result, a.Doc.ToAttachment())
+		case "link":
+			//result = append(result, a.Link.ToAttachment())
+		case "market":
+			result = append(result, a.Market.ToAttachment())
+		case "market_album":
+			result = append(result, a.MarketMarketAlbum.ToAttachment())
+		case "wall":
+			//result = append(resul)
+		case "wall_reply":
+			//result = append(result, a.WallReply.ToAttachment())
+		case "sticker":
+			//result =append(result, a.Sticker.ToAttachment())
+		case "gift":
+			//result = append(result, a.Gift.ToAttachment())
+		}
+	}
+
+	return strings.Join(result, ",")
 }
