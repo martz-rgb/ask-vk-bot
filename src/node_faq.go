@@ -34,7 +34,7 @@ func (node *FAQNode) Entry(user *User, ask *Ask, vk *VK) error {
 	return err
 }
 
-func (node *FAQNode) NewMessage(user *User, ask *Ask, vk *VK, message string) (StateNode, bool, error) {
+func (node *FAQNode) NewMessage(user *User, ask *Ask, vk *VK, message *Message) (StateNode, bool, error) {
 	return nil, false, nil
 }
 

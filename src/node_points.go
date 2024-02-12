@@ -56,7 +56,7 @@ func (node *PointsNode) Entry(user *User, ask *Ask, vk *VK) error {
 	return err
 }
 
-func (node *PointsNode) NewMessage(user *User, ask *Ask, vk *VK, message string) (StateNode, bool, error) {
+func (node *PointsNode) NewMessage(user *User, ask *Ask, vk *VK, message *Message) (StateNode, bool, error) {
 	return nil, false, nil
 }
 

@@ -8,25 +8,19 @@ import (
 	"go.uber.org/zap"
 )
 
-type Params map[string]interface{}
-
-func (p Params) Bool(key string) (value bool, ok bool) {
-	v, ok := p[key]
-	if !ok {
-		return false, false
-	}
-
-	value, ok = v.(bool)
-	return
-}
-
 type StateNode interface {
 	ID() string
 
 	Entry(user *User, ask *Ask, vk *VK) error
-	Back(user *User, ask *Ask, vk *VK, prev_state StateNode) (bool, error)
-	NewMessage(user *User, ask *Ask, vk *VK, message string) (StateNode, bool, error)
+	NewMessage(user *User, ask *Ask, vk *VK, message *Message) (StateNode, bool, error)
 	KeyboardEvent(user *User, ask *Ask, vk *VK, payload *CallbackPayload) (StateNode, bool, error)
+	Back(user *User, ask *Ask, vk *VK, prev_state StateNode) (bool, error)
+}
+
+type Message struct {
+	ID          int
+	Text        string
+	Attachments []object.MessagesMessageAttachment
 }
 
 type CallbackPayload struct {

@@ -76,7 +76,13 @@ func (c *Chat) Work(ask *Ask, vk *VK, input interface{}, init int) (err error) {
 
 	switch event := input.(type) {
 	case events.MessageNewObject:
-		next, back, err = c.stack.Peek().NewMessage(c.user, ask, vk, event.Message.Text)
+		message := &Message{
+			ID:          event.Message.ID,
+			Text:        event.Message.Text,
+			Attachments: event.Message.Attachments,
+		}
+
+		next, back, err = c.stack.Peek().NewMessage(c.user, ask, vk, message)
 		if err != nil {
 			c.Reset(vk)
 			return err

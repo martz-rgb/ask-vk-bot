@@ -27,8 +27,8 @@ func (node *RolesNode) Entry(user *User, ask *Ask, vk *VK) error {
 	return err
 }
 
-func (node *RolesNode) NewMessage(user *User, ask *Ask, vk *VK, message string) (StateNode, bool, error) {
-	roles, err := ask.RolesStartWith(message)
+func (node *RolesNode) NewMessage(user *User, ask *Ask, vk *VK, message *Message) (StateNode, bool, error) {
+	roles, err := ask.RolesStartWith(message.Text)
 	if err != nil {
 		return nil, false, err
 	}
@@ -66,6 +66,6 @@ func (node *RolesNode) KeyboardEvent(user *User, ask *Ask, vk *VK, payload *Call
 	return nil, false, nil
 }
 
-func (node *RolesNode) Back(user *User, ask *Ask, vk *VK, prev_state StateNode) (bool,  error) {
+func (node *RolesNode) Back(user *User, ask *Ask, vk *VK, prev_state StateNode) (bool, error) {
 	return false, nil
 }
