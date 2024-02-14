@@ -5,7 +5,7 @@ import (
 )
 
 type RolesNode struct {
-	paginator *RolesPaginator
+	paginator *Paginator[Role]
 }
 
 func (node *RolesNode) ID() string {
@@ -18,7 +18,14 @@ func (node *RolesNode) Entry(user *User, ask *Ask, vk *VK) error {
 		return err
 	}
 
-	node.paginator = NewRolesPaginator(roles, RowsCount, ColsCount)
+	to_label := func(role Role) string {
+		return role.ShownName
+	}
+	to_value := func(role Role) string {
+		return role.Name
+	}
+
+	node.paginator = NewPaginator[Role](roles, "roles", RowsCount, ColsCount, to_label, to_value)
 
 	message := `Выберите нужную роль с помощи клавиатуры или начните вводить и отправьте часть, с которой начинается имя роли.
 				Отправьте специальный символ '%' для того, чтобы вернуться к полному списку ролей.`
@@ -33,7 +40,7 @@ func (node *RolesNode) NewMessage(user *User, ask *Ask, vk *VK, message *Message
 		return nil, false, err
 	}
 
-	node.paginator.ChangeRoles(roles)
+	node.paginator.ChangeObjects(roles)
 
 	return nil, false, vk.ChangeKeyboard(user.id, CreateKeyboard(node, node.paginator.Buttons()))
 }
@@ -41,7 +48,7 @@ func (node *RolesNode) NewMessage(user *User, ask *Ask, vk *VK, message *Message
 func (node *RolesNode) KeyboardEvent(user *User, ask *Ask, vk *VK, payload *CallbackPayload) (StateNode, bool, error) {
 	switch payload.Command {
 	case "roles":
-		role, err := node.paginator.Role(payload.Value)
+		role, err := node.paginator.Object(payload.Value)
 		if err != nil {
 			return nil, false, err
 		}
@@ -51,16 +58,15 @@ func (node *RolesNode) KeyboardEvent(user *User, ask *Ask, vk *VK, payload *Call
 
 		_, err = vk.SendMessage(user.id, message, "", nil)
 		return nil, false, err
-	case "previous":
-		node.paginator.Previous()
+	case "paginator":
+		back := node.paginator.Control(payload.Value)
 
-		return nil, false, vk.ChangeKeyboard(user.id, CreateKeyboard(node, node.paginator.Buttons()))
-	case "next":
-		node.paginator.Next()
+		if back {
+			return nil, true, nil
+		}
 
-		return nil, false, vk.ChangeKeyboard(user.id, CreateKeyboard(node, node.paginator.Buttons()))
-	case "back":
-		return nil, true, nil
+		return nil, false, vk.ChangeKeyboard(user.id,
+			CreateKeyboard(node, node.paginator.Buttons()))
 	}
 
 	return nil, false, nil
