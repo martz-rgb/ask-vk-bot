@@ -62,7 +62,7 @@ func (c *Chat) Work(ask *Ask, vk *VK, input interface{}, init int) (err error) {
 	if init != NoInit {
 		err := c.stack.Peek().Entry(c.user, ask, vk)
 		if err != nil {
-			c.Reset(vk)
+			c.Reset(vk, ask)
 			return err
 		}
 
@@ -84,14 +84,14 @@ func (c *Chat) Work(ask *Ask, vk *VK, input interface{}, init int) (err error) {
 
 		next, back, err = c.stack.Peek().NewMessage(c.user, ask, vk, message)
 		if err != nil {
-			c.Reset(vk)
+			c.Reset(vk, ask)
 			return err
 		}
 
 	case events.MessageEventObject:
 		payload, err := UnmarshalPayload(c.stack.Peek(), event.Payload)
 		if err != nil {
-			c.Reset(vk)
+			c.Reset(vk, ask)
 			return err
 		}
 
@@ -102,7 +102,7 @@ func (c *Chat) Work(ask *Ask, vk *VK, input interface{}, init int) (err error) {
 
 		next, back, err = c.stack.Peek().KeyboardEvent(c.user, ask, vk, payload)
 		if err != nil {
-			c.Reset(vk)
+			c.Reset(vk, ask)
 			return err
 		}
 	}
@@ -111,7 +111,7 @@ func (c *Chat) Work(ask *Ask, vk *VK, input interface{}, init int) (err error) {
 		c.stack.Push(next)
 		err := c.stack.Peek().Entry(c.user, ask, vk)
 		if err != nil {
-			c.Reset(vk)
+			c.Reset(vk, ask)
 			return err
 		}
 	} else if back {
@@ -119,7 +119,7 @@ func (c *Chat) Work(ask *Ask, vk *VK, input interface{}, init int) (err error) {
 			prev := c.stack.Pop()
 			back, err = c.stack.Peek().Back(c.user, ask, vk, prev)
 			if err != nil {
-				c.Reset(vk)
+				c.Reset(vk, ask)
 				return err
 			}
 		}
@@ -128,9 +128,11 @@ func (c *Chat) Work(ask *Ask, vk *VK, input interface{}, init int) (err error) {
 	return nil
 }
 
-func (c *Chat) Reset(vk *VK) {
+func (c *Chat) Reset(vk *VK, ask *Ask) {
 	c.stack = &StateStack{c.reset_state}
 
 	message := "В ходе работы произошла ошибка. Пожалуйста, попробуйте еще раз попозже."
 	vk.SendMessage(c.user.id, message, "", nil)
+
+	c.stack.Peek().Back(c.user, ask, vk, nil)
 }
