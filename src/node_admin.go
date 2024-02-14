@@ -51,6 +51,7 @@ func (node *AdminNode) NewMessage(user *User, ask *Ask, vk *VK, message *Message
 func (node *AdminNode) KeyboardEvent(user *User, ask *Ask, vk *VK, payload *CallbackPayload) (StateNode, bool, error) {
 	switch payload.Command {
 	case "reservation":
+		return &AdminReservationNode{}, false, nil
 	case "back":
 		return nil, true, nil
 	}
@@ -58,5 +59,5 @@ func (node *AdminNode) KeyboardEvent(user *User, ask *Ask, vk *VK, payload *Call
 	return nil, false, nil
 }
 func (node *AdminNode) Back(user *User, ask *Ask, vk *VK, prev_state StateNode) (bool, error) {
-	return false, nil
+	return false, node.Entry(user, ask, vk)
 }
