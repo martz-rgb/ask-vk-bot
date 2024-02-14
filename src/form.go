@@ -10,27 +10,36 @@ import (
 type Form struct {
 	fields []FormField
 	index  int
+
+	paginator *Paginator[Option]
 }
 
-func NewForm(fields []FormField) *Form {
-	return &Form{
+func NewForm(fields ...FormField) (*Form, error) {
+	if len(fields) == 0 {
+		err := errors.New("form must not be empty")
+		return nil, zaperr.Wrap(err, "")
+	}
+
+	form := &Form{
 		fields: fields,
 		index:  0,
 	}
+	form.updatePaginator()
+
+	return form, nil
 }
 
-func (f *Form) Request() (string, error) {
-	if f.index < len(f.fields) {
-		return f.fields[f.index].Request(), nil
-	}
-	err := errors.New("out of fields range")
-	return "", zaperr.Wrap(err, "",
-		zap.Int("index", f.index),
-		zap.Any("fields", f.fields))
+func (f *Form) Request() *RequestMessage {
+	return f.fields[f.index].Request()
 }
 
-func (f *Form) SetAndValidate(value *Message) (bool, string, error) {
-	f.fields[f.index].SetValue(value)
+func (f *Form) SetFromMessageAndValidate(m *Message) (bool, string, error) {
+	f.fields[f.index].SetFromMessage(m)
+	return f.fields[f.index].Validate()
+}
+
+func (f *Form) SetOptionAndValidate(id string) (bool, string, error) {
+	f.fields[f.index].SetOption(id)
 	return f.fields[f.index].Validate()
 }
 
@@ -40,53 +49,40 @@ func (f *Form) Next() (end bool) {
 		f.index = len(f.fields) - 1
 		return true
 	}
+
+	f.updatePaginator()
 	return false
 }
 
-func (f *Form) Previous() {
+func (f *Form) Up() {
 	f.index--
 	if f.index < 0 {
 		f.index = 0
 	}
 }
 
+func (f *Form) Control(command string) bool {
+	return f.paginator.Control(command)
+}
+
+func (f *Form) updatePaginator() {
+	options := f.fields[f.index].Options()
+
+	f.paginator = NewPaginator[Option](options, "form", RowsCount, ColsCount, OptionToLabel, OptionToValue)
+}
+
 func (f *Form) Buttons() [][]Button {
-	buttons := [][]Button{
-		{
-			{
-				Label:   "Назад",
-				Color:   NegativeColor,
-				Command: "back",
-			},
-		},
-	}
+	special := []Button{}
 
 	if f.index > 0 {
-		prev_button := []Button{
-			{
-				Label:   "К предыдущему",
-				Color:   PrimaryColor,
-				Command: "previous",
-			},
-		}
-		buttons[0] = append(prev_button, buttons[0]...)
+		special = append(special, Button{
+			Label:   "^",
+			Color:   PrimaryColor,
+			Command: "up",
+		})
 	}
 
-	if !f.fields[f.index].Mandatory() {
-		skip_button := [][]Button{
-			{
-				{
-					Label:   "Оставить пустым",
-					Color:   SecondaryColor,
-					Command: "skip",
-				},
-			},
-		}
-
-		buttons = append(skip_button, buttons...)
-	}
-
-	return buttons
+	return f.paginator.Buttons(special...)
 }
 
 func (f *Form) Value(index int) (interface{}, error) {

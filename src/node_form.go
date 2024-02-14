@@ -22,17 +22,14 @@ func (node *FormNode) Entry(user *User, ask *Ask, vk *VK) error {
 		return zaperr.Wrap(err, "")
 	}
 
-	request, err := node.Form.Request()
-	if err != nil {
-		return err
-	}
+	request := node.Form.Request()
 
-	_, err = vk.SendMessage(user.id, request, CreateKeyboard(node, node.Form.Buttons()), nil)
+	_, err := vk.SendMessage(user.id, request.Text, CreateKeyboard(node, node.Form.Buttons()), request.Params)
 	return err
 }
 
 func (node *FormNode) NewMessage(user *User, ask *Ask, vk *VK, message *Message) (StateNode, bool, error) {
-	ok, user_error, err := node.Form.SetAndValidate(message)
+	ok, user_error, err := node.Form.SetFromMessageAndValidate(message)
 	if err != nil {
 		return nil, false, err
 	}
@@ -45,15 +42,12 @@ func (node *FormNode) NewMessage(user *User, ask *Ask, vk *VK, message *Message)
 
 	end := node.Form.Next()
 	if !end {
-		request, err := node.Form.Request()
-		if err != nil {
-			return nil, false, err
-		}
+		request := node.Form.Request()
 
 		_, err = vk.SendMessage(user.id,
-			request,
+			request.Text,
 			CreateKeyboard(node, node.Form.Buttons()),
-			nil)
+			request.Params)
 		return nil, false, err
 	}
 
@@ -63,22 +57,8 @@ func (node *FormNode) NewMessage(user *User, ask *Ask, vk *VK, message *Message)
 
 func (node *FormNode) KeyboardEvent(user *User, ask *Ask, vk *VK, payload *CallbackPayload) (StateNode, bool, error) {
 	switch payload.Command {
-	case "previous":
-		node.Form.Previous()
-		request, err := node.Form.Request()
-		if err != nil {
-			return nil, false, err
-		}
-
-		_, err = vk.SendMessage(user.id,
-			request,
-			CreateKeyboard(node, node.Form.Buttons()),
-			nil)
-		return nil, false, err
-	case "back":
-		return nil, true, nil
-	case "empty":
-		ok, user_error, err := node.Form.SetAndValidate(nil)
+	case "form":
+		ok, user_error, err := node.Form.SetOptionAndValidate(payload.Value)
 		if err != nil {
 			return nil, false, err
 		}
@@ -91,20 +71,35 @@ func (node *FormNode) KeyboardEvent(user *User, ask *Ask, vk *VK, payload *Callb
 
 		end := node.Form.Next()
 		if !end {
-			request, err := node.Form.Request()
-			if err != nil {
-				return nil, false, err
-			}
+			request := node.Form.Request()
 
 			_, err = vk.SendMessage(user.id,
-				request,
+				request.Text,
 				CreateKeyboard(node, node.Form.Buttons()),
-				nil)
+				request.Params)
 			return nil, false, err
 		}
 
 		node.FilledOut = true
 		return nil, true, nil
+	case "up":
+		node.Form.Up()
+		request := node.Form.Request()
+
+		_, err := vk.SendMessage(user.id,
+			request.Text,
+			CreateKeyboard(node, node.Form.Buttons()),
+			request.Params)
+		return nil, false, err
+	case "paginator":
+		back := node.Form.Control(payload.Value)
+
+		if back {
+			return nil, true, nil
+		}
+
+		return nil, false, vk.ChangeKeyboard(user.id,
+			CreateKeyboard(node, node.Form.Buttons()))
 	}
 
 	return nil, false, nil
