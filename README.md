@@ -10,12 +10,12 @@ about reservation:
 
 TO-DO list:
 
-- [ ] deadline + member system 
-- [ ] система прав
-- [ ] resetvations
+- [ ] notify users without breaking flow (notify only when stack is empty?)
+- [ ] polls
 - [ ] listener time probably
 - [ ] points (spend)
 - [ ] roles groups + boards\albums
+- [ ] configuration with or without confirmation reservations
 - [ ] manage secrets with docker swarm? 
 - [ ] *maybe some collaborators support
 
@@ -33,3 +33,6 @@ done:
 - [x] um very thing to do IS TO REFACTOR NODES... i appreciate myself but what the f*ck (сойдет)
 - [x] логирование без синглтона... -> no log in db\vk\nodes, up to chat; not in bot because i want it clear (i think?)
 - [x] db migration (let's fucking go)
+- [x] resetvations
+- [x] система прав (пока достаточно)
+- [x] deadline + member system 
