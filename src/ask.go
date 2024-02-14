@@ -324,7 +324,7 @@ func (a *Ask) UnderConsiderationReservations() ([]Reservation, error) {
 		Bind(&Reservation{}).
 		Where("status == ?", ReservationStatuses.UnderConsideration)
 
-	err := a.db.Select(reservations, query.String(), query.Args()...)
+	err := a.db.Select(&reservations, query.String(), query.Args()...)
 	if err != nil {
 		return nil, zaperr.Wrap(err, "failed to get reservations under consideration",
 			zap.String("query", query.String()),
@@ -350,7 +350,7 @@ func (a *Ask) ChangeReservationStatus(id int, status ReservationStatus) error {
 }
 
 func (a *Ask) DeleteReservation(id int) error {
-	query := sqlf.DeleteFrom("reservation").
+	query := sqlf.DeleteFrom("reservations").
 		Where("id == ?", id)
 
 	_, err := a.db.Exec(query.String(), query.Args()...)
