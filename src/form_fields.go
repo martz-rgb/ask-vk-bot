@@ -3,15 +3,9 @@ package main
 import (
 	"errors"
 
-	"github.com/SevereCloud/vksdk/v2/api"
 	"github.com/hori-ryota/zaperr"
 	"go.uber.org/zap"
 )
-
-type RequestMessage struct {
-	Text   string
-	Params api.Params
-}
 
 type Option struct {
 	ID    string
@@ -28,7 +22,7 @@ func OptionToValue(option Option) string {
 }
 
 type FormField interface {
-	Request() *RequestMessage
+	Request() *MessageParams
 
 	Options() []Option
 
@@ -43,19 +37,19 @@ type FormField interface {
 // about field
 // Information about user for confirm reservations
 type AboutField struct {
-	request *RequestMessage
+	request *MessageParams
 
 	value interface{}
 }
 
-func NewAboutField(request *RequestMessage) *AboutField {
+func NewAboutField(request *MessageParams) *AboutField {
 	return &AboutField{
 		request: request,
 		value:   nil,
 	}
 }
 
-func (f *AboutField) Request() *RequestMessage {
+func (f *AboutField) Request() *MessageParams {
 	return f.request
 }
 
@@ -96,18 +90,18 @@ func (f *AboutField) Validate() (bool, string, error) {
 
 // confirm reservation field
 type ConfirmReservationField struct {
-	request *RequestMessage
+	request *MessageParams
 	value   interface{}
 }
 
-func NewConfirmReservation(request *RequestMessage) *ConfirmReservationField {
+func NewConfirmReservation(request *MessageParams) *ConfirmReservationField {
 	return &ConfirmReservationField{
 		request: request,
 		value:   nil,
 	}
 }
 
-func (f *ConfirmReservationField) Request() *RequestMessage {
+func (f *ConfirmReservationField) Request() *MessageParams {
 	return f.request
 }
 

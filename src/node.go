@@ -3,6 +3,7 @@ package main
 import (
 	"encoding/json"
 
+	"github.com/SevereCloud/vksdk/v2/api"
 	"github.com/SevereCloud/vksdk/v2/object"
 	"github.com/hori-ryota/zaperr"
 	"go.uber.org/zap"
@@ -15,6 +16,11 @@ type StateNode interface {
 	NewMessage(user *User, ask *Ask, vk *VK, message *Message) (StateNode, bool, error)
 	KeyboardEvent(user *User, ask *Ask, vk *VK, payload *CallbackPayload) (StateNode, bool, error)
 	Back(user *User, ask *Ask, vk *VK, prev_state StateNode) (bool, error)
+}
+
+type MessageParams struct {
+	Text   string
+	Params api.Params
 }
 
 type Message struct {

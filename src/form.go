@@ -29,7 +29,7 @@ func NewForm(fields ...FormField) (*Form, error) {
 	return form, nil
 }
 
-func (f *Form) Request() *RequestMessage {
+func (f *Form) Request() *MessageParams {
 	return f.fields[f.index].Request()
 }
 

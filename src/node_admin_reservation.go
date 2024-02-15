@@ -77,7 +77,7 @@ func (node *AdminReservationNode) KeyboardEvent(user *User, ask *Ask, vk *VK, pa
 			"forward": string(forward),
 		}
 
-		request := &RequestMessage{
+		request := &MessageParams{
 			Text:   text,
 			Params: params,
 		}

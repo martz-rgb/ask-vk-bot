@@ -64,7 +64,7 @@ func (node *ReservationNode) KeyboardEvent(user *User, ask *Ask, vk *VK, payload
 		message := fmt.Sprintf("Вы хотите забронировать роль %s?",
 			role.ShownName)
 
-		request := &RequestMessage{
+		request := &MessageParams{
 			Text: "Расскажите про себя в одном сообщении.",
 		}
 		form, err := NewForm(NewAboutField(request))
