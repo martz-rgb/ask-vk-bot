@@ -21,8 +21,8 @@ func (node *PointsNode) ID() string {
 	return "points"
 }
 
-func (node *PointsNode) Entry(user *User, ask *Ask, vk *VK) error {
-	points, err := ask.Points(user.id)
+func (node *PointsNode) Entry(user *User, c *Controls) error {
+	points, err := c.Ask.Points(user.id)
 	if err != nil {
 		return err
 	}
@@ -52,32 +52,32 @@ func (node *PointsNode) Entry(user *User, ask *Ask, vk *VK) error {
 
 	message := fmt.Sprintf("Ваше текущее количество баллов: %d", points)
 
-	_, err = vk.SendMessage(user.id, message, CreateKeyboard(node, buttons), nil)
+	_, err = c.Vk.SendMessage(user.id, message, CreateKeyboard(node, buttons), nil)
 	return err
 }
 
-func (node *PointsNode) NewMessage(user *User, ask *Ask, vk *VK, message *Message) (StateNode, bool, error) {
+func (node *PointsNode) NewMessage(user *User, c *Controls, message *Message) (StateNode, bool, error) {
 	return nil, false, nil
 }
 
-func (node *PointsNode) KeyboardEvent(user *User, ask *Ask, vk *VK, payload *CallbackPayload) (StateNode, bool, error) {
+func (node *PointsNode) KeyboardEvent(user *User, c *Controls, payload *CallbackPayload) (StateNode, bool, error) {
 	switch payload.Command {
 	case "spend":
 		message := `Пока что не на что тратить баллы.`
-		_, err := vk.SendMessage(user.id, message, "", nil)
+		_, err := c.Vk.SendMessage(user.id, message, "", nil)
 		return nil, false, err
 	case "history":
-		history, err := ask.HistoryPoints(user.id)
+		history, err := c.Ask.HistoryPoints(user.id)
 		if err != nil {
 			return nil, false, err
 		}
 
-		message, attachment, err := node.PrepareHistory(user.id, ask, vk, history)
+		message, attachment, err := node.PrepareHistory(user.id, c, history)
 		if err != nil {
 			return nil, false, err
 		}
 
-		_, err = vk.SendMessage(user.id, message, "", api.Params{"attachment": attachment})
+		_, err = c.Vk.SendMessage(user.id, message, "", api.Params{"attachment": attachment})
 		return nil, false, err
 	case "back":
 		return nil, true, nil
@@ -86,11 +86,11 @@ func (node *PointsNode) KeyboardEvent(user *User, ask *Ask, vk *VK, payload *Cal
 	return nil, false, nil
 }
 
-func (node *PointsNode) Back(user *User, ask *Ask, vk *VK, prev_state StateNode) (bool, error) {
+func (node *PointsNode) Back(user *User, c *Controls, prev_state StateNode) (bool, error) {
 	return false, nil
 }
 
-func (node *PointsNode) PrepareHistory(user_id int, ask *Ask, vk *VK, history []Points) (message string, attachment string, err error) {
+func (node *PointsNode) PrepareHistory(user_id int, c *Controls, history []Points) (message string, attachment string, err error) {
 	if len(history) == 0 {
 		return "Вы еще не получали баллы в нашем сообществе.", "", nil
 	}
@@ -133,7 +133,7 @@ func (node *PointsNode) PrepareHistory(user_id int, ask *Ask, vk *VK, history []
 	name := fmt.Sprintf("full_history_%d_%s.txt", user_id, time.Now().Format(time.DateOnly))
 	full_history := strings.Join(events, "\n")
 
-	id, err := vk.UploadDocument(user_id, name, bytes.NewReader([]byte(full_history)))
+	id, err := c.Vk.UploadDocument(user_id, name, bytes.NewReader([]byte(full_history)))
 	if err != nil {
 		return "", "", err
 	}

@@ -2,22 +2,28 @@ package main
 
 import (
 	"sync"
-	"time"
+	"sync/atomic"
 )
 
-// vk longpoll is sequential, but deleting with timer is not
-type Cache struct {
-	mu *sync.Mutex
+type Record[T interface{}] struct {
+	in_use  *sync.Mutex
+	waiting *atomic.Int32
 
-	NotifyExpired chan int
-	chats         map[int]*Chat
+	value T
 }
 
-func NewCache() *Cache {
-	cache := &Cache{
+type Cache[K comparable, T interface{}] struct {
+	mu *sync.Mutex
+
+	NotifyExpired chan K
+	records       map[K]*Record[T]
+}
+
+func NewCache[K comparable, T interface{}]() *Cache[K, T] {
+	cache := &Cache[K, T]{
 		mu:            &sync.Mutex{},
-		NotifyExpired: make(chan int),
-		chats:         make(map[int]*Chat),
+		NotifyExpired: make(chan K),
+		records:       make(map[K]*Record[T]),
 	}
 
 	go cache.ListenExpired()
@@ -25,55 +31,100 @@ func NewCache() *Cache {
 	return cache
 }
 
-func (c *Cache) Get(key int) (actual *Chat, ok bool) {
+// get value if it exists
+// if not then return ok false
+func (c *Cache[K, T]) Take(key K) (T, bool) {
 	c.mu.Lock()
-	defer c.mu.Unlock()
 
-	chat, ok := c.chats[key]
+	record, ok := c.records[key]
 	if !ok {
-		return nil, false
+		c.mu.Unlock()
+		return *new(T), false
 	}
 
-	chat.in_use.Lock()
-	return chat, true
+	ok = record.in_use.TryLock()
+	if ok {
+		c.mu.Unlock()
+		return record.value, true
+	}
+
+	record.waiting.Add(1)
+	c.mu.Unlock()
+
+	// wait until
+	record.in_use.Lock()
+	record.waiting.Add(-1)
+
+	return record.value, true
 }
 
-func (c *Cache) Put(key int, value *Chat) {
+func (c *Cache[K, T]) Return(key K) {
 	c.mu.Lock()
-	defer c.mu.Unlock()
 
-	_, ok := c.chats[key]
-	c.chats[key] = value
-
-	if ok {
-		value.in_use.Unlock()
+	record, ok := c.records[key]
+	if !ok {
+		c.mu.Unlock()
 		return
 	}
+
+	record.in_use.TryLock()
+	record.in_use.Unlock()
+
+	c.mu.Unlock()
 }
 
-func (c *Cache) PutAndGet(key int, value *Chat) *Chat {
+func (c *Cache[K, T]) CreateIfNotExistedAndTake(key K, value T) (v T, was_created bool) {
 	c.mu.Lock()
-	defer c.mu.Unlock()
 
-	c.chats[key] = value
-	value.in_use.Lock()
+	record, ok := c.records[key]
+	if !ok {
+		record := &Record[T]{
+			in_use:  &sync.Mutex{},
+			waiting: &atomic.Int32{},
 
-	return value
+			value: value,
+		}
+
+		c.records[key] = record
+		record.in_use.Lock()
+		c.mu.Unlock()
+
+		return record.value, true
+	}
+
+	ok = record.in_use.TryLock()
+	if ok {
+		c.mu.Unlock()
+		return record.value, false
+	}
+
+	record.waiting.Add(1)
+	c.mu.Unlock()
+
+	record.in_use.Lock()
+	record.waiting.Add(-1)
+
+	return record.value, false
 }
 
-func (c *Cache) ListenExpired() {
+func (c *Cache[K, T]) ListenExpired() {
 	for {
 		key := <-c.NotifyExpired
 
 		c.mu.Lock()
-		value, ok := c.chats[key]
-		if ok {
-			value.in_use.Lock()
-			if time.Now().After(value.expired) {
-				delete(c.chats, key)
-			}
-			value.in_use.Unlock()
+		record, ok := c.records[key]
+		if !ok {
+			c.mu.Unlock()
+			continue
 		}
+
+		ok = record.in_use.TryLock()
+		if ok && record.waiting.Load() == 0 {
+			delete(c.records, key)
+			c.mu.Unlock()
+			continue
+		}
+		// if it is busy, there is no point to delete it
 		c.mu.Unlock()
 	}
 }

@@ -6,16 +6,18 @@ import (
 
 	"github.com/SevereCloud/vksdk/v2/events"
 	"github.com/SevereCloud/vksdk/v2/longpoll-bot"
+	"github.com/hori-ryota/zaperr"
+	"go.uber.org/zap"
 )
 
 func (bot *ChatBot) RunLongPoll(ctx context.Context, wg *sync.WaitGroup) {
 	defer wg.Done()
 
-	lp, err := longpoll.NewLongPoll(bot.vk.api, bot.vk.id)
+	lp, err := longpoll.NewLongPoll(bot.controls.Vk.api, bot.controls.Vk.id)
 	if err != nil {
 		bot.log.Errorw("failed to run bot longpoll",
 			"error", err,
-			"id", bot.vk.id)
+			"id", bot.controls.Vk.id)
 		return
 	}
 
@@ -28,23 +30,12 @@ func (bot *ChatBot) RunLongPoll(ctx context.Context, wg *sync.WaitGroup) {
 func (bot *ChatBot) MessageNew(ctx context.Context, obj events.MessageNewObject) {
 	user_id := obj.Message.FromID
 
-	bot.vk.MarkAsRead(user_id)
+	bot.controls.Vk.MarkAsRead(user_id)
 
-	chat, existed := bot.GetChat(user_id)
-	defer bot.PutChat(user_id, chat)
-
-	chat.ResetTimer(bot.timeout, bot.cache.NotifyExpired)
-
-	init := NoInit
-	if !existed {
-		init = OnlyInit
-	}
-
-	err := chat.Work(bot.ask, bot.vk, obj, init)
+	err := bot.Work(ctx, user_id, obj)
 	if err != nil {
 		bot.log.Errorw("error occured while new message",
 			"user_id", user_id,
-			"state", chat.stack.Peek().ID(),
 			"error", err)
 	}
 }
@@ -52,23 +43,26 @@ func (bot *ChatBot) MessageNew(ctx context.Context, obj events.MessageNewObject)
 func (bot *ChatBot) MessageEvent(ctx context.Context, obj events.MessageEventObject) {
 	user_id := obj.UserID
 
-	bot.vk.SendEventAnswer(obj.EventID, user_id, obj.PeerID)
+	bot.controls.Vk.SendEventAnswer(obj.EventID, user_id, obj.PeerID)
 
-	chat, existed := bot.GetChat(user_id)
-	defer bot.PutChat(user_id, chat)
-
-	chat.ResetTimer(bot.timeout, bot.cache.NotifyExpired)
-
-	init := NoInit
-	if !existed {
-		init = InitAndTry
-	}
-
-	err := chat.Work(bot.ask, bot.vk, obj, init)
+	err := bot.Work(ctx, user_id, obj)
 	if err != nil {
 		bot.log.Errorw("error occured while message event",
 			"user_id", user_id,
-			"state", chat.stack.Peek().ID(),
 			"error", err)
 	}
+}
+
+func (bot *ChatBot) Work(ctx context.Context, user_id int, obj interface{}) error {
+	chat, created := bot.TakeChat(user_id, &InitNode{})
+	defer bot.ReturnChat(user_id)
+
+	chat.ResetTimer(bot.timeout, bot.cache.NotifyExpired, bot.controls)
+
+	err := chat.Work(bot.controls, obj, created)
+	if err != nil {
+		return zaperr.Wrap(err, "",
+			zap.String("state", chat.stack.Peek().ID()))
+	}
+	return nil
 }

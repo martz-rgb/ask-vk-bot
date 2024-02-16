@@ -2,6 +2,10 @@ package main
 
 type StateStack []StateNode
 
+func (stack *StateStack) Len() int {
+	return len(*stack)
+}
+
 func (stack *StateStack) Push(new StateNode) {
 	*stack = append(*stack, new)
 }

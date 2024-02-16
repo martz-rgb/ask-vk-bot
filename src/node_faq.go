@@ -6,7 +6,7 @@ func (node *FAQNode) ID() string {
 	return "faq"
 }
 
-func (node *FAQNode) Entry(user *User, ask *Ask, vk *VK) error {
+func (node *FAQNode) Entry(user *User, c *Controls) error {
 	buttons := [][]Button{{
 		{
 			Label: "Кто ты?",
@@ -30,21 +30,21 @@ func (node *FAQNode) Entry(user *User, ask *Ask, vk *VK) error {
 
 	message := "Выберите вопрос, который вас интересует на клавиатуре ниже."
 
-	_, err := vk.SendMessage(user.id, message, CreateKeyboard(node, buttons), nil)
+	_, err := c.Vk.SendMessage(user.id, message, CreateKeyboard(node, buttons), nil)
 	return err
 }
 
-func (node *FAQNode) NewMessage(user *User, ask *Ask, vk *VK, message *Message) (StateNode, bool, error) {
+func (node *FAQNode) NewMessage(user *User, c *Controls, message *Message) (StateNode, bool, error) {
 	return nil, false, nil
 }
 
-func (node *FAQNode) KeyboardEvent(user *User, ask *Ask, vk *VK, payload *CallbackPayload) (StateNode, bool, error) {
+func (node *FAQNode) KeyboardEvent(user *User, c *Controls, payload *CallbackPayload) (StateNode, bool, error) {
 	switch payload.Command {
 	case "who":
-		_, err := vk.SendMessage(user.id, "Я подрядчик этого дома.", "", nil)
+		_, err := c.Vk.SendMessage(user.id, "Я подрядчик этого дома.", "", nil)
 		return nil, false, err
 	case "what":
-		_, err := vk.SendMessage(user.id, "Я умею отвечать на ваши сообщения и управлять этим домом.", "", nil)
+		_, err := c.Vk.SendMessage(user.id, "Я умею отвечать на ваши сообщения и управлять этим домом.", "", nil)
 		return nil, false, err
 	case "back":
 		return nil, true, nil
@@ -53,6 +53,6 @@ func (node *FAQNode) KeyboardEvent(user *User, ask *Ask, vk *VK, payload *Callba
 	return nil, false, nil
 }
 
-func (node *FAQNode) Back(user *User, ask *Ask, vk *VK, prev_state StateNode) (bool, error) {
+func (node *FAQNode) Back(user *User, c *Controls, prev_state StateNode) (bool, error) {
 	return false, nil
 }

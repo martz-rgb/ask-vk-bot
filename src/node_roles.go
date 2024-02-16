@@ -12,8 +12,8 @@ func (node *RolesNode) ID() string {
 	return "roles"
 }
 
-func (node *RolesNode) Entry(user *User, ask *Ask, vk *VK) error {
-	roles, err := ask.Roles()
+func (node *RolesNode) Entry(user *User, c *Controls) error {
+	roles, err := c.Ask.Roles()
 	if err != nil {
 		return err
 	}
@@ -30,22 +30,22 @@ func (node *RolesNode) Entry(user *User, ask *Ask, vk *VK) error {
 	message := `Выберите нужную роль с помощи клавиатуры или начните вводить и отправьте часть, с которой начинается имя роли.
 				Отправьте специальный символ '%' для того, чтобы вернуться к полному списку ролей.`
 
-	_, err = vk.SendMessage(user.id, message, CreateKeyboard(node, node.paginator.Buttons()), nil)
+	_, err = c.Vk.SendMessage(user.id, message, CreateKeyboard(node, node.paginator.Buttons()), nil)
 	return err
 }
 
-func (node *RolesNode) NewMessage(user *User, ask *Ask, vk *VK, message *Message) (StateNode, bool, error) {
-	roles, err := ask.RolesStartWith(message.Text)
+func (node *RolesNode) NewMessage(user *User, c *Controls, message *Message) (StateNode, bool, error) {
+	roles, err := c.Ask.RolesStartWith(message.Text)
 	if err != nil {
 		return nil, false, err
 	}
 
 	node.paginator.ChangeObjects(roles)
 
-	return nil, false, vk.ChangeKeyboard(user.id, CreateKeyboard(node, node.paginator.Buttons()))
+	return nil, false, c.Vk.ChangeKeyboard(user.id, CreateKeyboard(node, node.paginator.Buttons()))
 }
 
-func (node *RolesNode) KeyboardEvent(user *User, ask *Ask, vk *VK, payload *CallbackPayload) (StateNode, bool, error) {
+func (node *RolesNode) KeyboardEvent(user *User, c *Controls, payload *CallbackPayload) (StateNode, bool, error) {
 	switch payload.Command {
 	case "roles":
 		role, err := node.paginator.Object(payload.Value)
@@ -56,7 +56,7 @@ func (node *RolesNode) KeyboardEvent(user *User, ask *Ask, vk *VK, payload *Call
 		message := fmt.Sprintf("Идентификатор: %s\nТег: %s\nИмя: %s\nЗаголовок: %s\n",
 			role.Name, role.Tag, role.ShownName, role.CaptionName.String)
 
-		_, err = vk.SendMessage(user.id, message, "", nil)
+		_, err = c.Vk.SendMessage(user.id, message, "", nil)
 		return nil, false, err
 	case "paginator":
 		back := node.paginator.Control(payload.Value)
@@ -65,13 +65,13 @@ func (node *RolesNode) KeyboardEvent(user *User, ask *Ask, vk *VK, payload *Call
 			return nil, true, nil
 		}
 
-		return nil, false, vk.ChangeKeyboard(user.id,
+		return nil, false, c.Vk.ChangeKeyboard(user.id,
 			CreateKeyboard(node, node.paginator.Buttons()))
 	}
 
 	return nil, false, nil
 }
 
-func (node *RolesNode) Back(user *User, ask *Ask, vk *VK, prev_state StateNode) (bool, error) {
+func (node *RolesNode) Back(user *User, c *Controls, prev_state StateNode) (bool, error) {
 	return false, nil
 }

@@ -16,8 +16,8 @@ func (node *DeadlineNode) ID() string {
 	return "deadline"
 }
 
-func (node *DeadlineNode) Entry(user *User, ask *Ask, vk *VK) error {
-	members, roles, err := user.MembersRoles(ask)
+func (node *DeadlineNode) Entry(user *User, c *Controls) error {
+	members, roles, err := user.MembersRoles(c.Ask)
 	if err != nil {
 		return err
 	}
@@ -25,7 +25,7 @@ func (node *DeadlineNode) Entry(user *User, ask *Ask, vk *VK) error {
 	deadlines := []string{}
 
 	for i := range members {
-		deadline, err := ask.Deadline(members[i].Id)
+		deadline, err := c.Ask.Deadline(members[i].Id)
 		if err != nil {
 			return err
 		}
@@ -55,28 +55,28 @@ func (node *DeadlineNode) Entry(user *User, ask *Ask, vk *VK) error {
 		},
 	}
 
-	_, err = vk.SendMessage(user.id, strings.Join(deadlines, "\n"), CreateKeyboard(node, buttons), nil)
+	_, err = c.Vk.SendMessage(user.id, strings.Join(deadlines, "\n"), CreateKeyboard(node, buttons), nil)
 	return err
 }
 
-func (node *DeadlineNode) NewMessage(user *User, ask *Ask, vk *VK, message *Message) (StateNode, bool, error) {
+func (node *DeadlineNode) NewMessage(user *User, c *Controls, message *Message) (StateNode, bool, error) {
 	return nil, false, nil
 }
 
-func (node *DeadlineNode) KeyboardEvent(user *User, ask *Ask, vk *VK, payload *CallbackPayload) (StateNode, bool, error) {
+func (node *DeadlineNode) KeyboardEvent(user *User, c *Controls, payload *CallbackPayload) (StateNode, bool, error) {
 	switch payload.Command {
 	case "history":
-		history, err := ask.HistoryDeadline(user.id)
+		history, err := c.Ask.HistoryDeadline(user.id)
 		if err != nil {
 			return nil, false, err
 		}
 
-		message, attachment, err := node.PrepareHistory(user.id, ask, vk, history)
+		message, attachment, err := node.PrepareHistory(user.id, c, history)
 		if err != nil {
 			return nil, false, err
 		}
 
-		_, err = vk.SendMessage(user.id, message, "", api.Params{"attachment": attachment})
+		_, err = c.Vk.SendMessage(user.id, message, "", api.Params{"attachment": attachment})
 		return nil, false, err
 	case "back":
 		return nil, true, nil
@@ -85,11 +85,11 @@ func (node *DeadlineNode) KeyboardEvent(user *User, ask *Ask, vk *VK, payload *C
 	return nil, false, nil
 }
 
-func (node *DeadlineNode) Back(user *User, ask *Ask, vk *VK, prev_state StateNode) (bool, error) {
-	return false,nil
+func (node *DeadlineNode) Back(user *User, c *Controls, prev_state StateNode) (bool, error) {
+	return false, nil
 }
 
-func (node *DeadlineNode) PrepareHistory(user_id int, ask *Ask, vk *VK, history []Deadline) (message string, attachment string, err error) {
+func (node *DeadlineNode) PrepareHistory(user_id int, c *Controls, history []Deadline) (message string, attachment string, err error) {
 	if len(history) == 0 {
 		return "Нет событий.", "", nil
 	}
@@ -132,7 +132,7 @@ func (node *DeadlineNode) PrepareHistory(user_id int, ask *Ask, vk *VK, history 
 	name := fmt.Sprintf("full_history_%d_%s.txt", user_id, time.Now().Format(time.DateOnly))
 	full_history := strings.Join(events, "\n")
 
-	id, err := vk.UploadDocument(user_id, name, bytes.NewReader([]byte(full_history)))
+	id, err := c.Vk.UploadDocument(user_id, name, bytes.NewReader([]byte(full_history)))
 	if err != nil {
 		return "", "", err
 	}

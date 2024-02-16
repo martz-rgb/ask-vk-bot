@@ -13,8 +13,8 @@ func (node *AdminNode) ID() string {
 	return "admin"
 }
 
-func (node *AdminNode) Entry(user *User, ask *Ask, vk *VK) error {
-	ok, err := ask.IsAdmin(user.id)
+func (node *AdminNode) Entry(user *User, c *Controls) error {
+	ok, err := c.Ask.IsAdmin(user.id)
 	if err != nil {
 		return err
 	}
@@ -42,13 +42,13 @@ func (node *AdminNode) Entry(user *User, ask *Ask, vk *VK) error {
 		},
 	}
 
-	return vk.ChangeKeyboard(user.id, CreateKeyboard(node, buttons))
+	return c.Vk.ChangeKeyboard(user.id, CreateKeyboard(node, buttons))
 }
 
-func (node *AdminNode) NewMessage(user *User, ask *Ask, vk *VK, message *Message) (StateNode, bool, error) {
+func (node *AdminNode) NewMessage(user *User, c *Controls, message *Message) (StateNode, bool, error) {
 	return nil, false, nil
 }
-func (node *AdminNode) KeyboardEvent(user *User, ask *Ask, vk *VK, payload *CallbackPayload) (StateNode, bool, error) {
+func (node *AdminNode) KeyboardEvent(user *User, c *Controls, payload *CallbackPayload) (StateNode, bool, error) {
 	switch payload.Command {
 	case "reservation":
 		return &AdminReservationNode{}, false, nil
@@ -58,6 +58,6 @@ func (node *AdminNode) KeyboardEvent(user *User, ask *Ask, vk *VK, payload *Call
 
 	return nil, false, nil
 }
-func (node *AdminNode) Back(user *User, ask *Ask, vk *VK, prev_state StateNode) (bool, error) {
-	return false, node.Entry(user, ask, vk)
+func (node *AdminNode) Back(user *User, c *Controls, prev_state StateNode) (bool, error) {
+	return false, node.Entry(user, c)
 }

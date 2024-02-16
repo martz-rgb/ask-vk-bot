@@ -6,6 +6,7 @@ import (
 	"errors"
 	"fmt"
 	"io"
+	"log"
 	"os"
 	"os/signal"
 	"path/filepath"
@@ -35,6 +36,12 @@ func ConfigFromEnv() *Config {
 			"group id", os.Getenv("GROUP_ID"))
 	}
 	allow_deletion, _ := strconv.ParseBool(os.Getenv("ALLOW_DELETION"))
+	timeout, err := time.ParseDuration(os.Getenv("TIMEOUT"))
+	if err != nil {
+		zap.S().Warnw("failed to parse timeout",
+			"error", err,
+			"timeout", os.Getenv("TIMEOUT"))
+	}
 
 	return &Config{
 		GroupID:          group_id,
@@ -44,6 +51,7 @@ func ConfigFromEnv() *Config {
 		AllowDeletion:    allow_deletion,
 		Schema:           os.Getenv("SCHEMA"),
 		LogDir:           os.Getenv("LOG_DIR"),
+		Timeout:          timeout,
 	}
 }
 
@@ -90,7 +98,7 @@ func (c *Config) Validate() error {
 	}
 
 	if c.Timeout == 0 {
-		c.Timeout = 1 * time.Hour
+		c.Timeout = 30 * time.Second
 	}
 
 	return nil
@@ -100,14 +108,16 @@ func main() {
 	config := ConfigFromEnv()
 
 	// development purposes
-	if dev, err := ConfigFromFile("../config.json"); err == nil {
+	dev, err := ConfigFromFile("../config.json")
+	if err == nil {
 		config = dev
+	} else {
+		log.Printf("failed to read config from file: %s\n", err)
 	}
 
-	err := config.Validate()
+	err = config.Validate()
 	if err != nil {
-		zap.S().Fatalw("failed to validate config",
-			"error", err)
+		log.Fatalf("failed to validate config: %s\n", err)
 	}
 
 	// make debug log

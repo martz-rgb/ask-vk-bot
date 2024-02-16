@@ -20,8 +20,8 @@ func (node *AdminReservationNode) ID() string {
 	return "admin_reservation"
 }
 
-func (node *AdminReservationNode) Entry(user *User, ask *Ask, vk *VK) error {
-	reservations, err := ask.UnderConsiderationReservations()
+func (node *AdminReservationNode) Entry(user *User, c *Controls) error {
+	reservations, err := c.Ask.UnderConsiderationReservations()
 	if err != nil {
 		return err
 	}
@@ -41,15 +41,15 @@ func (node *AdminReservationNode) Entry(user *User, ask *Ask, vk *VK) error {
 		to_label,
 		to_value)
 
-	return vk.ChangeKeyboard(user.id,
+	return c.Vk.ChangeKeyboard(user.id,
 		CreateKeyboard(node, node.paginator.Buttons()))
 }
 
-func (node *AdminReservationNode) NewMessage(user *User, ask *Ask, vk *VK, message *Message) (StateNode, bool, error) {
+func (node *AdminReservationNode) NewMessage(user *User, c *Controls, message *Message) (StateNode, bool, error) {
 	return nil, false, nil
 }
 
-func (node *AdminReservationNode) KeyboardEvent(user *User, ask *Ask, vk *VK, payload *CallbackPayload) (StateNode, bool, error) {
+func (node *AdminReservationNode) KeyboardEvent(user *User, c *Controls, payload *CallbackPayload) (StateNode, bool, error) {
 	switch payload.Command {
 	case "reservations":
 		reservation, err := node.paginator.Object(payload.Value)
@@ -58,7 +58,7 @@ func (node *AdminReservationNode) KeyboardEvent(user *User, ask *Ask, vk *VK, pa
 		}
 
 		node.reservation = reservation
-		text := fmt.Sprintf("Роль: %s\nСтраница: https://vk.com/id%d\nДедлайн: %s\n",
+		text := fmt.Sprintf("Роль: %s\nСтраница: https://c.Vk.com/id%d\nДедлайн: %s\n",
 			reservation.Role,
 			reservation.VkID,
 			reservation.Deadline)
@@ -99,20 +99,20 @@ func (node *AdminReservationNode) KeyboardEvent(user *User, ask *Ask, vk *VK, pa
 			return nil, true, nil
 		}
 
-		return nil, false, vk.ChangeKeyboard(user.id,
+		return nil, false, c.Vk.ChangeKeyboard(user.id,
 			CreateKeyboard(node, node.paginator.Buttons()))
 	}
 	return nil, false, nil
 }
 
-func (node *AdminReservationNode) Back(user *User, ask *Ask, vk *VK, prev_state StateNode) (bool, error) {
+func (node *AdminReservationNode) Back(user *User, c *Controls, prev_state StateNode) (bool, error) {
 	form, ok := prev_state.(*FormNode)
 	if !ok {
 		return false, nil
 	}
 
 	if !form.FilledOut {
-		return false, node.Entry(user, ask, vk)
+		return false, node.Entry(user, c)
 	}
 
 	value, err := form.Form.Value(0)
@@ -128,24 +128,24 @@ func (node *AdminReservationNode) Back(user *User, ask *Ask, vk *VK, prev_state 
 	}
 
 	if confirm {
-		err := ask.ChangeReservationStatus(node.reservation.Id,
+		err := c.Ask.ChangeReservationStatus(node.reservation.Id,
 			ReservationStatuses.InProgress)
 		if err != nil {
 			return false, err
 		}
 	} else {
-		err := ask.DeleteReservation(node.reservation.Id)
+		err := c.Ask.DeleteReservation(node.reservation.Id)
 		if err != nil {
 			return false, err
 		}
 	}
 
 	// notify user
-	text := fmt.Sprintf("Статус вашей брони: %t\n", confirm)
-	_, err = vk.SendMessage(node.reservation.VkID, text, "", nil)
-	if err != nil {
-		return false, err
+	message := &MessageParams{
+		Id:   node.reservation.VkID,
+		Text: fmt.Sprintf("Статус вашей брони: %t\n", confirm),
 	}
+	c.Notify <- message
 
-	return false, node.Entry(user, ask, vk)
+	return false, node.Entry(user, c)
 }

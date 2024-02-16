@@ -10,7 +10,7 @@ func (node *ConfirmationNode) ID() string {
 	return "confirmation"
 }
 
-func (node *ConfirmationNode) Entry(user *User, ask *Ask, vk *VK) error {
+func (node *ConfirmationNode) Entry(user *User, c *Controls) error {
 	buttons := [][]Button{
 		{
 			{
@@ -26,17 +26,17 @@ func (node *ConfirmationNode) Entry(user *User, ask *Ask, vk *VK) error {
 		},
 	}
 
-	_, err := vk.SendMessage(user.id, node.Message, CreateKeyboard(node, buttons), nil)
+	_, err := c.Vk.SendMessage(user.id, node.Message, CreateKeyboard(node, buttons), nil)
 	return err
 }
 
-func (node *ConfirmationNode) NewMessage(user *User, ask *Ask, vk *VK, message *Message) (StateNode, bool, error) {
+func (node *ConfirmationNode) NewMessage(user *User, c *Controls, message *Message) (StateNode, bool, error) {
 	node.Answer = false
 
 	return nil, true, nil
 }
 
-func (node *ConfirmationNode) KeyboardEvent(user *User, ask *Ask, vk *VK, payload *CallbackPayload) (StateNode, bool, error) {
+func (node *ConfirmationNode) KeyboardEvent(user *User, c *Controls, payload *CallbackPayload) (StateNode, bool, error) {
 	switch payload.Command {
 	case "yes":
 		node.Answer = true
@@ -51,6 +51,6 @@ func (node *ConfirmationNode) KeyboardEvent(user *User, ask *Ask, vk *VK, payloa
 	return nil, true, nil
 }
 
-func (node *ConfirmationNode) Back(user *User, ask *Ask, vk *VK, prev_state StateNode) (bool, error) {
+func (node *ConfirmationNode) Back(user *User, c *Controls, prev_state StateNode) (bool, error) {
 	return true, nil
 }

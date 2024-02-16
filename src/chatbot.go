@@ -6,45 +6,81 @@ import (
 	"go.uber.org/zap"
 )
 
+type Controls struct {
+	Ask    *Ask
+	Vk     *VK
+	Notify chan *MessageParams
+}
+
 type ChatBot struct {
-	cache      *Cache
-	init_state StateNode
+	cache       *Cache[int, *Chat]
+	reset_state StateNode
 
 	timeout time.Duration
 
-	ask *Ask
-	vk  *VK
+	controls *Controls
 
 	log *zap.SugaredLogger
 }
 
-func NewChatBot(ask *Ask, init_state StateNode, timeout time.Duration, vk *VK, log *zap.SugaredLogger) *ChatBot {
-	return &ChatBot{
-		cache:      NewCache(),
-		init_state: init_state,
-		timeout:    timeout,
-		ask:        ask,
-		vk:         vk,
-		log:        log,
+func NewChatBot(ask *Ask, reset_state StateNode, timeout time.Duration, vk *VK, log *zap.SugaredLogger) *ChatBot {
+	bot := &ChatBot{
+		cache:       NewCache[int, *Chat](),
+		reset_state: reset_state,
+		timeout:     timeout,
+		controls: &Controls{
+			Ask:    ask,
+			Vk:     vk,
+			Notify: make(chan *MessageParams),
+		},
+		log: log,
+	}
+
+	go bot.ListenNotification()
+
+	return bot
+}
+
+func (bot *ChatBot) TakeChat(user_id int, init StateNode) (*Chat, bool) {
+	return bot.cache.CreateIfNotExistedAndTake(user_id,
+		NewChat(user_id,
+			init,
+			bot.reset_state,
+			bot.timeout,
+			bot.cache.NotifyExpired,
+			bot.controls))
+}
+
+func (bot *ChatBot) ReturnChat(user_id int) {
+	bot.cache.Return(user_id)
+}
+
+func (bot *ChatBot) ListenNotification() {
+	for {
+		message := <-bot.controls.Notify
+		err := bot.NotifyChat(message)
+		if err != nil {
+			bot.log.Errorw("error occured while try to notify",
+				"message", message,
+				"error", err)
+		}
 	}
 }
 
-func (bot *ChatBot) GetChat(user_id int) (*Chat, bool) {
-	existed := true
-	chat, ok := bot.cache.Get(user_id)
-	if !ok {
-		existed = false
-		chat = bot.cache.PutAndGet(user_id,
-			NewChat(user_id,
-				bot.init_state,
-				bot.init_state,
-				bot.timeout,
-				bot.cache.NotifyExpired))
+func (bot *ChatBot) NotifyChat(message *MessageParams) error {
+	chat, existed := bot.TakeChat(message.Id, &InitNode{
+		Silent: true,
+	})
+	defer bot.ReturnChat(message.Id)
+
+	if !existed {
+		chat.Work(bot.controls, nil, true)
 	}
 
-	return chat, existed
-}
+	err := chat.Notify(bot.controls, message)
+	if err != nil {
+		return err
+	}
 
-func (bot *ChatBot) PutChat(user_id int, chat *Chat) {
-	bot.cache.Put(user_id, chat)
+	return nil
 }

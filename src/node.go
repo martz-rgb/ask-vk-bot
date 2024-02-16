@@ -12,13 +12,14 @@ import (
 type StateNode interface {
 	ID() string
 
-	Entry(user *User, ask *Ask, vk *VK) error
-	NewMessage(user *User, ask *Ask, vk *VK, message *Message) (StateNode, bool, error)
-	KeyboardEvent(user *User, ask *Ask, vk *VK, payload *CallbackPayload) (StateNode, bool, error)
-	Back(user *User, ask *Ask, vk *VK, prev_state StateNode) (bool, error)
+	Entry(user *User, c *Controls) error
+	NewMessage(user *User, c *Controls, message *Message) (StateNode, bool, error)
+	KeyboardEvent(user *User, c *Controls, payload *CallbackPayload) (StateNode, bool, error)
+	Back(user *User, c *Controls, prev_state StateNode) (bool, error)
 }
 
 type MessageParams struct {
+	Id     int
 	Text   string
 	Params api.Params
 }
