@@ -10,12 +10,12 @@ about reservation:
 
 TO-DO list:
 
-- [ ] notify users without breaking flow (notify only when stack is empty?)
 - [ ] polls
 - [ ] listener time probably
 - [ ] points (spend)
 - [ ] roles groups + boards\albums
 - [ ] configuration with or without confirmation reservations
+- [ ] use context in nodes
 - [ ] manage secrets with docker swarm? 
 - [ ] *maybe some collaborators support
 
@@ -36,3 +36,4 @@ done:
 - [x] resetvations
 - [x] система прав (пока достаточно)
 - [x] deadline + member system 
+- [x] notify users without breaking flow (notify only when stack is empty?)
