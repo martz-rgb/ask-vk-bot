@@ -3,8 +3,8 @@ package main
 import (
 	"errors"
 	"fmt"
-	"time"
 
+	"github.com/SevereCloud/vksdk/v2/api"
 	"github.com/hori-ryota/zaperr"
 	"go.uber.org/zap"
 )
@@ -127,24 +127,22 @@ func (node *ReservationNode) Back(user *User, c *Controls, prev_state StateNode)
 			return false, err
 		}
 
-		deadline, err := c.Ask.AddReservation(node.role.Name, user.id, id)
+		err = c.Ask.AddReservation(node.role.Name, user.id, id)
 		if err != nil {
 			return false, err
 		}
 
-		message := fmt.Sprintf("Роль %s забронирована до %s.",
-			node.role.ShownName,
-			deadline.Format(time.DateTime),
-		)
+		message := fmt.Sprintf("Отлично! Ваша заявка на бронь %s будет рассмотрена в ближайшее время. Вам придет сообщение.",
+			node.role.ShownName)
 
-		// forward := fmt.Sprintf(`
-		// 	{
-		// 		"peer_id": %d,
-		// 		"message_ids": [%d]
-		// 	}
-		// `, user.id, id)
+		forward, err := ForwardParam(user.id, []int{id})
+		if err != nil {
+			return false, err
+		}
 
-		_, err = c.Vk.SendMessage(user.id, message, "", nil)
+		_, err = c.Vk.SendMessage(user.id, message, "", api.Params{
+			"forward": forward,
+		})
 		return true, err
 	}
 

@@ -1,6 +1,7 @@
 package main
 
 import (
+	"encoding/json"
 	"errors"
 	"io"
 	"maps"
@@ -29,6 +30,25 @@ type VK struct {
 
 	api *api.VK
 	r   *rand.Rand
+}
+
+type VKForwardMessage struct {
+	PeerId      int   `json:"peer_id"`
+	MessagesIds []int `json:"message_ids"`
+}
+
+func ForwardParam(vk_id int, messages []int) (string, error) {
+	forward, err := json.Marshal(VKForwardMessage{
+		vk_id,
+		messages,
+	})
+	if err != nil {
+		return "", zaperr.Wrap(err, "failed to marshal forward message param",
+			zap.Int("vk_id", vk_id),
+			zap.Any("messages", messages))
+	}
+
+	return string(forward), nil
 }
 
 func NewVKFromFile(name string, id int) (*VK, error) {

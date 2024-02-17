@@ -1,7 +1,6 @@
 package main
 
 import (
-	"encoding/json"
 	"errors"
 	"fmt"
 	"strconv"
@@ -58,28 +57,22 @@ func (node *AdminReservationNode) KeyboardEvent(user *User, c *Controls, payload
 		}
 
 		node.reservation = reservation
-		text := fmt.Sprintf("Роль: %s\nСтраница: https://c.Vk.com/id%d\nДедлайн: %s\n",
+		text := fmt.Sprintf("Роль: %s\nСтраница: https://vk.com/id%d\n",
 			reservation.Role,
-			reservation.VkID,
-			reservation.Deadline)
+			reservation.VkID)
 
-		forward, err := json.Marshal(struct {
-			PeerId      int   `json:"peer_id"`
-			MessagesIds []int `json:"message_ids"`
-		}{
+		forward, err := ForwardParam(
 			reservation.VkID,
-			[]int{reservation.Info},
-		})
+			[]int{reservation.Info})
 		if err != nil {
 			return nil, false, err
 		}
-		params := api.Params{
-			"forward": string(forward),
-		}
 
 		request := &MessageParams{
-			Text:   text,
-			Params: params,
+			Text: text,
+			Params: api.Params{
+				"forward": forward,
+			},
 		}
 
 		field := NewConfirmReservation(request)
@@ -127,25 +120,32 @@ func (node *AdminReservationNode) Back(user *User, c *Controls, prev_state State
 		return false, err
 	}
 
+	var message string
 	if confirm {
-		err := c.Ask.ChangeReservationStatus(node.reservation.Id,
-			ReservationStatuses.InProgress)
+		deadline, err := c.Ask.ConfirmReservation(node.reservation.Id)
 		if err != nil {
 			return false, err
 		}
+
+		message = fmt.Sprintf("Ваша бронь на %s успешно подтверждена! Вам нужно отрисовать приветствие до %s.",
+			node.reservation.Role,
+			deadline)
 	} else {
 		err := c.Ask.DeleteReservation(node.reservation.Id)
 		if err != nil {
 			return false, err
 		}
+
+		message = fmt.Sprintf("Ваша бронь на %s, к сожалению, отклонена. Попробуйте еще раз позже!",
+			node.reservation.Role)
 	}
 
 	// notify user
-	message := &MessageParams{
+	notification := &MessageParams{
 		Id:   node.reservation.VkID,
-		Text: fmt.Sprintf("Статус вашей брони: %t\n", confirm),
+		Text: message,
 	}
-	c.Notify <- message
+	c.Notify <- notification
 
 	return false, node.Entry(user, c)
 }

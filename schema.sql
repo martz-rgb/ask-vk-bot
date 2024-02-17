@@ -72,7 +72,7 @@ CREATE TABLE IF NOT EXISTS reservations (
     id INTEGER PRIMARY KEY NOT NULL,
     role TEXT REFERENCES roles(name) NOT NULL,
     vk_id INT NOT NULL,
-    deadline DATETIME NOT NULL,
+    deadline DATETIME,
     status TEXT CHECK(status IN ('Under Consideration', 'In Progress', 'Done')) NOT NULL DEFAULT 'Under Consideration',
     -- id of vk message contained information
     info INT NOT NULL,

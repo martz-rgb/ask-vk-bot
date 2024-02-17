@@ -282,39 +282,23 @@ func (a *Ask) AddMember(vk_id int, role string) error {
 }
 
 // reservations
-func (a *Ask) AddReservation(role string, vk_id int, info int) (time.Time, error) {
-	// got right date
-	now := time.Now().
-		UTC().
-		Add(a.timezone)
-
-	deadline := time.Date(now.Year(),
-		now.Month(),
-		now.Day(),
-		23,
-		59,
-		59,
-		0,
-		time.UTC).
-		Add(a.config.ReservationDuration)
-
+func (a *Ask) AddReservation(role string, vk_id int, info int) error {
 	query := sqlf.InsertInto("reservations").
 		Set("role", role).
 		Set("vk_id", vk_id).
-		Set("deadline", deadline).
 		Set("info", info)
+
 	_, err := a.db.Exec(query.String(), query.Args()...)
 	if err != nil {
-		return time.Time{}, zaperr.Wrap(err, "failed to add reservation",
+		return zaperr.Wrap(err, "failed to add reservation",
 			zap.String("role", role),
 			zap.Int("vk_id", vk_id),
-			zap.Time("deadline", deadline),
 			zap.String("query", query.String()),
 			zap.Int("info", info),
 			zap.Any("args", query.Args()))
 	}
 
-	return deadline, nil
+	return nil
 }
 
 func (a *Ask) UnderConsiderationReservations() ([]Reservation, error) {
@@ -347,6 +331,56 @@ func (a *Ask) ChangeReservationStatus(id int, status ReservationStatus) error {
 	}
 
 	return nil
+}
+
+func (a *Ask) CalculateReservationDeadline() time.Time {
+	// got right date
+	now := time.Now().
+		UTC().
+		Add(a.timezone)
+
+	return time.Date(now.Year(),
+		now.Month(),
+		now.Day(),
+		23,
+		59,
+		59,
+		0,
+		time.UTC).
+		Add(a.config.ReservationDuration)
+}
+
+func (a *Ask) ChangeReservationDeadline(id int, deadline time.Time) error {
+	query := sqlf.Update("reservations").
+		Set("deadline", deadline).
+		Where("id", id)
+
+	_, err := a.db.Exec(query.String(), query.Args()...)
+	if err != nil {
+		return zaperr.Wrap(err, "failed to change reservation deadline",
+			zap.String("query", query.String()),
+			zap.Any("args", query.Args()))
+	}
+
+	return nil
+}
+
+func (a *Ask) ConfirmReservation(id int) (time.Time, error) {
+	status := ReservationStatuses.InProgress
+	deadline := a.CalculateReservationDeadline()
+
+	query := sqlf.Update("reservations").
+		Set("deadline", deadline).
+		Set("status", status).
+		Where("id", id)
+	_, err := a.db.Exec(query.String(), query.Args()...)
+	if err != nil {
+		return time.Time{}, zaperr.Wrap(err, "failed to confirm reservation",
+			zap.String("query", query.String()),
+			zap.Any("args", query.Args()))
+	}
+
+	return deadline, nil
 }
 
 func (a *Ask) DeleteReservation(id int) error {
