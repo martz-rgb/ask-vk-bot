@@ -42,13 +42,16 @@ func NewChatBot(ask *Ask, reset_state StateNode, timeout time.Duration, vk *VK, 
 }
 
 func (bot *ChatBot) TakeChat(user_id int, init StateNode) (*Chat, bool) {
-	return bot.cache.CreateIfNotExistedAndTake(user_id,
+	chat, existed := bot.cache.CreateIfNotExistedAndTake(user_id,
 		NewChat(user_id,
 			init,
 			bot.reset_state,
 			bot.timeout,
 			bot.cache.NotifyExpired,
 			bot.controls))
+
+	chat.ResetTimer(bot.timeout, bot.cache.NotifyExpired, bot.controls)
+	return chat, existed
 }
 
 func (bot *ChatBot) ReturnChat(user_id int) {
@@ -72,10 +75,6 @@ func (bot *ChatBot) NotifyChat(message *MessageParams) error {
 		Silent: true,
 	})
 	defer bot.ReturnChat(message.Id)
-
-	chat.ResetTimer(bot.timeout, 
-		bot.cache.NotifyExpired, 
-		bot.controls)
 
 	if !existed {
 		chat.Work(bot.controls, nil, true)

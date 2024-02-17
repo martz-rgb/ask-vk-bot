@@ -57,8 +57,6 @@ func (bot *ChatBot) Work(ctx context.Context, user_id int, obj interface{}) erro
 	chat, created := bot.TakeChat(user_id, &InitNode{})
 	defer bot.ReturnChat(user_id)
 
-	chat.ResetTimer(bot.timeout, bot.cache.NotifyExpired, bot.controls)
-
 	err := chat.Work(bot.controls, obj, created)
 	if err != nil {
 		return zaperr.Wrap(err, "",
