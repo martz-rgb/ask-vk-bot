@@ -73,6 +73,10 @@ func (bot *ChatBot) NotifyChat(message *MessageParams) error {
 	})
 	defer bot.ReturnChat(message.Id)
 
+	chat.ResetTimer(bot.timeout, 
+		bot.cache.NotifyExpired, 
+		bot.controls)
+
 	if !existed {
 		chat.Work(bot.controls, nil, true)
 	}
