@@ -17,7 +17,9 @@ TO-DO list:
 - [ ] configuration with or without confirmation reservations
 - [ ] use context in nodes
 - [ ] manage secrets with docker swarm? 
+- [ ] longpoll quit silently if no internet connection
 - [ ] *maybe some collaborators support
+
 
 done:
 
