@@ -98,7 +98,7 @@ func (c *Config) Validate() error {
 	}
 
 	if c.Timeout == 0 {
-		c.Timeout = 30 * time.Second
+		c.Timeout = 1 * time.Hour
 	}
 
 	return nil
