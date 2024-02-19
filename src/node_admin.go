@@ -30,7 +30,12 @@ func (node *AdminNode) Entry(user *User, c *Controls) error {
 			{
 				Label:   "Брони",
 				Color:   SecondaryColor,
-				Command: "reservation",
+				Command: (&AdminReservationNode{}).ID(),
+			},
+			{
+				Label:   "Список ролей",
+				Color:   "secondary",
+				Command: (&RolesNode{}).ID(),
 			},
 		},
 		{
@@ -50,8 +55,10 @@ func (node *AdminNode) NewMessage(user *User, c *Controls, message *Message) (St
 }
 func (node *AdminNode) KeyboardEvent(user *User, c *Controls, payload *CallbackPayload) (StateNode, bool, error) {
 	switch payload.Command {
-	case "reservation":
+	case (&AdminReservationNode{}).ID():
 		return &AdminReservationNode{}, false, nil
+	case (&RolesNode{}).ID():
+		return &RolesNode{}, false, nil
 	case "back":
 		return nil, true, nil
 	}

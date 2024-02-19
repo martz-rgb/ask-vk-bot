@@ -301,6 +301,22 @@ func (a *Ask) AddReservation(role string, vk_id int, info int) error {
 	return nil
 }
 
+func (a *Ask) ReservationsByVkID(vk_id int) ([]Reservation, error) {
+	var reservations []Reservation
+
+	query := sqlf.From("reservations").
+		Bind(&Reservation{}).
+		Where("vk_id", vk_id)
+	err := a.db.Select(&reservations, query.String(), query.Args()...)
+	if err != nil {
+		return nil, zaperr.Wrap(err, "failed to get reservations by vk id",
+			zap.String("query", query.String()),
+			zap.Any("args", query.Args()))
+	}
+
+	return reservations, nil
+}
+
 func (a *Ask) UnderConsiderationReservations() ([]Reservation, error) {
 	var reservations []Reservation
 

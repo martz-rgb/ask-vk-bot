@@ -68,7 +68,14 @@ func (f *Form) Control(command string) bool {
 func (f *Form) updatePaginator() {
 	options := f.fields[f.index].Options()
 
-	f.paginator = NewPaginator[Option](options, "form", RowsCount, ColsCount, OptionToLabel, OptionToValue)
+	f.paginator = NewPaginator[Option](
+		options,
+		"form",
+		RowsCount,
+		ColsCount,
+		false,
+		OptionToLabel,
+		OptionToValue)
 }
 
 func (f *Form) Buttons() [][]Button {

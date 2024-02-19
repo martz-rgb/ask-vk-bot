@@ -37,6 +37,7 @@ func (node *AdminReservationNode) Entry(user *User, c *Controls) error {
 		"reservations",
 		RowsCount,
 		ColsCount,
+		false,
 		to_label,
 		to_value)
 

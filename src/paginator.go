@@ -13,8 +13,9 @@ type Paginator[T interface{}] struct {
 	total_pages int
 	command     string
 
-	rows int
-	cols int
+	rows         int
+	cols         int
+	without_back bool
 
 	ToLabel func(T) string
 	ToValue func(T) string
@@ -23,17 +24,18 @@ type Paginator[T interface{}] struct {
 var RowsCount int = 2
 var ColsCount int = 3
 
-func NewPaginator[T interface{}](objects []T, command string, rows, cols int, label, value func(T) string) *Paginator[T] {
+func NewPaginator[T interface{}](objects []T, command string, rows, cols int, without_back bool, label, value func(T) string) *Paginator[T] {
 	return &Paginator[T]{
 		objects: objects,
 		page:    0,
 		// ceil function
-		total_pages: 1 + (len(objects)-1)/(rows*cols),
-		command:     command,
-		rows:        rows,
-		cols:        cols,
-		ToLabel:     label,
-		ToValue:     value,
+		total_pages:  1 + (len(objects)-1)/(rows*cols),
+		command:      command,
+		rows:         rows,
+		cols:         cols,
+		without_back: without_back,
+		ToLabel:      label,
+		ToValue:      value,
 	}
 }
 
@@ -121,15 +123,19 @@ func (p *Paginator[T]) Buttons(special ...Button) [][]Button {
 		})
 	}
 
-	controls = append(controls, Button{
-		Label: "Назад",
-		Color: "negative",
+	if !p.without_back {
+		controls = append(controls, Button{
+			Label: "Назад",
+			Color: "negative",
 
-		Command: "paginator",
-		Value:   "back",
-	})
+			Command: "paginator",
+			Value:   "back",
+		})
+	}
 
-	buttons = append(buttons, controls)
+	if len(controls) > 0 {
+		buttons = append(buttons, controls)
+	}
 
 	return buttons
 }
