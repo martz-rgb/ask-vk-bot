@@ -8,6 +8,9 @@ about timezone:
 about reservation:
 не больше одной брони на человека?
 
+about back:
+стандартное поведение при кнопке back -- заново запустить entry
+
 TO-DO list:
 
 - [ ] polls
