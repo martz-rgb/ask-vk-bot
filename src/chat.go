@@ -9,7 +9,7 @@ import (
 
 type Chat struct {
 	user        *User
-	stack       *StateStack
+	stack       *Stack[StateNode]
 	reset_state StateNode
 	query       []*MessageParams
 
@@ -21,7 +21,7 @@ func NewChat(user_id int, state StateNode, reset_state StateNode, timeout time.D
 		user: &User{
 			id: user_id,
 		},
-		stack:       &StateStack{state},
+		stack:       &Stack[StateNode]{state},
 		reset_state: reset_state,
 	}
 }
@@ -170,7 +170,7 @@ func (c *Chat) Exit(controls *Controls) {
 }
 
 func (c *Chat) Reset(controls *Controls) {
-	c.stack = &StateStack{c.reset_state}
+	c.stack = &Stack[StateNode]{c.reset_state}
 
 	message := "В ходе работы произошла ошибка. Пожалуйста, попробуйте еще раз попозже."
 	controls.Vk.SendMessage(c.user.id, message, "", nil)
