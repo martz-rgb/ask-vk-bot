@@ -21,6 +21,7 @@ TO-DO list:
 - [ ] use context in nodes
 - [ ] manage secrets with docker swarm? 
 - [ ] longpoll quit silently if no internet connection
+- [ ] какая-то фигня при смене клавиатуры на пк, если есть прикрепленное сообщение
 - [ ] *maybe some collaborators support
 
 
