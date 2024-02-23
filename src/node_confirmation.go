@@ -1,9 +1,17 @@
 package main
 
 type ConfirmationNode struct {
-	Message string
-	Next    StateNode
-	Answer  bool
+	message string
+	next    StateNode
+
+	Answer bool
+}
+
+func NewConfirmationNode(message string, next StateNode) *ConfirmationNode {
+	return &ConfirmationNode{
+		message: message,
+		next:    next,
+	}
 }
 
 func (node *ConfirmationNode) ID() string {
@@ -26,7 +34,7 @@ func (node *ConfirmationNode) Entry(user *User, c *Controls) error {
 		},
 	}
 
-	_, err := c.Vk.SendMessage(user.id, node.Message, CreateKeyboard(node, buttons), nil)
+	_, err := c.Vk.SendMessage(user.id, node.message, CreateKeyboard(node, buttons), nil)
 	return err
 }
 
@@ -40,10 +48,7 @@ func (node *ConfirmationNode) KeyboardEvent(user *User, c *Controls, payload *Ca
 	switch payload.Command {
 	case "yes":
 		node.Answer = true
-
-		if node.Next != nil {
-			return node.Next, false, nil
-		}
+		return node.next, false, nil
 	case "no":
 		node.Answer = false
 	}
@@ -53,4 +58,8 @@ func (node *ConfirmationNode) KeyboardEvent(user *User, c *Controls, payload *Ca
 
 func (node *ConfirmationNode) Back(user *User, c *Controls, prev_state StateNode) (bool, error) {
 	return true, nil
+}
+
+func (node *ConfirmationNode) Next() StateNode {
+	return node.next
 }

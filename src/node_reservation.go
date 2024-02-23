@@ -6,7 +6,6 @@ import (
 
 	"github.com/SevereCloud/vksdk/v2/api"
 	"github.com/hori-ryota/zaperr"
-	"go.uber.org/zap"
 )
 
 type ReservationNode struct {
@@ -33,12 +32,12 @@ func (node *ReservationNode) Entry(user *User, c *Controls) error {
 	}
 
 	node.paginator = NewPaginator(
-		roles, 
-		"roles", 
-		RowsCount, 
-		ColsCount, 
+		roles,
+		"roles",
+		RowsCount,
+		ColsCount,
 		false,
-		to_label, 
+		to_label,
 		to_value)
 
 	message := `Выберите нужную роль с помощи клавиатуры или начните вводить и отправьте часть, с которой начинается имя роли.
@@ -68,23 +67,22 @@ func (node *ReservationNode) KeyboardEvent(user *User, c *Controls, payload *Cal
 		}
 
 		node.role = role
+
 		message := fmt.Sprintf("Вы хотите забронировать роль %s?",
 			role.ShownName)
-
 		request := &MessageParams{
 			Text: "Расскажите про себя в одном сообщении.",
 		}
-		form, err := NewForm(NewAboutField(request))
-		if err != nil {
-			return nil, false, err
-		}
 
-		return &ConfirmationNode{
-			Message: message,
-			Next: &FormNode{
-				Form: form,
-			},
-		}, false, err
+		field := NewField(
+			"info",
+			request,
+			nil,
+			ExtractID,
+			InfoAboutValidate,
+			nil)
+		return NewConfirmationNode(message, NewFormNode(field)), false, nil
+
 	case "paginator":
 		back := node.paginator.Control(payload.Value)
 
@@ -102,7 +100,7 @@ func (node *ReservationNode) KeyboardEvent(user *User, c *Controls, payload *Cal
 func (node *ReservationNode) Back(user *User, c *Controls, prev_state StateNode) (bool, error) {
 	confirmation, ok := prev_state.(*ConfirmationNode)
 	if !ok {
-		return false, nil
+		return false, node.Entry(user, c)
 	}
 
 	if confirmation.Answer {
@@ -111,25 +109,18 @@ func (node *ReservationNode) Back(user *User, c *Controls, prev_state StateNode)
 			return false, zaperr.Wrap(err, "")
 		}
 
-		form, ok := confirmation.Next.(*FormNode)
+		form, ok := confirmation.Next().(*FormNode)
 		if !ok {
 			err := errors.New("no form is presented")
 			return false, zaperr.Wrap(err, "")
 		}
 
-		if !form.FilledOut {
-			node.role = nil
+		if !form.IsFilled() {
 			return false, node.Entry(user, c)
 		}
 
-		value, err := form.Form.Value(0)
-		if err != nil {
-			err := errors.New("form is not fullfilled")
-			return false, zaperr.Wrap(err, "",
-				zap.Any("form", form.Form))
-		}
-
-		id, err := ConvertValue[int](value)
+		values := form.Values()
+		id, err := ExtractValue[int](values, "info")
 		if err != nil {
 			return false, err
 		}
@@ -141,7 +132,6 @@ func (node *ReservationNode) Back(user *User, c *Controls, prev_state StateNode)
 
 		message := fmt.Sprintf("Отлично! Ваша заявка на бронь %s будет рассмотрена в ближайшее время. Вам придет сообщение.",
 			node.role.ShownName)
-
 		forward, err := ForwardParam(user.id, []int{id})
 		if err != nil {
 			return false, err

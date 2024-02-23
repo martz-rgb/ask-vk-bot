@@ -1,13 +1,10 @@
 package main
 
 import (
-	"errors"
 	"fmt"
 	"strconv"
 
 	"github.com/SevereCloud/vksdk/v2/api"
-	"github.com/hori-ryota/zaperr"
-	"go.uber.org/zap"
 )
 
 type AdminReservationNode struct {
@@ -58,6 +55,7 @@ func (node *AdminReservationNode) KeyboardEvent(user *User, c *Controls, payload
 		}
 
 		node.reservation = reservation
+
 		text := fmt.Sprintf("Роль: %s\nСтраница: https://vk.com/id%d\n",
 			reservation.Role,
 			reservation.VkID)
@@ -69,22 +67,20 @@ func (node *AdminReservationNode) KeyboardEvent(user *User, c *Controls, payload
 			return nil, false, err
 		}
 
-		request := &MessageParams{
-			Text: text,
-			Params: api.Params{
-				"forward": forward,
+		field := NewField(
+			"action",
+			&MessageParams{
+				Text: text,
+				Params: api.Params{
+					"forward": forward,
+				},
 			},
-		}
-
-		field := NewConfirmReservation(request)
-		form, err := NewForm(field)
-		if err != nil {
-			return nil, false, err
-		}
-
-		return &FormNode{
-			Form: form,
-		}, false, nil
+			ConfirmReservationOptions,
+			nil,
+			ConfirmReservationValidate,
+			nil,
+		)
+		return NewFormNode(field), false, nil
 
 	case "paginator":
 		back := node.paginator.Control(payload.Value)
@@ -102,27 +98,21 @@ func (node *AdminReservationNode) KeyboardEvent(user *User, c *Controls, payload
 func (node *AdminReservationNode) Back(user *User, c *Controls, prev_state StateNode) (bool, error) {
 	form, ok := prev_state.(*FormNode)
 	if !ok {
-		return false, nil
-	}
-
-	if !form.FilledOut {
 		return false, node.Entry(user, c)
 	}
 
-	value, err := form.Form.Value(0)
-	if err != nil {
-		err := errors.New("form is not fullfilled")
-		return false, zaperr.Wrap(err, "",
-			zap.Any("form", form.Form))
+	if !form.IsFilled() {
+		return false, node.Entry(user, c)
 	}
 
-	confirm, err := ConvertValue[bool](value)
+	values := form.Values()
+	action, err := ExtractValue[bool](values, "action")
 	if err != nil {
 		return false, err
 	}
 
 	var message string
-	if confirm {
+	if action == true {
 		deadline, err := c.Ask.ConfirmReservation(node.reservation.Id)
 		if err != nil {
 			return false, err

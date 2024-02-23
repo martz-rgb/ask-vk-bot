@@ -7,105 +7,108 @@ import (
 	"go.uber.org/zap"
 )
 
+// TO-DO: implement undo action
 type Form struct {
-	fields []FormField
-	index  int
+	layers *Stack[*Layer]
+	form   map[string]interface{}
 
 	paginator *Paginator[Option]
 }
 
-func NewForm(fields ...FormField) (*Form, error) {
-	if len(fields) == 0 {
-		err := errors.New("form must not be empty")
-		return nil, zaperr.Wrap(err, "")
+func NewForm(fields ...*Field) *Form {
+	f := &Form{
+		layers: &Stack[*Layer]{NewLayer("", fields)},
 	}
 
-	form := &Form{
-		fields: fields,
-		index:  0,
-	}
-	form.updatePaginator()
+	f.update()
 
-	return form, nil
+	return f
 }
 
 func (f *Form) Request() *MessageParams {
-	return f.fields[f.index].Request()
+	return f.layers.Peek().Current().Request()
 }
 
-func (f *Form) SetFromMessageAndValidate(m *Message) (bool, string, error) {
-	f.fields[f.index].SetFromMessage(m)
-	return f.fields[f.index].Validate()
+func (f *Form) SetFromMessage(m *Message) (*MessageParams, error) {
+	return f.layers.Peek().SetFromMessage(m)
 }
 
-func (f *Form) SetOptionAndValidate(id string) (bool, string, error) {
-	f.fields[f.index].SetOption(id)
-	return f.fields[f.index].Validate()
+func (f *Form) SetFromOption(id string) (*MessageParams, error) {
+	return f.layers.Peek().SetFromOption(id)
 }
 
 func (f *Form) Next() (end bool) {
-	f.index++
-	if f.index >= len(f.fields) {
-		f.index = len(f.fields) - 1
-		return true
+	name, fields := f.layers.Peek().Next()
+	if fields != nil {
+		f.layers.Push(NewLayer(name, fields))
+		f.update()
+		return
 	}
 
-	f.updatePaginator()
+	for f.layers.Len() > 0 && f.layers.Peek().IsEnd() {
+		layer := f.layers.Pop()
+
+		if f.layers.Len() > 0 {
+			f.layers.Peek().AddValue(layer.Name(), layer.Form())
+		} else {
+			f.form = layer.Form()
+			return true
+		}
+	}
+
+	f.update()
 	return false
 }
 
-func (f *Form) Up() {
-	f.index--
-	if f.index < 0 {
-		f.index = 0
-	}
+func (f *Form) Buttons() [][]Button {
+	return f.paginator.Buttons()
 }
 
-func (f *Form) Control(command string) bool {
+func (f *Form) Control(command string) (back bool) {
 	return f.paginator.Control(command)
 }
 
-func (f *Form) updatePaginator() {
-	options := f.fields[f.index].Options()
-
-	f.paginator = NewPaginator[Option](
-		options,
-		"form",
-		RowsCount,
-		ColsCount,
-		false,
-		OptionToLabel,
-		OptionToValue)
+func (f *Form) Values() map[string]interface{} {
+	return f.form
 }
 
-func (f *Form) Buttons() [][]Button {
-	special := []Button{}
-
-	if f.index > 0 {
-		special = append(special, Button{
-			Label:   "^",
-			Color:   PrimaryColor,
-			Command: "up",
-		})
+func (f *Form) update() {
+	if f.layers.Len() == 0 {
+		return
 	}
 
-	return f.paginator.Buttons(special...)
-}
-
-func (f *Form) Value(index int) (interface{}, error) {
-	if index < 0 || index >= len(f.fields) {
-		err := errors.New("out of range")
-		return nil, zaperr.Wrap(err, "",
-			zap.Int("index", index),
-			zap.Any("form", f.fields))
+	if f.paginator == nil {
+		f.paginator = NewPaginator[Option](
+			f.layers.Peek().Current().Options(),
+			"form",
+			RowsCount,
+			ColsCount,
+			false,
+			OptionToLabel,
+			OptionToValue,
+		)
+		return
 	}
-	return f.fields[index].Value(), nil
+
+	f.paginator.ChangeObjects(f.layers.Peek().Current().Options())
 }
 
-func ConvertValue[T any](value interface{}) (T, error) {
+func ExtractValue[T any](form map[string]interface{}, name string) (T, error) {
+	if form == nil {
+		err := errors.New("form is nil")
+		return *new(T), zaperr.Wrap(err, "")
+	}
+	value, ok := form[name]
+	if !ok {
+		err := errors.New("no such key is presented in form")
+		return *new(T), zaperr.Wrap(err, "",
+			zap.Any("key", name),
+			zap.Any("form", form))
+	}
+
 	typed, ok := value.(T)
 	if !ok {
-		err := errors.New("failed to convert to string")
+		err := errors.New("failed to convert to required type")
 		return *new(T), zaperr.Wrap(err, "",
 			zap.Any("type", *new(T)),
 			zap.Any("value", value))
