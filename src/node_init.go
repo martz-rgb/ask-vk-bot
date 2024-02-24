@@ -23,15 +23,21 @@ func (node *InitNode) ID() string {
 func (node *InitNode) options(user *User, c *Controls) ([]form.Option, error) {
 	options := []form.Option{}
 
-	reservations, err := c.Ask.ReservationsByVkID(user.id)
+	reservation_details, err := c.Ask.ReservationsDetailsByVkID(user.id)
 	if err != nil {
 		return nil, err
 	}
-	if len(reservations) == 0 {
+	if reservation_details == nil {
 		options = append(options, form.Option{
 			ID:    (&ReservationNode{}).ID(),
 			Label: "Бронь",
 			Value: &ReservationNode{},
+		})
+	} else {
+		options = append(options, form.Option{
+			ID:    (&ReservationCancelNode{}).ID(),
+			Label: "Статус брони",
+			Value: &ReservationCancelNode{},
 		})
 	}
 
