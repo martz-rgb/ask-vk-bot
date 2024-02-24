@@ -74,8 +74,8 @@ func (db *DB) LoadCsv(name string) error {
 	content = content[1:]
 
 	stmt, err := db.sql.Prepare(`INSERT INTO roles 
-		(name, tag, shown_name, caption_name)
-		VALUES (?, ?, ?, ?)`)
+		(name, tag, shown_name, accusative_name, caption_name)
+		VALUES (?, ?, ?, ?, ?)`)
 	if err != nil {
 		return err
 	}
@@ -86,7 +86,7 @@ func (db *DB) LoadCsv(name string) error {
 	}
 
 	for _, record := range content {
-		_, err := tx.Stmt(stmt).Exec(record[0], record[1], record[2], record[3])
+		_, err := tx.Stmt(stmt).Exec(record[0], record[1], record[2], record[3], record[4])
 		if err != nil {
 			tx.Rollback()
 			return err
