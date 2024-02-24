@@ -1,5 +1,7 @@
 package main
 
+import "ask-bot/src/vk"
+
 type ConfirmationNode struct {
 	message string
 	next    StateNode
@@ -19,32 +21,32 @@ func (node *ConfirmationNode) ID() string {
 }
 
 func (node *ConfirmationNode) Entry(user *User, c *Controls) error {
-	buttons := [][]Button{
+	buttons := [][]vk.Button{
 		{
 			{
 				Label:   "Да",
-				Color:   PrimaryColor,
+				Color:   vk.PrimaryColor,
 				Command: "yes",
 			},
 			{
 				Label:   "Нет",
-				Color:   NegativeColor,
+				Color:   vk.NegativeColor,
 				Command: "no",
 			},
 		},
 	}
 
-	_, err := c.Vk.SendMessage(user.id, node.message, CreateKeyboard(node, buttons), nil)
+	_, err := c.Vk.SendMessage(user.id, node.message, vk.CreateKeyboard(node.ID(), buttons), nil)
 	return err
 }
 
-func (node *ConfirmationNode) NewMessage(user *User, c *Controls, message *Message) (StateNode, bool, error) {
+func (node *ConfirmationNode) NewMessage(user *User, c *Controls, message *vk.Message) (StateNode, bool, error) {
 	node.Answer = false
 
 	return nil, true, nil
 }
 
-func (node *ConfirmationNode) KeyboardEvent(user *User, c *Controls, payload *CallbackPayload) (StateNode, bool, error) {
+func (node *ConfirmationNode) KeyboardEvent(user *User, c *Controls, payload *vk.CallbackPayload) (StateNode, bool, error) {
 	switch payload.Command {
 	case "yes":
 		node.Answer = true

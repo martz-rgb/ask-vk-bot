@@ -1,4 +1,4 @@
-package main
+package ask
 
 import (
 	"time"
@@ -9,20 +9,33 @@ import (
 )
 
 type Ask struct {
-	config *AskConfig
+	config *Config
 	db     *DB
 
 	timezone time.Duration
 }
 
-func NewAsk(config *AskConfig, db *DB) *Ask {
+func New(config *Config) *Ask {
 	sqlf.SetDialect(sqlf.NoDialect)
 
 	return &Ask{
 		config:   config,
-		db:       db,
 		timezone: time.Duration(config.Timezone) * time.Hour,
 	}
+}
+
+func (a *Ask) Init(path string, schema string, allow_deletion bool) error {
+	db, err := NewDB(path)
+	if err != nil {
+		return zaperr.Wrap(err, "failed to create new db")
+	}
+	if err = db.Init(schema, allow_deletion); err != nil {
+		return zaperr.Wrap(err, "failed to create new db")
+	}
+
+	a.db = db
+
+	return nil
 }
 
 // administration

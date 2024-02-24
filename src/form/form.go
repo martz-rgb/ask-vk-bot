@@ -1,6 +1,9 @@
-package main
+package form
 
 import (
+	"ask-bot/src/paginator"
+	"ask-bot/src/stack"
+	"ask-bot/src/vk"
 	"errors"
 
 	"github.com/hori-ryota/zaperr"
@@ -9,15 +12,15 @@ import (
 
 // TO-DO: implement undo action
 type Form struct {
-	layers *Stack[*Layer]
-	form   map[string]interface{}
+	layers *stack.Stack[*Layer]
+	values map[string]interface{}
 
-	paginator *Paginator[Option]
+	paginator *paginator.Paginator[Option]
 }
 
 func NewForm(fields ...*Field) *Form {
 	f := &Form{
-		layers: &Stack[*Layer]{NewLayer("", fields)},
+		layers: stack.New[*Layer](NewLayer("", fields)),
 	}
 
 	f.update()
@@ -25,15 +28,15 @@ func NewForm(fields ...*Field) *Form {
 	return f
 }
 
-func (f *Form) Request() *MessageParams {
+func (f *Form) Request() *vk.MessageParams {
 	return f.layers.Peek().Current().Request()
 }
 
-func (f *Form) SetFromMessage(m *Message) (*MessageParams, error) {
+func (f *Form) SetFromMessage(m *vk.Message) (*vk.MessageParams, error) {
 	return f.layers.Peek().SetFromMessage(m)
 }
 
-func (f *Form) SetFromOption(id string) (*MessageParams, error) {
+func (f *Form) SetFromOption(id string) (*vk.MessageParams, error) {
 	return f.layers.Peek().SetFromOption(id)
 }
 
@@ -49,9 +52,9 @@ func (f *Form) Next() (end bool) {
 		layer := f.layers.Pop()
 
 		if f.layers.Len() > 0 {
-			f.layers.Peek().AddValue(layer.Name(), layer.Form())
+			f.layers.Peek().AddValue(layer.Name(), layer.Values())
 		} else {
-			f.form = layer.Form()
+			f.values = layer.Values()
 			return true
 		}
 	}
@@ -60,7 +63,7 @@ func (f *Form) Next() (end bool) {
 	return false
 }
 
-func (f *Form) Buttons() [][]Button {
+func (f *Form) Buttons() [][]vk.Button {
 	return f.paginator.Buttons()
 }
 
@@ -69,7 +72,7 @@ func (f *Form) Control(command string) (back bool) {
 }
 
 func (f *Form) Values() map[string]interface{} {
-	return f.form
+	return f.values
 }
 
 func (f *Form) update() {
@@ -78,11 +81,11 @@ func (f *Form) update() {
 	}
 
 	if f.paginator == nil {
-		f.paginator = NewPaginator[Option](
+		f.paginator = paginator.New[Option](
 			f.layers.Peek().Current().Options(),
 			"form",
-			RowsCount,
-			ColsCount,
+			paginator.DeafultRows,
+			paginator.DefaultCols,
 			false,
 			OptionToLabel,
 			OptionToValue,

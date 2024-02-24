@@ -1,6 +1,10 @@
 package main
 
 import (
+	"ask-bot/src/ask"
+	"ask-bot/src/form"
+	"ask-bot/src/paginator"
+	"ask-bot/src/vk"
 	"errors"
 	"fmt"
 
@@ -9,9 +13,9 @@ import (
 )
 
 type ReservationNode struct {
-	paginator *Paginator[Role]
+	paginator *paginator.Paginator[ask.Role]
 
-	role *Role
+	role *ask.Role
 }
 
 func (node *ReservationNode) ID() string {
@@ -24,18 +28,18 @@ func (node *ReservationNode) Entry(user *User, c *Controls) error {
 		return err
 	}
 
-	to_label := func(role Role) string {
+	to_label := func(role ask.Role) string {
 		return role.ShownName
 	}
-	to_value := func(role Role) string {
+	to_value := func(role ask.Role) string {
 		return role.Name
 	}
 
-	node.paginator = NewPaginator(
+	node.paginator = paginator.New(
 		roles,
 		"roles",
-		RowsCount,
-		ColsCount,
+		paginator.DeafultRows,
+		paginator.DefaultCols,
 		false,
 		to_label,
 		to_value)
@@ -43,11 +47,14 @@ func (node *ReservationNode) Entry(user *User, c *Controls) error {
 	message := `Выберите нужную роль с помощи клавиатуры или начните вводить и отправьте часть, с которой начинается имя роли.
 				Отправьте специальный символ '%' для того, чтобы вернуться к полному списку ролей.`
 
-	_, err = c.Vk.SendMessage(user.id, message, CreateKeyboard(node, node.paginator.Buttons()), nil)
+	_, err = c.Vk.SendMessage(user.id,
+		message,
+		vk.CreateKeyboard(node.ID(), node.paginator.Buttons()),
+		nil)
 	return err
 }
 
-func (node *ReservationNode) NewMessage(user *User, c *Controls, message *Message) (StateNode, bool, error) {
+func (node *ReservationNode) NewMessage(user *User, c *Controls, message *vk.Message) (StateNode, bool, error) {
 	roles, err := c.Ask.AvailableRolesStartWith(message.Text)
 	if err != nil {
 		return nil, false, err
@@ -55,10 +62,10 @@ func (node *ReservationNode) NewMessage(user *User, c *Controls, message *Messag
 
 	node.paginator.ChangeObjects(roles)
 
-	return nil, false, c.Vk.ChangeKeyboard(user.id, CreateKeyboard(node, node.paginator.Buttons()))
+	return nil, false, c.Vk.ChangeKeyboard(user.id, vk.CreateKeyboard(node.ID(), node.paginator.Buttons()))
 }
 
-func (node *ReservationNode) KeyboardEvent(user *User, c *Controls, payload *CallbackPayload) (StateNode, bool, error) {
+func (node *ReservationNode) KeyboardEvent(user *User, c *Controls, payload *vk.CallbackPayload) (StateNode, bool, error) {
 	switch payload.Command {
 	case "roles":
 		role, err := node.paginator.Object(payload.Value)
@@ -70,11 +77,11 @@ func (node *ReservationNode) KeyboardEvent(user *User, c *Controls, payload *Cal
 
 		message := fmt.Sprintf("Вы хотите забронировать роль %s?",
 			role.ShownName)
-		request := &MessageParams{
+		request := &vk.MessageParams{
 			Text: "Расскажите про себя в одном сообщении.",
 		}
 
-		field := NewField(
+		field := form.NewField(
 			"info",
 			request,
 			nil,
@@ -91,7 +98,7 @@ func (node *ReservationNode) KeyboardEvent(user *User, c *Controls, payload *Cal
 		}
 
 		return nil, false, c.Vk.ChangeKeyboard(user.id,
-			CreateKeyboard(node, node.paginator.Buttons()))
+			vk.CreateKeyboard(node.ID(), node.paginator.Buttons()))
 	}
 
 	return nil, false, nil
@@ -109,18 +116,18 @@ func (node *ReservationNode) Back(user *User, c *Controls, prev_state StateNode)
 			return false, zaperr.Wrap(err, "")
 		}
 
-		form, ok := confirmation.Next().(*FormNode)
+		form_node, ok := confirmation.Next().(*FormNode)
 		if !ok {
 			err := errors.New("no form is presented")
 			return false, zaperr.Wrap(err, "")
 		}
 
-		if !form.IsFilled() {
+		if !form_node.IsFilled() {
 			return false, node.Entry(user, c)
 		}
 
-		values := form.Values()
-		id, err := ExtractValue[int](values, "info")
+		values := form_node.Values()
+		id, err := form.ExtractValue[int](values, "info")
 		if err != nil {
 			return false, err
 		}
@@ -132,7 +139,7 @@ func (node *ReservationNode) Back(user *User, c *Controls, prev_state StateNode)
 
 		message := fmt.Sprintf("Отлично! Ваша заявка на бронь %s будет рассмотрена в ближайшее время. Вам придет сообщение.",
 			node.role.ShownName)
-		forward, err := ForwardParam(user.id, []int{id})
+		forward, err := vk.ForwardParam(user.id, []int{id})
 		if err != nil {
 			return false, err
 		}

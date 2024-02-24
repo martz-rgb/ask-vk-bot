@@ -1,15 +1,17 @@
 package main
 
 import (
+	"ask-bot/src/ask"
+	"ask-bot/src/vk"
 	"time"
 
 	"go.uber.org/zap"
 )
 
 type Controls struct {
-	Ask    *Ask
-	Vk     *VK
-	Notify chan *MessageParams
+	Ask    *ask.Ask
+	Vk     *vk.VK
+	Notify chan *vk.MessageParams
 }
 
 type ChatBot struct {
@@ -23,15 +25,15 @@ type ChatBot struct {
 	log *zap.SugaredLogger
 }
 
-func NewChatBot(ask *Ask, reset_state StateNode, timeout time.Duration, vk *VK, log *zap.SugaredLogger) *ChatBot {
+func NewChatBot(a *ask.Ask, v *vk.VK, reset_state StateNode, timeout time.Duration, log *zap.SugaredLogger) *ChatBot {
 	bot := &ChatBot{
 		cache:       NewCache[int, *Chat](),
 		reset_state: reset_state,
 		timeout:     timeout,
 		controls: &Controls{
-			Ask:    ask,
-			Vk:     vk,
-			Notify: make(chan *MessageParams),
+			Ask:    a,
+			Vk:     v,
+			Notify: make(chan *vk.MessageParams),
 		},
 		log: log,
 	}
@@ -70,7 +72,7 @@ func (bot *ChatBot) ListenNotification() {
 	}
 }
 
-func (bot *ChatBot) NotifyChat(message *MessageParams) error {
+func (bot *ChatBot) NotifyChat(message *vk.MessageParams) error {
 	chat, existed := bot.TakeChat(message.Id, &InitNode{
 		Silent: true,
 	})

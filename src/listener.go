@@ -1,24 +1,25 @@
 package main
 
 import (
+	"ask-bot/src/ask"
+	"ask-bot/src/vk"
 	"context"
 	"sync"
 
 	"github.com/SevereCloud/vksdk/v2/events"
-	"github.com/SevereCloud/vksdk/v2/longpoll-bot"
 	"go.uber.org/zap"
 )
 
 type Listener struct {
-	ask *Ask
+	ask *ask.Ask
 
-	group *VK
-	admin *VK
+	group *vk.VK
+	admin *vk.VK
 
 	log *zap.SugaredLogger
 }
 
-func NewListener(ask *Ask, group *VK, admin *VK) *Listener {
+func NewListener(ask *ask.Ask, group *vk.VK, admin *vk.VK) *Listener {
 	return &Listener{
 		ask:   ask,
 		group: group,
@@ -29,11 +30,11 @@ func NewListener(ask *Ask, group *VK, admin *VK) *Listener {
 func (l *Listener) RunLongPoll(ctx context.Context, wg *sync.WaitGroup) {
 	defer wg.Done()
 
-	lp, err := longpoll.NewLongPoll(l.group.api, l.group.id)
+	lp, err := l.group.NewLongPoll()
 	if err != nil {
 		zap.S().Errorw("failed to run listener longpoll",
 			"error", err,
-			"id", l.group.id)
+			"id", l.group.ID())
 		return
 	}
 

@@ -1,23 +1,25 @@
-package main
+package form
+
+import "ask-bot/src/vk"
 
 type Field struct {
 	name string
 
-	request *MessageParams
+	request *vk.MessageParams
 	options []Option
 
-	extract  func(*Message) interface{}
-	validate func(interface{}) (*MessageParams, error)
+	extract  func(*vk.Message) interface{}
+	validate func(interface{}) (*vk.MessageParams, error)
 	next     func(interface{}) (string, []*Field)
 
 	value interface{}
 }
 
 func NewField(name string,
-	request *MessageParams,
+	request *vk.MessageParams,
 	options []Option,
-	extract func(*Message) interface{},
-	validate func(interface{}) (*MessageParams, error),
+	extract func(*vk.Message) interface{},
+	validate func(interface{}) (*vk.MessageParams, error),
 	next func(interface{}) (string, []*Field)) *Field {
 
 	return &Field{
@@ -35,7 +37,7 @@ func (f *Field) Name() string {
 	return f.name
 }
 
-func (f *Field) Request() *MessageParams {
+func (f *Field) Request() *vk.MessageParams {
 	return f.request
 }
 
@@ -54,7 +56,7 @@ func (f *Field) Value() interface{} {
 	return f.value
 }
 
-func (f *Field) SetFromMessage(message *Message) {
+func (f *Field) SetFromMessage(message *vk.Message) {
 	if f.extract == nil {
 		f.value = nil
 		return
@@ -73,7 +75,7 @@ func (f *Field) SetFromOption(id string) {
 	}
 }
 
-func (f *Field) Validate() (*MessageParams, error) {
+func (f *Field) Validate() (*vk.MessageParams, error) {
 	if f.validate == nil {
 		// no validation is required
 		return nil, nil

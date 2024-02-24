@@ -1,7 +1,6 @@
-package main
+package vk
 
 import (
-	"encoding/json"
 	"errors"
 	"io"
 	"maps"
@@ -11,6 +10,7 @@ import (
 	"time"
 
 	"github.com/SevereCloud/vksdk/v2/api"
+	"github.com/SevereCloud/vksdk/v2/longpoll-bot"
 	"github.com/SevereCloud/vksdk/v2/object"
 	"github.com/awnumar/memguard"
 	"github.com/hori-ryota/zaperr"
@@ -32,26 +32,7 @@ type VK struct {
 	r   *rand.Rand
 }
 
-type VKForwardMessage struct {
-	PeerId      int   `json:"peer_id"`
-	MessagesIds []int `json:"message_ids"`
-}
-
-func ForwardParam(vk_id int, messages []int) (string, error) {
-	forward, err := json.Marshal(VKForwardMessage{
-		vk_id,
-		messages,
-	})
-	if err != nil {
-		return "", zaperr.Wrap(err, "failed to marshal forward message param",
-			zap.Int("vk_id", vk_id),
-			zap.Any("messages", messages))
-	}
-
-	return string(forward), nil
-}
-
-func NewVKFromFile(name string, id int) (*VK, error) {
+func NewFromFile(name string, id int) (*VK, error) {
 	file, err := os.Open(name)
 	if err != nil {
 		return nil, err
@@ -68,7 +49,7 @@ func NewVKFromFile(name string, id int) (*VK, error) {
 		return nil, errors.New("group token is not provided")
 	}
 
-	api, err := NewVK(id, token)
+	api, err := New(id, token)
 	if err != nil {
 		return nil, err
 	}
@@ -76,7 +57,7 @@ func NewVKFromFile(name string, id int) (*VK, error) {
 	return api, nil
 }
 
-func NewVK(id int, token *memguard.LockedBuffer) (*VK, error) {
+func New(id int, token *memguard.LockedBuffer) (*VK, error) {
 	v := &VK{}
 	source := rand.NewSource(time.Now().UnixNano())
 	v.r = rand.New(source)
@@ -87,6 +68,14 @@ func NewVK(id int, token *memguard.LockedBuffer) (*VK, error) {
 	v.api = api.NewVK(strings.Clone(token.String()))
 
 	return v, nil
+}
+
+func (v *VK) ID() int {
+	return v.id
+}
+
+func (v *VK) NewLongPoll() (*longpoll.LongPoll, error) {
+	return longpoll.NewLongPoll(v.api, v.id)
 }
 
 func (v *VK) MarkAsRead(user_id int) error {
@@ -127,6 +116,29 @@ func (v *VK) SendMessage(user_id int, message string, keyboard string, args api.
 	}
 
 	zap.S().Debugw("successfully sent vk messsage",
+		"params", params,
+		"response", response)
+
+	return response, nil
+}
+
+func (v *VK) SendMessageParams(user_id int, message *MessageParams, keyboard string) (int, error) {
+	params := api.Params{
+		"user_id":   user_id,
+		"random_id": v.r.Int(),
+		"message":   message.Text,
+		"keyboard":  keyboard,
+	}
+	maps.Copy(params, message.Params)
+
+	response, err := v.api.MessagesSend(params)
+	if err != nil {
+		return -1, zaperr.Wrap(err, "failed to send vk messsage params",
+			zap.Any("params", params),
+			zap.Int("response", response))
+	}
+
+	zap.S().Debugw("successfully sent vk messsage params",
 		"params", params,
 		"response", response)
 

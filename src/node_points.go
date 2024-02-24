@@ -1,6 +1,8 @@
 package main
 
 import (
+	"ask-bot/src/ask"
+	"ask-bot/src/vk"
 	"bytes"
 	"errors"
 	"fmt"
@@ -11,8 +13,6 @@ import (
 )
 
 const MaxLengthHistory int = 10
-
-type KeyboardAction func(int, *Ask, *VK, *CallbackPayload) StateNode
 
 type PointsNode struct {
 }
@@ -27,23 +27,23 @@ func (node *PointsNode) Entry(user *User, c *Controls) error {
 		return err
 	}
 
-	buttons := [][]Button{
+	buttons := [][]vk.Button{
 		{{
 			Label: "Потратить",
-			Color: SecondaryColor,
+			Color: vk.SecondaryColor,
 
 			Command: "spend",
 		}},
 		{
 			{
 				Label: "История",
-				Color: SecondaryColor,
+				Color: vk.SecondaryColor,
 
 				Command: "history",
 			},
 			{
 				Label: "Назад",
-				Color: NegativeColor,
+				Color: vk.NegativeColor,
 
 				Command: "back",
 			},
@@ -52,15 +52,15 @@ func (node *PointsNode) Entry(user *User, c *Controls) error {
 
 	message := fmt.Sprintf("Ваше текущее количество баллов: %d", points)
 
-	_, err = c.Vk.SendMessage(user.id, message, CreateKeyboard(node, buttons), nil)
+	_, err = c.Vk.SendMessage(user.id, message, vk.CreateKeyboard(node.ID(), buttons), nil)
 	return err
 }
 
-func (node *PointsNode) NewMessage(user *User, c *Controls, message *Message) (StateNode, bool, error) {
+func (node *PointsNode) NewMessage(user *User, c *Controls, message *vk.Message) (StateNode, bool, error) {
 	return nil, false, nil
 }
 
-func (node *PointsNode) KeyboardEvent(user *User, c *Controls, payload *CallbackPayload) (StateNode, bool, error) {
+func (node *PointsNode) KeyboardEvent(user *User, c *Controls, payload *vk.CallbackPayload) (StateNode, bool, error) {
 	switch payload.Command {
 	case "spend":
 		message := `Пока что не на что тратить баллы.`
@@ -90,7 +90,7 @@ func (node *PointsNode) Back(user *User, c *Controls, prev_state StateNode) (boo
 	return false, nil
 }
 
-func (node *PointsNode) PrepareHistory(user_id int, c *Controls, history []Points) (message string, attachment string, err error) {
+func (node *PointsNode) PrepareHistory(user_id int, c *Controls, history []ask.Points) (message string, attachment string, err error) {
 	if len(history) == 0 {
 		return "Вы еще не получали баллы в нашем сообществе.", "", nil
 	}

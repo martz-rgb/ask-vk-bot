@@ -1,6 +1,10 @@
-package main
+package form
 
-import "go.uber.org/zap"
+import (
+	"ask-bot/src/vk"
+
+	"go.uber.org/zap"
+)
 
 type Layer struct {
 	name string
@@ -8,14 +12,14 @@ type Layer struct {
 	fields []*Field
 	index  int
 
-	form map[string]interface{}
+	values map[string]interface{}
 }
 
 func NewLayer(name string, fields []*Field) *Layer {
 	return &Layer{
 		name:   name,
 		fields: fields,
-		form:   make(map[string]interface{}),
+		values: make(map[string]interface{}),
 	}
 }
 
@@ -27,7 +31,7 @@ func (l *Layer) Current() *Field {
 	return l.fields[l.index]
 }
 
-func (l *Layer) SetFromMessage(message *Message) (*MessageParams, error) {
+func (l *Layer) SetFromMessage(message *vk.Message) (*vk.MessageParams, error) {
 	field := l.Current()
 
 	field.SetFromMessage(message)
@@ -41,7 +45,7 @@ func (l *Layer) SetFromMessage(message *Message) (*MessageParams, error) {
 	return nil, nil
 }
 
-func (l *Layer) SetFromOption(id string) (*MessageParams, error) {
+func (l *Layer) SetFromOption(id string) (*vk.MessageParams, error) {
 	field := l.Current()
 
 	field.SetFromOption(id)
@@ -72,15 +76,15 @@ func (l *Layer) IsEnd() bool {
 
 func (l *Layer) AddValue(name string, value interface{}) {
 	// replace if already exist
-	_, ok := l.form[name]
+	_, ok := l.values[name]
 	if ok {
 		zap.S().Warnw("already exist field",
 			"name", name,
-			"layer form", l.form)
+			"layer form", l.values)
 	}
-	l.form[name] = value
+	l.values[name] = value
 }
 
-func (l *Layer) Form() map[string]interface{} {
-	return l.form
+func (l *Layer) Values() map[string]interface{} {
+	return l.values
 }

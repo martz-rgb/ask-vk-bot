@@ -1,6 +1,13 @@
-package main
+package stack
 
 type Stack[T interface{}] []T
+
+func New[T interface{}](init ...T) *Stack[T] {
+	s := &Stack[T]{}
+	*s = append(*s, init...)
+
+	return s
+}
 
 func (stack *Stack[T]) Len() int {
 	return len(*stack)

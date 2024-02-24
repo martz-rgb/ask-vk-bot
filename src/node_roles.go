@@ -1,11 +1,14 @@
 package main
 
 import (
+	"ask-bot/src/ask"
+	"ask-bot/src/paginator"
+	"ask-bot/src/vk"
 	"fmt"
 )
 
 type RolesNode struct {
-	paginator *Paginator[Role]
+	paginator *paginator.Paginator[ask.Role]
 }
 
 func (node *RolesNode) ID() string {
@@ -18,18 +21,18 @@ func (node *RolesNode) Entry(user *User, c *Controls) error {
 		return err
 	}
 
-	to_label := func(role Role) string {
+	to_label := func(role ask.Role) string {
 		return role.ShownName
 	}
-	to_value := func(role Role) string {
+	to_value := func(role ask.Role) string {
 		return role.Name
 	}
 
-	node.paginator = NewPaginator[Role](
+	node.paginator = paginator.New[ask.Role](
 		roles,
 		"roles",
-		RowsCount,
-		ColsCount,
+		paginator.DeafultRows,
+		paginator.DefaultCols,
 		false,
 		to_label,
 		to_value)
@@ -37,11 +40,14 @@ func (node *RolesNode) Entry(user *User, c *Controls) error {
 	message := `Выберите нужную роль с помощи клавиатуры или начните вводить и отправьте часть, с которой начинается имя роли.
 				Отправьте специальный символ '%' для того, чтобы вернуться к полному списку ролей.`
 
-	_, err = c.Vk.SendMessage(user.id, message, CreateKeyboard(node, node.paginator.Buttons()), nil)
+	_, err = c.Vk.SendMessage(user.id,
+		message,
+		vk.CreateKeyboard(node.ID(), node.paginator.Buttons()),
+		nil)
 	return err
 }
 
-func (node *RolesNode) NewMessage(user *User, c *Controls, message *Message) (StateNode, bool, error) {
+func (node *RolesNode) NewMessage(user *User, c *Controls, message *vk.Message) (StateNode, bool, error) {
 	roles, err := c.Ask.RolesStartWith(message.Text)
 	if err != nil {
 		return nil, false, err
@@ -49,10 +55,10 @@ func (node *RolesNode) NewMessage(user *User, c *Controls, message *Message) (St
 
 	node.paginator.ChangeObjects(roles)
 
-	return nil, false, c.Vk.ChangeKeyboard(user.id, CreateKeyboard(node, node.paginator.Buttons()))
+	return nil, false, c.Vk.ChangeKeyboard(user.id, vk.CreateKeyboard(node.ID(), node.paginator.Buttons()))
 }
 
-func (node *RolesNode) KeyboardEvent(user *User, c *Controls, payload *CallbackPayload) (StateNode, bool, error) {
+func (node *RolesNode) KeyboardEvent(user *User, c *Controls, payload *vk.CallbackPayload) (StateNode, bool, error) {
 	switch payload.Command {
 	case "roles":
 		role, err := node.paginator.Object(payload.Value)
@@ -73,7 +79,7 @@ func (node *RolesNode) KeyboardEvent(user *User, c *Controls, payload *CallbackP
 		}
 
 		return nil, false, c.Vk.ChangeKeyboard(user.id,
-			CreateKeyboard(node, node.paginator.Buttons()))
+			vk.CreateKeyboard(node.ID(), node.paginator.Buttons()))
 	}
 
 	return nil, false, nil

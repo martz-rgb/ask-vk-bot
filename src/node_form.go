@@ -1,18 +1,20 @@
 package main
 
 import (
+	"ask-bot/src/form"
+	"ask-bot/src/vk"
 	"errors"
 
 	"github.com/hori-ryota/zaperr"
 )
 
 type FormNode struct {
-	form *Form
+	f *form.Form
 }
 
-func NewFormNode(fields ...*Field) *FormNode {
+func NewFormNode(fields ...*form.Field) *FormNode {
 	return &FormNode{
-		form: NewForm(fields...),
+		f: form.NewForm(fields...),
 	}
 }
 
@@ -21,7 +23,7 @@ func (node *FormNode) ID() string {
 }
 
 func (node *FormNode) Entry(user *User, c *Controls) error {
-	if node.form == nil {
+	if node.f == nil {
 		err := errors.New("no form is provided")
 		return zaperr.Wrap(err, "")
 	}
@@ -29,26 +31,26 @@ func (node *FormNode) Entry(user *User, c *Controls) error {
 	return node.sendRequest(user, c)
 }
 
-func (node *FormNode) NewMessage(user *User, c *Controls, message *Message) (StateNode, bool, error) {
+func (node *FormNode) NewMessage(user *User, c *Controls, message *vk.Message) (StateNode, bool, error) {
 	end, err := node.set(user, c, message)
 	return nil, end, err
 }
 
-func (node *FormNode) KeyboardEvent(user *User, c *Controls, payload *CallbackPayload) (StateNode, bool, error) {
+func (node *FormNode) KeyboardEvent(user *User, c *Controls, payload *vk.CallbackPayload) (StateNode, bool, error) {
 	switch payload.Command {
 	case "form":
 		end, err := node.set(user, c, payload.Value)
 		return nil, end, err
 
 	case "paginator":
-		back := node.form.Control(payload.Value)
+		back := node.f.Control(payload.Value)
 
 		if back {
 			return nil, true, nil
 		}
 
 		return nil, false, c.Vk.ChangeKeyboard(user.id,
-			CreateKeyboard(node, node.form.Buttons()))
+			vk.CreateKeyboard(node.ID(), node.f.Buttons()))
 	}
 
 	return nil, false, nil
@@ -59,24 +61,23 @@ func (node *FormNode) Back(user *User, c *Controls, prev_state StateNode) (bool,
 }
 
 func (node *FormNode) sendRequest(user *User, c *Controls) error {
-	request := node.form.Request()
+	request := node.f.Request()
 
-	_, err := c.Vk.SendMessage(
+	_, err := c.Vk.SendMessageParams(
 		user.id,
-		request.Text,
-		CreateKeyboard(node, node.form.Buttons()),
-		request.Params)
+		request,
+		vk.CreateKeyboard(node.ID(), node.f.Buttons()))
 	return err
 }
 
 func (node *FormNode) set(user *User, c *Controls, input interface{}) (end bool, err error) {
-	var info *MessageParams
+	var info *vk.MessageParams
 
 	switch value := input.(type) {
-	case *Message:
-		node.form.SetFromMessage(value)
+	case *vk.Message:
+		node.f.SetFromMessage(value)
 	case string:
-		node.form.SetFromOption(value)
+		node.f.SetFromOption(value)
 	}
 
 	if err != nil {
@@ -88,7 +89,7 @@ func (node *FormNode) set(user *User, c *Controls, input interface{}) (end bool,
 		return false, err
 	}
 
-	end = node.form.Next()
+	end = node.f.Next()
 	if !end {
 		return false, node.sendRequest(user, c)
 	}
@@ -96,9 +97,9 @@ func (node *FormNode) set(user *User, c *Controls, input interface{}) (end bool,
 }
 
 func (node *FormNode) Values() map[string]interface{} {
-	return node.form.Values()
+	return node.f.Values()
 }
 
 func (node *FormNode) IsFilled() bool {
-	return node.form.Values() != nil
+	return node.f.Values() != nil
 }

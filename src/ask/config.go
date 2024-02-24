@@ -1,4 +1,4 @@
-package main
+package ask
 
 import (
 	"errors"
@@ -10,13 +10,13 @@ import (
 	"go.uber.org/zap"
 )
 
-type AskConfig struct {
+type Config struct {
 	Timezone            int           `json:"ASK_TIMEZONE"`
 	Deadline            time.Duration `json:"ASK_DEADLINE"`
 	ReservationDuration time.Duration `json:"ASK_RESERVATION_DURATION"`
 }
 
-func AskConfigFromEnv() *AskConfig {
+func ConfigFromEnv() *Config {
 	timezone, _ := strconv.Atoi(os.Getenv("ASK_TIMEZONE"))
 
 	deadline, err := str2duration.ParseDuration(os.Getenv("ASK_DEADLINE"))
@@ -33,14 +33,14 @@ func AskConfigFromEnv() *AskConfig {
 			"reservation duration", os.Getenv("ASK_RESERVATION_DURATION"))
 	}
 
-	return &AskConfig{
+	return &Config{
 		Timezone:            timezone,
 		Deadline:            deadline,
 		ReservationDuration: reservation,
 	}
 }
 
-func (c *AskConfig) Validate() error {
+func (c *Config) Validate() error {
 	// timezone default is zero
 
 	if c.Deadline == 0 {

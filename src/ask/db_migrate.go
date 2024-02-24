@@ -1,4 +1,4 @@
-package main
+package ask
 
 // main source: https://david.rothlis.net/declarative-schema-migration-for-sqlite/
 

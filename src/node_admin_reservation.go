@@ -1,6 +1,10 @@
 package main
 
 import (
+	"ask-bot/src/ask"
+	"ask-bot/src/form"
+	"ask-bot/src/paginator"
+	"ask-bot/src/vk"
 	"fmt"
 	"strconv"
 
@@ -8,8 +12,8 @@ import (
 )
 
 type AdminReservationNode struct {
-	reservation *Reservation
-	paginator   *Paginator[Reservation]
+	reservation *ask.Reservation
+	paginator   *paginator.Paginator[ask.Reservation]
 }
 
 func (node *AdminReservationNode) ID() string {
@@ -22,31 +26,31 @@ func (node *AdminReservationNode) Entry(user *User, c *Controls) error {
 		return err
 	}
 
-	to_label := func(r Reservation) string {
+	to_label := func(r ask.Reservation) string {
 		return r.Role
 	}
 
-	to_value := func(r Reservation) string {
+	to_value := func(r ask.Reservation) string {
 		return strconv.Itoa(r.Id)
 	}
 
-	node.paginator = NewPaginator[Reservation](reservations,
+	node.paginator = paginator.New[ask.Reservation](reservations,
 		"reservations",
-		RowsCount,
-		ColsCount,
+		paginator.DeafultRows,
+		paginator.DefaultCols,
 		false,
 		to_label,
 		to_value)
 
 	return c.Vk.ChangeKeyboard(user.id,
-		CreateKeyboard(node, node.paginator.Buttons()))
+		vk.CreateKeyboard(node.ID(), node.paginator.Buttons()))
 }
 
-func (node *AdminReservationNode) NewMessage(user *User, c *Controls, message *Message) (StateNode, bool, error) {
+func (node *AdminReservationNode) NewMessage(user *User, c *Controls, message *vk.Message) (StateNode, bool, error) {
 	return nil, false, nil
 }
 
-func (node *AdminReservationNode) KeyboardEvent(user *User, c *Controls, payload *CallbackPayload) (StateNode, bool, error) {
+func (node *AdminReservationNode) KeyboardEvent(user *User, c *Controls, payload *vk.CallbackPayload) (StateNode, bool, error) {
 	switch payload.Command {
 	case "reservations":
 		reservation, err := node.paginator.Object(payload.Value)
@@ -60,16 +64,16 @@ func (node *AdminReservationNode) KeyboardEvent(user *User, c *Controls, payload
 			reservation.Role,
 			reservation.VkID)
 
-		forward, err := ForwardParam(
+		forward, err := vk.ForwardParam(
 			reservation.VkID,
 			[]int{reservation.Info})
 		if err != nil {
 			return nil, false, err
 		}
 
-		field := NewField(
+		field := form.NewField(
 			"action",
-			&MessageParams{
+			&vk.MessageParams{
 				Text: text,
 				Params: api.Params{
 					"forward": forward,
@@ -90,23 +94,23 @@ func (node *AdminReservationNode) KeyboardEvent(user *User, c *Controls, payload
 		}
 
 		return nil, false, c.Vk.ChangeKeyboard(user.id,
-			CreateKeyboard(node, node.paginator.Buttons()))
+			vk.CreateKeyboard(node.ID(), node.paginator.Buttons()))
 	}
 	return nil, false, nil
 }
 
 func (node *AdminReservationNode) Back(user *User, c *Controls, prev_state StateNode) (bool, error) {
-	form, ok := prev_state.(*FormNode)
+	form_node, ok := prev_state.(*FormNode)
 	if !ok {
 		return false, node.Entry(user, c)
 	}
 
-	if !form.IsFilled() {
+	if !form_node.IsFilled() {
 		return false, node.Entry(user, c)
 	}
 
-	values := form.Values()
-	action, err := ExtractValue[bool](values, "action")
+	values := form_node.Values()
+	action, err := form.ExtractValue[bool](values, "action")
 	if err != nil {
 		return false, err
 	}
@@ -132,7 +136,7 @@ func (node *AdminReservationNode) Back(user *User, c *Controls, prev_state State
 	}
 
 	// notify user
-	notification := &MessageParams{
+	notification := &vk.MessageParams{
 		Id:   node.reservation.VkID,
 		Text: message,
 	}

@@ -1,13 +1,15 @@
 package main
 
 import (
+	"ask-bot/src/form"
+	"ask-bot/src/vk"
 	"errors"
 
 	"github.com/hori-ryota/zaperr"
 	"go.uber.org/zap"
 )
 
-func ExtractID(message *Message) interface{} {
+func ExtractID(message *vk.Message) interface{} {
 	if message == nil {
 		return nil
 	}
@@ -16,9 +18,9 @@ func ExtractID(message *Message) interface{} {
 }
 
 // get info about user
-func InfoAboutValidate(value interface{}) (*MessageParams, error) {
+func InfoAboutValidate(value interface{}) (*vk.MessageParams, error) {
 	if value == nil {
-		return &MessageParams{
+		return &vk.MessageParams{
 			Text: "Поле обязательно для заполнения.",
 		}, nil
 	}
@@ -32,7 +34,7 @@ func InfoAboutValidate(value interface{}) (*MessageParams, error) {
 	}
 
 	if message == 0 {
-		return &MessageParams{
+		return &vk.MessageParams{
 			Text: "Поле обязательно для заполнения.",
 		}, nil
 	}
@@ -41,7 +43,7 @@ func InfoAboutValidate(value interface{}) (*MessageParams, error) {
 }
 
 // (admin) confirm reservation
-var ConfirmReservationOptions = []Option{
+var ConfirmReservationOptions = []form.Option{
 	{
 		ID:    "confirm",
 		Label: "Потвердить",
@@ -54,9 +56,9 @@ var ConfirmReservationOptions = []Option{
 	},
 }
 
-func ConfirmReservationValidate(value interface{}) (*MessageParams, error) {
+func ConfirmReservationValidate(value interface{}) (*vk.MessageParams, error) {
 	if value == nil {
-		return &MessageParams{
+		return &vk.MessageParams{
 			Text: "Поле обязательно для заполнения.",
 		}, nil
 	}

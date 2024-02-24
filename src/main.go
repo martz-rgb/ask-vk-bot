@@ -1,6 +1,8 @@
 package main
 
 import (
+	"ask-bot/src/ask"
+	"ask-bot/src/vk"
 	"context"
 	"encoding/json"
 	"errors"
@@ -138,40 +140,36 @@ func main() {
 
 	bot_logger := zap.Must(log_cfg.Build())
 
-	// init db + migrate
-	db, err := NewDB(config.DB)
-	if err != nil {
-		zap.S().Fatalw("failed to create new db",
-			"error", err)
-	}
-	if err = db.Init(config.Schema, config.AllowDeletion); err != nil {
-		zap.S().Fatalw("failed to init db",
-			"error", err)
-	}
-
 	// make ask layer upon db
-	ask_config := AskConfigFromEnv()
+	ask_config := ask.ConfigFromEnv()
 
 	err = ask_config.Validate()
 	if err != nil {
 		zap.S().Fatalw("failed to validate ask config",
 			"error", err)
 	}
-	ask := NewAsk(ask_config, db)
+	ask := ask.New(ask_config)
+
+	// init db + migrate
+	err = ask.Init(config.DB, config.Schema, config.AllowDeletion)
+	if err != nil {
+		zap.S().Fatalw("failed to init ask",
+			"error", err)
+	}
 
 	// vk api's init
-	group, err := NewVKFromFile(config.SecretGroupToken, config.GroupID)
+	group, err := vk.NewFromFile(config.SecretGroupToken, config.GroupID)
 	if err != nil {
 		zap.S().Fatalw("failed to create group vk api from file",
 			"error", err)
 	}
-	admin, err := NewVKFromFile(config.SecretAdminToken, config.GroupID)
+	admin, err := vk.NewFromFile(config.SecretAdminToken, config.GroupID)
 	if err != nil {
 		zap.S().Fatalw("failed to create admin vk api from file",
 			"error", err)
 	}
 
-	chat_bot := NewChatBot(ask, &InitNode{}, config.Timeout, group, bot_logger.Sugar())
+	chat_bot := NewChatBot(ask, group, &InitNode{}, config.Timeout, bot_logger.Sugar())
 	listener := NewListener(ask, group, admin)
 
 	ctx, stop := signal.NotifyContext(context.Background(), os.Interrupt)

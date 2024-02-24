@@ -1,6 +1,8 @@
 package main
 
 import (
+	"ask-bot/src/stack"
+	"ask-bot/src/vk"
 	"time"
 
 	"github.com/SevereCloud/vksdk/v2/events"
@@ -9,9 +11,9 @@ import (
 
 type Chat struct {
 	user        *User
-	stack       *Stack[StateNode]
+	stack       *stack.Stack[StateNode]
 	reset_state StateNode
-	query       []*MessageParams
+	query       []*vk.MessageParams
 
 	timer *time.Timer
 }
@@ -21,7 +23,7 @@ func NewChat(user_id int, state StateNode, reset_state StateNode, timeout time.D
 		user: &User{
 			id: user_id,
 		},
-		stack:       &Stack[StateNode]{state},
+		stack:       stack.New[StateNode](state),
 		reset_state: reset_state,
 	}
 }
@@ -65,7 +67,7 @@ func (c *Chat) tryNotify(controls *Controls) error {
 	return nil
 }
 
-func (c *Chat) Notify(controls *Controls, message *MessageParams) error {
+func (c *Chat) Notify(controls *Controls, message *vk.MessageParams) error {
 	c.query = append(c.query, message)
 
 	return c.tryNotify(controls)
@@ -94,7 +96,7 @@ func (c *Chat) work(controls *Controls, input interface{}, init bool) (err error
 
 	switch event := input.(type) {
 	case events.MessageNewObject:
-		message := &Message{
+		message := &vk.Message{
 			ID:          event.Message.ID,
 			Text:        event.Message.Text,
 			Attachments: event.Message.Attachments,
@@ -107,7 +109,7 @@ func (c *Chat) work(controls *Controls, input interface{}, init bool) (err error
 		}
 
 	case events.MessageEventObject:
-		payload, err := UnmarshalPayload(c.stack.Peek(), event.Payload)
+		payload, err := vk.UnmarshalPayload(event.Payload)
 		if err != nil {
 			c.Reset(controls)
 			return err
@@ -170,7 +172,7 @@ func (c *Chat) Exit(controls *Controls) {
 }
 
 func (c *Chat) Reset(controls *Controls) {
-	c.stack = &Stack[StateNode]{c.reset_state}
+	c.stack = stack.New[StateNode](c.reset_state)
 
 	message := "В ходе работы произошла ошибка. Пожалуйста, попробуйте еще раз попозже."
 	controls.Vk.SendMessage(c.user.id, message, "", nil)

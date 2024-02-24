@@ -1,6 +1,7 @@
 package main
 
 import (
+	"ask-bot/src/vk"
 	"errors"
 
 	"github.com/hori-ryota/zaperr"
@@ -25,35 +26,35 @@ func (node *AdminNode) Entry(user *User, c *Controls) error {
 			zap.Any("user", user))
 	}
 
-	buttons := [][]Button{
+	buttons := [][]vk.Button{
 		{
 			{
 				Label:   "Брони",
-				Color:   SecondaryColor,
+				Color:   vk.SecondaryColor,
 				Command: (&AdminReservationNode{}).ID(),
 			},
 			{
 				Label:   "Список ролей",
-				Color:   "secondary",
+				Color:   vk.SecondaryColor,
 				Command: (&RolesNode{}).ID(),
 			},
 		},
 		{
 			{
 				Label:   "Назад",
-				Color:   NegativeColor,
+				Color:   vk.NegativeColor,
 				Command: "back",
 			},
 		},
 	}
 
-	return c.Vk.ChangeKeyboard(user.id, CreateKeyboard(node, buttons))
+	return c.Vk.ChangeKeyboard(user.id, vk.CreateKeyboard(node.ID(), buttons))
 }
 
-func (node *AdminNode) NewMessage(user *User, c *Controls, message *Message) (StateNode, bool, error) {
+func (node *AdminNode) NewMessage(user *User, c *Controls, message *vk.Message) (StateNode, bool, error) {
 	return nil, false, nil
 }
-func (node *AdminNode) KeyboardEvent(user *User, c *Controls, payload *CallbackPayload) (StateNode, bool, error) {
+func (node *AdminNode) KeyboardEvent(user *User, c *Controls, payload *vk.CallbackPayload) (StateNode, bool, error) {
 	switch payload.Command {
 	case (&AdminReservationNode{}).ID():
 		return &AdminReservationNode{}, false, nil

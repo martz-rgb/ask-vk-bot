@@ -5,7 +5,6 @@ import (
 	"sync"
 
 	"github.com/SevereCloud/vksdk/v2/events"
-	"github.com/SevereCloud/vksdk/v2/longpoll-bot"
 	"github.com/hori-ryota/zaperr"
 	"go.uber.org/zap"
 )
@@ -13,11 +12,11 @@ import (
 func (bot *ChatBot) RunLongPoll(ctx context.Context, wg *sync.WaitGroup) {
 	defer wg.Done()
 
-	lp, err := longpoll.NewLongPoll(bot.controls.Vk.api, bot.controls.Vk.id)
+	lp, err := bot.controls.Vk.NewLongPoll()
 	if err != nil {
 		bot.log.Errorw("failed to run bot longpoll",
 			"error", err,
-			"id", bot.controls.Vk.id)
+			"id", bot.controls.Vk.ID())
 		return
 	}
 

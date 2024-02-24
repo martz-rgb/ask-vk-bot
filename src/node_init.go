@@ -1,6 +1,9 @@
 package main
 
 import (
+	"ask-bot/src/form"
+	"ask-bot/src/paginator"
+	"ask-bot/src/vk"
 	"errors"
 
 	"github.com/hori-ryota/zaperr"
@@ -10,22 +13,22 @@ import (
 type InitNode struct {
 	Silent bool
 
-	paginator *Paginator[Option]
+	paginator *paginator.Paginator[form.Option]
 }
 
 func (node *InitNode) ID() string {
 	return "init"
 }
 
-func (node *InitNode) options(user *User, c *Controls) ([]Option, error) {
-	options := []Option{}
+func (node *InitNode) options(user *User, c *Controls) ([]form.Option, error) {
+	options := []form.Option{}
 
 	reservations, err := c.Ask.ReservationsByVkID(user.id)
 	if err != nil {
 		return nil, err
 	}
 	if len(reservations) == 0 {
-		options = append(options, Option{
+		options = append(options, form.Option{
 			ID:    (&ReservationNode{}).ID(),
 			Label: "Бронь",
 			Value: &ReservationNode{},
@@ -33,12 +36,12 @@ func (node *InitNode) options(user *User, c *Controls) ([]Option, error) {
 	}
 
 	options = append(options,
-		Option{
+		form.Option{
 			ID:    (&PointsNode{}).ID(),
 			Label: "Баллы",
 			Value: &PointsNode{},
 		},
-		Option{
+		form.Option{
 			ID:    (&FAQNode{}).ID(),
 			Label: "FAQ",
 			Value: &FAQNode{},
@@ -49,7 +52,7 @@ func (node *InitNode) options(user *User, c *Controls) ([]Option, error) {
 		return nil, err
 	}
 	if is_admin {
-		options = append(options, Option{
+		options = append(options, form.Option{
 			ID:    (&AdminNode{}).ID(),
 			Label: "Админ",
 			Value: &AdminNode{},
@@ -66,14 +69,14 @@ func (node *InitNode) updatePaginator(user *User, c *Controls) error {
 	}
 
 	if node.paginator == nil {
-		node.paginator = NewPaginator[Option](
+		node.paginator = paginator.New[form.Option](
 			options,
 			"options",
-			RowsCount,
-			ColsCount,
+			paginator.DeafultRows,
+			paginator.DefaultCols,
 			true,
-			OptionToLabel,
-			OptionToValue)
+			form.OptionToLabel,
+			form.OptionToValue)
 		return nil
 	}
 	node.paginator.ChangeObjects(options)
@@ -90,21 +93,21 @@ func (node *InitNode) Entry(user *User, c *Controls) error {
 
 	if node.Silent {
 		return c.Vk.ChangeKeyboard(user.id,
-			CreateKeyboard(node, node.paginator.Buttons()))
+			vk.CreateKeyboard(node.ID(), node.paginator.Buttons()))
 	}
 
 	_, err = c.Vk.SendMessage(user.id,
 		"Здравствуйте!",
-		CreateKeyboard(node, node.paginator.Buttons()),
+		vk.CreateKeyboard(node.ID(), node.paginator.Buttons()),
 		nil)
 	return err
 }
 
-func (node *InitNode) NewMessage(user *User, c *Controls, message *Message) (StateNode, bool, error) {
+func (node *InitNode) NewMessage(user *User, c *Controls, message *vk.Message) (StateNode, bool, error) {
 	return nil, false, nil
 }
 
-func (node *InitNode) KeyboardEvent(user *User, c *Controls, payload *CallbackPayload) (StateNode, bool, error) {
+func (node *InitNode) KeyboardEvent(user *User, c *Controls, payload *vk.CallbackPayload) (StateNode, bool, error) {
 	switch payload.Command {
 	case "options":
 		option, err := node.paginator.Object(payload.Value)
@@ -132,5 +135,5 @@ func (node *InitNode) Back(user *User, c *Controls, prev StateNode) (bool, error
 		return false, err
 	}
 
-	return false, c.Vk.ChangeKeyboard(user.id, CreateKeyboard(node, node.paginator.Buttons()))
+	return false, c.Vk.ChangeKeyboard(user.id, vk.CreateKeyboard(node.ID(), node.paginator.Buttons()))
 }

@@ -1,6 +1,8 @@
 package main
 
 import (
+	"ask-bot/src/ask"
+	"ask-bot/src/vk"
 	"bytes"
 	"errors"
 	"fmt"
@@ -38,32 +40,35 @@ func (node *DeadlineNode) Entry(user *User, c *Controls) error {
 		deadlines = append(deadlines, message)
 	}
 
-	buttons := [][]Button{
+	buttons := [][]vk.Button{
 		{
 			{
 				Label: "История",
-				Color: SecondaryColor,
+				Color: vk.SecondaryColor,
 
 				Command: "history",
 			},
 			{
 				Label: "Назад",
-				Color: NegativeColor,
+				Color: vk.NegativeColor,
 
 				Command: "back",
 			},
 		},
 	}
 
-	_, err = c.Vk.SendMessage(user.id, strings.Join(deadlines, "\n"), CreateKeyboard(node, buttons), nil)
+	_, err = c.Vk.SendMessage(user.id,
+		strings.Join(deadlines, "\n"),
+		vk.CreateKeyboard(node.ID(), buttons),
+		nil)
 	return err
 }
 
-func (node *DeadlineNode) NewMessage(user *User, c *Controls, message *Message) (StateNode, bool, error) {
+func (node *DeadlineNode) NewMessage(user *User, c *Controls, message *vk.Message) (StateNode, bool, error) {
 	return nil, false, nil
 }
 
-func (node *DeadlineNode) KeyboardEvent(user *User, c *Controls, payload *CallbackPayload) (StateNode, bool, error) {
+func (node *DeadlineNode) KeyboardEvent(user *User, c *Controls, payload *vk.CallbackPayload) (StateNode, bool, error) {
 	switch payload.Command {
 	case "history":
 		history, err := c.Ask.HistoryDeadline(user.id)
@@ -89,7 +94,7 @@ func (node *DeadlineNode) Back(user *User, c *Controls, prev_state StateNode) (b
 	return false, nil
 }
 
-func (node *DeadlineNode) PrepareHistory(user_id int, c *Controls, history []Deadline) (message string, attachment string, err error) {
+func (node *DeadlineNode) PrepareHistory(user_id int, c *Controls, history []ask.Deadline) (message string, attachment string, err error) {
 	if len(history) == 0 {
 		return "Нет событий.", "", nil
 	}

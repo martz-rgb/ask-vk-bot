@@ -1,4 +1,4 @@
-package main
+package ask
 
 import (
 	"database/sql"

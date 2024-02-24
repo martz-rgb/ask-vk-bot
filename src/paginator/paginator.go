@@ -1,11 +1,15 @@
-package main
+package paginator
 
 import (
+	"ask-bot/src/vk"
 	"errors"
 
 	"github.com/hori-ryota/zaperr"
 	"go.uber.org/zap"
 )
+
+var DeafultRows int = 2
+var DefaultCols int = 3
 
 type Paginator[T interface{}] struct {
 	objects     []T
@@ -21,10 +25,7 @@ type Paginator[T interface{}] struct {
 	ToValue func(T) string
 }
 
-var RowsCount int = 2
-var ColsCount int = 3
-
-func NewPaginator[T interface{}](objects []T, command string, rows, cols int, without_back bool, label, value func(T) string) *Paginator[T] {
+func New[T interface{}](objects []T, command string, rows, cols int, without_back bool, label, value func(T) string) *Paginator[T] {
 	return &Paginator[T]{
 		objects: objects,
 		page:    0,
@@ -72,15 +73,15 @@ func (p *Paginator[T]) Object(value string) (*T, error) {
 		zap.Any("objects", p.objects))
 }
 
-func (p *Paginator[T]) Buttons(special ...Button) [][]Button {
-	buttons := [][]Button{}
+func (p *Paginator[T]) Buttons(special ...vk.Button) [][]vk.Button {
+	buttons := [][]vk.Button{}
 
 	for i := 0; i < p.rows; i++ {
 		if i*p.cols >= len(p.objects) {
 			break
 		}
 
-		buttons = append(buttons, []Button{})
+		buttons = append(buttons, []vk.Button{})
 
 		for j := 0; j < p.cols; j++ {
 			index := i*p.cols + j + p.page*(p.rows*p.cols)
@@ -90,7 +91,7 @@ func (p *Paginator[T]) Buttons(special ...Button) [][]Button {
 				break
 			}
 
-			buttons[i] = append(buttons[i], Button{
+			buttons[i] = append(buttons[i], vk.Button{
 				Label: p.ToLabel(p.objects[index]),
 				Color: "secondary",
 
@@ -104,7 +105,7 @@ func (p *Paginator[T]) Buttons(special ...Button) [][]Button {
 	controls := special
 
 	if p.page > 0 {
-		controls = append(controls, Button{
+		controls = append(controls, vk.Button{
 			Label: "<<",
 			Color: "primary",
 
@@ -114,7 +115,7 @@ func (p *Paginator[T]) Buttons(special ...Button) [][]Button {
 	}
 
 	if p.page < p.total_pages-1 {
-		controls = append(controls, Button{
+		controls = append(controls, vk.Button{
 			Label: ">>",
 			Color: "primary",
 
@@ -124,7 +125,7 @@ func (p *Paginator[T]) Buttons(special ...Button) [][]Button {
 	}
 
 	if !p.without_back {
-		controls = append(controls, Button{
+		controls = append(controls, vk.Button{
 			Label: "Назад",
 			Color: "negative",
 

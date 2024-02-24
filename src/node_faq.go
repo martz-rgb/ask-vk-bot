@@ -1,5 +1,7 @@
 package main
 
+import "ask-bot/src/vk"
+
 type FAQNode struct{}
 
 func (node *FAQNode) ID() string {
@@ -7,7 +9,7 @@ func (node *FAQNode) ID() string {
 }
 
 func (node *FAQNode) Entry(user *User, c *Controls) error {
-	buttons := [][]Button{{
+	buttons := [][]vk.Button{{
 		{
 			Label: "Кто ты?",
 			Color: "secondary",
@@ -30,15 +32,15 @@ func (node *FAQNode) Entry(user *User, c *Controls) error {
 
 	message := "Выберите вопрос, который вас интересует на клавиатуре ниже."
 
-	_, err := c.Vk.SendMessage(user.id, message, CreateKeyboard(node, buttons), nil)
+	_, err := c.Vk.SendMessage(user.id, message, vk.CreateKeyboard(node.ID(), buttons), nil)
 	return err
 }
 
-func (node *FAQNode) NewMessage(user *User, c *Controls, message *Message) (StateNode, bool, error) {
+func (node *FAQNode) NewMessage(user *User, c *Controls, message *vk.Message) (StateNode, bool, error) {
 	return nil, false, nil
 }
 
-func (node *FAQNode) KeyboardEvent(user *User, c *Controls, payload *CallbackPayload) (StateNode, bool, error) {
+func (node *FAQNode) KeyboardEvent(user *User, c *Controls, payload *vk.CallbackPayload) (StateNode, bool, error) {
 	switch payload.Command {
 	case "who":
 		_, err := c.Vk.SendMessage(user.id, "Я подрядчик этого дома.", "", nil)
