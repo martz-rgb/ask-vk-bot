@@ -50,6 +50,10 @@ func (node *ConfirmationNode) KeyboardEvent(user *User, c *Controls, payload *vk
 	switch payload.Command {
 	case "yes":
 		node.Answer = true
+		if node.next == nil {
+			return nil, true, nil
+		}
+
 		return node.next, false, nil
 	case "no":
 		node.Answer = false
