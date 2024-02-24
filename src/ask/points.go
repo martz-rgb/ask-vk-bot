@@ -1,0 +1,37 @@
+package ask
+
+import (
+	"github.com/hori-ryota/zaperr"
+	"github.com/leporo/sqlf"
+	"go.uber.org/zap"
+)
+
+// points
+func (a *Ask) Points(vk_id int) (int, error) {
+	var points int
+
+	// zero is default value, it is not a error if it is null
+	query := sqlf.From("points").Select("COALESCE(SUM(diff), 0)").Where("vk_id == ?", vk_id)
+	err := a.db.Get(&points, query.String(), query.Args()...)
+	if err != nil {
+		return -1, zaperr.Wrap(err, "failed to get points for user",
+			zap.String("query", query.String()),
+			zap.Any("args", query.Args()))
+	}
+
+	return points, nil
+}
+
+func (a *Ask) HistoryPoints(vk_id int) ([]Points, error) {
+	var history []Points
+
+	query := sqlf.From("points").Bind(&Points{}).Where("vk_id == ?", vk_id).OrderBy("timestamp DESC")
+	err := a.db.Select(&history, query.String(), query.Args()...)
+	if err != nil {
+		return nil, zaperr.Wrap(err, "failed to get history of points for user",
+			zap.String("query", query.String()),
+			zap.Any("args", query.Args()))
+	}
+
+	return history, nil
+}
