@@ -76,7 +76,7 @@ func (node *ReservationNode) KeyboardEvent(user *User, c *Controls, payload *vk.
 		node.role = role
 
 		message := fmt.Sprintf("Вы хотите забронировать роль %s?",
-			role.ShownName)
+			role.AccusativeName)
 		request := &vk.MessageParams{
 			Text: "Расскажите про себя в одном сообщении.",
 		}
@@ -138,7 +138,7 @@ func (node *ReservationNode) Back(user *User, c *Controls, prev_state StateNode)
 		}
 
 		message := fmt.Sprintf("Отлично! Ваша заявка на бронь %s будет рассмотрена в ближайшее время. Вам придет сообщение.",
-			node.role.ShownName)
+			node.role.AccusativeName)
 		forward, err := vk.ForwardParam(user.id, []int{id})
 		if err != nil {
 			return false, err
