@@ -4,6 +4,7 @@ CREATE TABLE IF NOT EXISTS roles (
     name TEXT PRIMARY KEY NOT NULL,
     tag TEXT NOT NULL,
     shown_name TEXT NOT NULL,
+    accusative_name TEXT,
     caption_name TEXT,
     album_link TEXT,
     board_link TEXT
@@ -30,7 +31,7 @@ CREATE TABLE IF NOT EXISTS members (
     vk_id INT,
     role TEXT REFERENCES roles(name) NOT NULL,
     status TEXT CHECK(status IN ('Active', 'Freeze')) NOT NULL DEFAULT 'Active',
-	timezone INT NOT NULL DEFAULT 0
+    timezone INT NOT NULL DEFAULT 0
 );
 
 CREATE TABLE IF NOT EXISTS deadline (
@@ -51,30 +52,47 @@ CREATE TABLE IF NOT EXISTS deadline (
     timestamp DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP
 );
 
+CREATE TRIGGER IF NOT EXISTS init_member_deadline
+AFTER
+INSERT
+    ON members BEGIN
+INSERT INTO
+    deadline(member, diff, kind, cause)
+VALUES
+    (
+        new.id,
+        unixepoch(
+            'now',
+            'start of day',
+            '+1 day',
+            '-1 second'
+        ),
+        'Init',
+        'init member deadline'
+    );
 
-CREATE TRIGGER IF NOT EXISTS init_member_deadline 
-AFTER INSERT ON members
-	BEGIN
-		INSERT INTO deadline(member, diff, kind, cause) 
-		VALUES (new.id, 
-                unixepoch('now', 
-                    'start of day', 
-                    '+1 day', 
-                    '-1 second'),
-                'Init',
-                'init member deadline');
-	END;
-
-
+END;
 
 CREATE TABLE IF NOT EXISTS reservations (
     -- alias to rowid
     id INTEGER PRIMARY KEY NOT NULL,
     role TEXT REFERENCES roles(name) NOT NULL,
-    vk_id INT NOT NULL,
+    -- only one reservation per user
+    vk_id INT NOT NULL UNIQUE,
     deadline DATETIME,
-    status TEXT CHECK(status IN ('Under Consideration', 'In Progress', 'Done')) NOT NULL DEFAULT 'Under Consideration',
+    status TEXT CHECK(
+        status IN ('Under Consideration', 'In Progress', 'Done')
+    ) NOT NULL DEFAULT 'Under Consideration',
     -- id of vk message contained information
     info INT NOT NULL,
     timestamp DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP
 );
+
+CREATE VIEW IF NOT EXISTS reservations_details AS
+SELECT
+    *
+FROM
+    reservations,
+    roles
+WHERE
+    roles.name = reservations.role;

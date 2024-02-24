@@ -11,7 +11,6 @@ type Administration struct {
 	VkID int `db:"vk_id"`
 }
 
-// TO-DO: time.Time is dangerous but i want to try
 type Info struct {
 	VkID     int            `db:"vk_id"`
 	Gallery  sql.NullString `db:"gallery"`
@@ -19,12 +18,13 @@ type Info struct {
 }
 
 type Role struct {
-	Name        string         `db:"name"`
-	Tag         string         `db:"tag"`
-	ShownName   string         `db:"shown_name"`
-	CaptionName sql.NullString `db:"caption_name"`
-	Album       sql.NullString `db:"album_link"`
-	Board       sql.NullString `db:"board_link"`
+	Name           string         `db:"name"`
+	Tag            string         `db:"tag"`
+	ShownName      string         `db:"shown_name"`
+	AccusativeName string         `db:"accusative_name"`
+	CaptionName    sql.NullString `db:"caption_name"`
+	Album          sql.NullString `db:"album_link"`
+	Board          sql.NullString `db:"board_link"`
 }
 
 type Points struct {
@@ -170,4 +170,9 @@ type Reservation struct {
 	Status    ReservationStatus `db:"status"`
 	Info      int               `db:"info"` // id of vk message contained information
 	Timestamp time.Time         `db:"timestamp"`
+}
+
+type ReservationDetail struct {
+	Reservation
+	Role
 }
