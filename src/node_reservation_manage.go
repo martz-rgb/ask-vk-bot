@@ -10,15 +10,15 @@ import (
 	"go.uber.org/zap"
 )
 
-type ReservationCancelNode struct {
+type ReservationManageNode struct {
 	details *ask.ReservationDetail
 }
 
-func (node *ReservationCancelNode) ID() string {
+func (node *ReservationManageNode) ID() string {
 	return "reservation_cancel"
 }
 
-func (node *ReservationCancelNode) Entry(user *User, c *Controls) error {
+func (node *ReservationManageNode) Entry(user *User, c *Controls) error {
 	details, err := c.Ask.ReservationsDetailsByVkID(user.id)
 	if err != nil {
 		return err
@@ -63,11 +63,11 @@ func (node *ReservationCancelNode) Entry(user *User, c *Controls) error {
 	return err
 }
 
-func (node *ReservationCancelNode) NewMessage(user *User, c *Controls, message *vk.Message) (StateNode, bool, error) {
+func (node *ReservationManageNode) NewMessage(user *User, c *Controls, message *vk.Message) (StateNode, bool, error) {
 	return nil, false, nil
 }
 
-func (node *ReservationCancelNode) KeyboardEvent(user *User, c *Controls, payload *vk.CallbackPayload) (StateNode, bool, error) {
+func (node *ReservationManageNode) KeyboardEvent(user *User, c *Controls, payload *vk.CallbackPayload) (StateNode, bool, error) {
 	switch payload.Command {
 	case "cancel":
 		message := fmt.Sprintf("Вы уверены, что хотите отменить бронь на %s?",
@@ -81,7 +81,7 @@ func (node *ReservationCancelNode) KeyboardEvent(user *User, c *Controls, payloa
 	return nil, false, nil
 }
 
-func (node *ReservationCancelNode) Back(user *User, c *Controls, prev_state StateNode) (bool, error) {
+func (node *ReservationManageNode) Back(user *User, c *Controls, prev_state StateNode) (bool, error) {
 	confirmation, ok := prev_state.(*ConfirmationNode)
 	if !ok {
 		return false, node.Entry(user, c)
@@ -93,7 +93,7 @@ func (node *ReservationCancelNode) Back(user *User, c *Controls, prev_state Stat
 			return false, err
 		}
 
-		_, err = c.Vk.SendMessage(user.id, "Ваша бронь была успешно удалена.", "", nil)
+		_, err = c.Vk.SendMessage(user.id, "Ваша бронь была успешно отменена.", "", nil)
 		return true, err
 	}
 

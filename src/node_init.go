@@ -35,9 +35,9 @@ func (node *InitNode) options(user *User, c *Controls) ([]form.Option, error) {
 		})
 	} else {
 		options = append(options, form.Option{
-			ID:    (&ReservationCancelNode{}).ID(),
-			Label: "Статус брони",
-			Value: &ReservationCancelNode{},
+			ID:    (&ReservationManageNode{}).ID(),
+			Label: "Бронь",
+			Value: &ReservationManageNode{},
 		})
 	}
 
