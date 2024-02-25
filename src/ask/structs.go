@@ -131,10 +131,12 @@ var ReservationStatuses = struct {
 	UnderConsideration ReservationStatus
 	InProgress         ReservationStatus
 	Done               ReservationStatus
+	Poll               ReservationStatus
 }{
 	UnderConsideration: "Under Consideration",
 	InProgress:         "In Progress",
 	Done:               "Done",
+	Poll:               "Poll",
 }
 
 func (s ReservationStatus) Value() (driver.Value, error) {
@@ -150,7 +152,8 @@ func (s *ReservationStatus) Scan(value interface{}) error {
 		if v, ok := str.(string); ok {
 			if v != string(ReservationStatuses.UnderConsideration) &&
 				v != string(ReservationStatuses.InProgress) &&
-				v != string(ReservationStatuses.Done) {
+				v != string(ReservationStatuses.Done) &&
+				v != string(ReservationStatuses.Poll) {
 				return errors.New("value is not valid ReservationStatus value")
 			}
 
@@ -169,6 +172,7 @@ type Reservation struct {
 	Deadline  sql.NullTime      `db:"deadline"`
 	Status    ReservationStatus `db:"status"`
 	Info      int               `db:"info"` // id of vk message contained information
+	Greeting  sql.NullString    `db:"greeting"`
 	Timestamp time.Time         `db:"timestamp"`
 }
 

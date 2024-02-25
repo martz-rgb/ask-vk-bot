@@ -2,6 +2,7 @@ package main
 
 import (
 	"ask-bot/src/ask"
+	"ask-bot/src/dict"
 	"ask-bot/src/form"
 	"ask-bot/src/paginator"
 	"ask-bot/src/vk"
@@ -9,7 +10,6 @@ import (
 	"fmt"
 
 	"github.com/SevereCloud/vksdk/v2/api"
-	"github.com/hori-ryota/zaperr"
 )
 
 type ReservationNode struct {
@@ -54,102 +54,108 @@ func (node *ReservationNode) Entry(user *User, c *Controls) error {
 	return err
 }
 
-func (node *ReservationNode) NewMessage(user *User, c *Controls, message *vk.Message) (StateNode, bool, error) {
+func (node *ReservationNode) NewMessage(user *User, c *Controls, message *vk.Message) (*Action, error) {
 	roles, err := c.Ask.AvailableRolesStartWith(message.Text)
 	if err != nil {
-		return nil, false, err
+		return nil, err
 	}
 
 	node.paginator.ChangeObjects(roles)
 
-	return nil, false, c.Vk.ChangeKeyboard(user.id, vk.CreateKeyboard(node.ID(), node.paginator.Buttons()))
+	return nil, c.Vk.ChangeKeyboard(user.id, vk.CreateKeyboard(node.ID(), node.paginator.Buttons()))
 }
 
-func (node *ReservationNode) KeyboardEvent(user *User, c *Controls, payload *vk.CallbackPayload) (StateNode, bool, error) {
+func (node *ReservationNode) KeyboardEvent(user *User, c *Controls, payload *vk.CallbackPayload) (*Action, error) {
 	switch payload.Command {
 	case "roles":
 		role, err := node.paginator.Object(payload.Value)
 		if err != nil {
-			return nil, false, err
+			return nil, err
 		}
-
 		node.role = role
 
 		message := fmt.Sprintf("Вы хотите забронировать роль %s?",
 			role.AccusativeName)
-		request := &vk.MessageParams{
-			Text: "Расскажите про себя в одном сообщении.",
-		}
 
-		field := form.NewField(
-			"info",
-			request,
-			nil,
-			ExtractID,
-			InfoAboutValidate,
-			nil)
-		return NewConfirmationNode(message, NewFormNode(field)), false, nil
+		return NewActionNext(NewConfirmationNode("confirmation", message)), nil
 
 	case "paginator":
 		back := node.paginator.Control(payload.Value)
 
 		if back {
-			return nil, true, nil
+			return NewActionExit(&ExitInfo{}), nil
 		}
 
-		return nil, false, c.Vk.ChangeKeyboard(user.id,
+		return nil, c.Vk.ChangeKeyboard(user.id,
 			vk.CreateKeyboard(node.ID(), node.paginator.Buttons()))
 	}
 
-	return nil, false, nil
+	return nil, nil
 }
 
-func (node *ReservationNode) Back(user *User, c *Controls, prev_state StateNode) (bool, error) {
-	confirmation, ok := prev_state.(*ConfirmationNode)
-	if !ok {
-		return false, node.Entry(user, c)
+func (node *ReservationNode) Back(user *User, c *Controls, info *ExitInfo) (*Action, error) {
+	if info == nil {
+		return nil, node.Entry(user, c)
 	}
 
-	if confirmation.Answer {
-		if node.role == nil {
-			err := errors.New("no role was chosen to confirm")
-			return false, zaperr.Wrap(err, "")
-		}
-
-		form_node, ok := confirmation.Next().(*FormNode)
-		if !ok {
-			err := errors.New("no form is presented")
-			return false, zaperr.Wrap(err, "")
-		}
-
-		if !form_node.IsFilled() {
-			return false, node.Entry(user, c)
-		}
-
-		values := form_node.Values()
-		id, err := form.ExtractValue[int](values, "info")
+	switch info.Payload {
+	case "confirmation":
+		answer, err := dict.ExtractValue[bool](info.Values, "confirmation")
 		if err != nil {
-			return false, err
+			return nil, err
+		}
+
+		if answer {
+			request := &vk.MessageParams{
+				Text: "Расскажите про себя в одном сообщении.",
+			}
+
+			field := form.NewField(
+				"about",
+				request,
+				nil,
+				ExtractID,
+				InfoAboutValidate,
+				nil)
+
+			return NewActionNext(NewFormNode("about", field)), nil
+		}
+
+	case "about":
+		if node.role == nil {
+			return nil, errors.New("no role in node")
+		}
+
+		values, err := dict.ExtractValue[dict.Dictionary](info.Values, "form")
+		if err != nil {
+			return nil, err
+		}
+		if values == nil {
+			return nil, node.Entry(user, c)
+		}
+
+		id, err := dict.ExtractValue[int](values, "about")
+		if err != nil {
+			return nil, err
 		}
 
 		err = c.Ask.AddReservation(node.role.Name, user.id, id)
 		if err != nil {
-			return false, err
+			return nil, err
 		}
 
 		message := fmt.Sprintf("Отлично! Ваша заявка на бронь %s будет рассмотрена в ближайшее время. Вам придет сообщение.",
 			node.role.AccusativeName)
 		forward, err := vk.ForwardParam(user.id, []int{id})
 		if err != nil {
-			return false, err
+			return nil, err
 		}
 
 		_, err = c.Vk.SendMessage(user.id, message, "", api.Params{
 			"forward": forward,
 		})
-		return true, err
+		return NewActionExit(&ExitInfo{}), err
 	}
 
-	node.role = nil
-	return false, node.Entry(user, c)
+	return nil, node.Entry(user, c)
 }

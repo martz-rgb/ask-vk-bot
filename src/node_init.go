@@ -88,7 +88,6 @@ func (node *InitNode) updatePaginator(user *User, c *Controls) error {
 	node.paginator.ChangeObjects(options)
 
 	return nil
-
 }
 
 func (node *InitNode) Entry(user *User, c *Controls) error {
@@ -109,37 +108,34 @@ func (node *InitNode) Entry(user *User, c *Controls) error {
 	return err
 }
 
-func (node *InitNode) NewMessage(user *User, c *Controls, message *vk.Message) (StateNode, bool, error) {
-	return nil, false, nil
+func (node *InitNode) NewMessage(user *User, c *Controls, message *vk.Message) (*Action, error) {
+	return nil, nil
 }
 
-func (node *InitNode) KeyboardEvent(user *User, c *Controls, payload *vk.CallbackPayload) (StateNode, bool, error) {
+func (node *InitNode) KeyboardEvent(user *User, c *Controls, payload *vk.CallbackPayload) (*Action, error) {
 	switch payload.Command {
 	case "options":
 		option, err := node.paginator.Object(payload.Value)
 		if err != nil {
-			return nil, false, err
+			return nil, err
 		}
 
 		next, ok := option.Value.(StateNode)
 		if !ok {
 			err := errors.New("failed to convert to StateNode")
-			return nil, false, zaperr.Wrap(err, "",
+			return nil, zaperr.Wrap(err, "",
 				zap.Any("value", option.Value))
 		}
-		return next, false, nil
+		return NewActionNext(next), nil
 	case "paginator":
 		node.paginator.Control(payload.Value)
 	}
 
-	return nil, false, nil
+	return nil, nil
 }
 
-func (node *InitNode) Back(user *User, c *Controls, prev StateNode) (bool, error) {
-	err := node.updatePaginator(user, c)
-	if err != nil {
-		return false, err
-	}
+func (node *InitNode) Back(user *User, c *Controls, info *ExitInfo) (*Action, error) {
+	node.Silent = true
 
-	return false, c.Vk.ChangeKeyboard(user.id, vk.CreateKeyboard(node.ID(), node.paginator.Buttons()))
+	return nil, node.Entry(user, c)
 }

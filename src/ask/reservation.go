@@ -64,21 +64,21 @@ func (a *Ask) ReservationsDetailsByVkID(vk_id int) (*ReservationDetail, error) {
 	return &reservations_details[0], nil
 }
 
-func (a *Ask) UnderConsiderationReservations() ([]Reservation, error) {
-	var reservations []Reservation
+func (a *Ask) UnderConsiderationReservationsDetails() ([]ReservationDetail, error) {
+	var details []ReservationDetail
 
-	query := sqlf.From("reservations").
-		Bind(&Reservation{}).
+	query := sqlf.From("reservations_details").
+		Bind(&ReservationDetail{}).
 		Where("status == ?", ReservationStatuses.UnderConsideration)
 
-	err := a.db.Select(&reservations, query.String(), query.Args()...)
+	err := a.db.Select(&details, query.String(), query.Args()...)
 	if err != nil {
-		return nil, zaperr.Wrap(err, "failed to get reservations under consideration",
+		return nil, zaperr.Wrap(err, "failed to get reservations details under consideration",
 			zap.String("query", query.String()),
 			zap.Any("args", query.Args()))
 	}
 
-	return reservations, nil
+	return details, nil
 }
 
 // func (a *Ask) ChangeReservationStatus(id int, status ReservationStatus) error {
@@ -144,6 +144,22 @@ func (a *Ask) ConfirmReservation(id int) (time.Time, error) {
 	}
 
 	return deadline, nil
+}
+
+func (a *Ask) CompleteReservation(id int, greeting string) error {
+	query := sqlf.Update("reservations").
+		Set("status", ReservationStatuses.Done).
+		Set("greeting", greeting).
+		Where("id == ?", id)
+
+	_, err := a.db.Exec(query.String(), query.Args()...)
+	if err != nil {
+		return zaperr.Wrap(err, "failed to complete reservation",
+			zap.String("query", query.String()),
+			zap.Any("args", query.Args()))
+	}
+
+	return nil
 }
 
 func (a *Ask) DeleteReservation(id int) error {

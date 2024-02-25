@@ -13,6 +13,7 @@ about back:
 
 TO-DO list:
 
+- [ ] db migrate drop views/triggers associated with removing table
 - [ ] polls
 - [ ] listener time probably
 - [ ] points (spend)
@@ -27,6 +28,7 @@ TO-DO list:
 
 done:
 
+- [x] nodes have own payload
 - [x] timestamp timezone by default is gmt+0, should be gmt+3 probably? -> timezone ask config
 - [x] logging & error handling
 - [x] docker but not all

@@ -56,38 +56,38 @@ func (node *PointsNode) Entry(user *User, c *Controls) error {
 	return err
 }
 
-func (node *PointsNode) NewMessage(user *User, c *Controls, message *vk.Message) (StateNode, bool, error) {
-	return nil, false, nil
+func (node *PointsNode) NewMessage(user *User, c *Controls, message *vk.Message) (*Action, error) {
+	return nil, nil
 }
 
-func (node *PointsNode) KeyboardEvent(user *User, c *Controls, payload *vk.CallbackPayload) (StateNode, bool, error) {
+func (node *PointsNode) KeyboardEvent(user *User, c *Controls, payload *vk.CallbackPayload) (*Action, error) {
 	switch payload.Command {
 	case "spend":
 		message := `Пока что не на что тратить баллы.`
 		_, err := c.Vk.SendMessage(user.id, message, "", nil)
-		return nil, false, err
+		return nil, err
 	case "history":
 		history, err := c.Ask.HistoryPoints(user.id)
 		if err != nil {
-			return nil, false, err
+			return nil, err
 		}
 
 		message, attachment, err := node.PrepareHistory(user.id, c, history)
 		if err != nil {
-			return nil, false, err
+			return nil, err
 		}
 
 		_, err = c.Vk.SendMessage(user.id, message, "", api.Params{"attachment": attachment})
-		return nil, false, err
+		return nil, err
 	case "back":
-		return nil, true, nil
+		return NewActionExit(&ExitInfo{}), nil
 	}
 
-	return nil, false, nil
+	return nil, nil
 }
 
-func (node *PointsNode) Back(user *User, c *Controls, prev_state StateNode) (bool, error) {
-	return false, nil
+func (node *PointsNode) Back(user *User, c *Controls, info *ExitInfo) (*Action, error) {
+	return nil, node.Entry(user, c)
 }
 
 func (node *PointsNode) PrepareHistory(user_id int, c *Controls, history []ask.Points) (message string, attachment string, err error) {

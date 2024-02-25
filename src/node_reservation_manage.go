@@ -2,6 +2,8 @@ package main
 
 import (
 	"ask-bot/src/ask"
+	"ask-bot/src/dict"
+	"ask-bot/src/form"
 	"ask-bot/src/vk"
 	"errors"
 	"fmt"
@@ -15,7 +17,38 @@ type ReservationManageNode struct {
 }
 
 func (node *ReservationManageNode) ID() string {
-	return "reservation_cancel"
+	return "reservation_manage"
+}
+
+func (node *ReservationManageNode) buttons() [][]vk.Button {
+	actions := []vk.Button{}
+
+	if node.details.Status == ask.ReservationStatuses.InProgress {
+		actions = append(actions, vk.Button{
+			Label:   "Прислать приветствие",
+			Color:   vk.PrimaryColor,
+			Command: "greeting",
+		})
+	}
+
+	if node.details.Status != ask.ReservationStatuses.Poll {
+		actions = append(actions, vk.Button{
+			Label:   "Отменить бронь",
+			Color:   vk.SecondaryColor,
+			Command: "cancel",
+		})
+	}
+
+	return [][]vk.Button{
+		actions,
+		{
+			{
+				Label:   "Назад",
+				Color:   vk.NegativeColor,
+				Command: "back",
+			},
+		},
+	}
 }
 
 func (node *ReservationManageNode) Entry(user *User, c *Controls) error {
@@ -32,70 +65,119 @@ func (node *ReservationManageNode) Entry(user *User, c *Controls) error {
 
 	node.details = details
 
-	buttons := [][]vk.Button{
-		{
-			{
-				Label:   fmt.Sprintf("Отменить бронь на %s", node.details.AccusativeName),
-				Color:   vk.SecondaryColor,
-				Command: "cancel",
-			},
-		},
-		{
-			{
-				Label:   "Назад",
-				Color:   vk.NegativeColor,
-				Command: "back",
-			},
-		},
-	}
+	var message string
 
-	// TO-DO: under consideration while
-	message := fmt.Sprintf("У вас есть бронь на %s до %s.\nСтатус: %s",
-		node.details.AccusativeName,
-		node.details.Deadline.Time,
-		node.details.Status)
+	switch node.details.Status {
+	case ask.ReservationStatuses.UnderConsideration:
+		message = fmt.Sprintf("У вас есть бронь на %s на рассмотрении. Когда ее рассмотрят, вам придет сообщение.",
+			node.details.AccusativeName)
+
+	case ask.ReservationStatuses.InProgress:
+		message = fmt.Sprintf("У вас есть бронь на %s до %s.",
+			node.details.AccusativeName,
+			node.details.Deadline.Time)
+
+	case ask.ReservationStatuses.Done:
+		message = fmt.Sprintf("Мы получили ваше приветствие на %s! Скоро будет создан опрос.",
+			node.details.AccusativeName)
+
+	case ask.ReservationStatuses.Poll:
+		message = fmt.Sprintf("Ваше приветствие на %s уже на голосовании!",
+			node.details.AccusativeName)
+	}
 
 	_, err = c.Vk.SendMessage(
 		user.id,
 		message,
-		vk.CreateKeyboard(node.ID(), buttons),
+		vk.CreateKeyboard(node.ID(), node.buttons()),
 		nil)
 	return err
 }
 
-func (node *ReservationManageNode) NewMessage(user *User, c *Controls, message *vk.Message) (StateNode, bool, error) {
-	return nil, false, nil
+func (node *ReservationManageNode) NewMessage(user *User, c *Controls, message *vk.Message) (*Action, error) {
+	return nil, nil
 }
 
-func (node *ReservationManageNode) KeyboardEvent(user *User, c *Controls, payload *vk.CallbackPayload) (StateNode, bool, error) {
+func (node *ReservationManageNode) KeyboardEvent(user *User, c *Controls, payload *vk.CallbackPayload) (*Action, error) {
 	switch payload.Command {
+	case "greeting":
+		request := &vk.MessageParams{
+			Text:   "Пришлите свое приветствие.",
+			Params: nil,
+		}
+
+		field := form.NewField(
+			"greeting",
+			request,
+			nil,
+			ExtractAttachments,
+			GreetingValidate,
+			nil,
+		)
+
+		return NewActionNext(NewFormNode("greeting", field)), nil
+
 	case "cancel":
 		message := fmt.Sprintf("Вы уверены, что хотите отменить бронь на %s?",
 			node.details.AccusativeName)
-		return NewConfirmationNode(message, nil), false, nil
+		return NewActionNext(NewConfirmationNode("cancel", message)), nil
 
 	case "back":
-		return nil, true, nil
+		return NewActionExit(&ExitInfo{}), nil
 	}
 
-	return nil, false, nil
+	return nil, nil
 }
 
-func (node *ReservationManageNode) Back(user *User, c *Controls, prev_state StateNode) (bool, error) {
-	confirmation, ok := prev_state.(*ConfirmationNode)
-	if !ok {
-		return false, node.Entry(user, c)
+func (node *ReservationManageNode) Back(user *User, c *Controls, info *ExitInfo) (*Action, error) {
+	if info == nil {
+		return nil, node.Entry(user, c)
 	}
 
-	if confirmation.Answer {
-		err := c.Ask.DeleteReservation(node.details.Id)
-		if err != nil {
-			return false, err
+	switch info.Payload {
+	case "greeting":
+		if node.details == nil {
+			return nil, errors.New("no details in node")
 		}
 
-		_, err = c.Vk.SendMessage(user.id, "Ваша бронь была успешно отменена.", "", nil)
-		return true, err
+		values, err := dict.ExtractValue[dict.Dictionary](info.Values, "form")
+		if err != nil {
+			return nil, err
+		}
+		if values == nil {
+			return nil, node.Entry(user, c)
+		}
+
+		greeting, err := dict.ExtractValue[string](values, "greeting")
+		if err != nil {
+			return nil, err
+		}
+
+		err = c.Ask.CompleteReservation(node.details.Id, greeting)
+		if err != nil {
+			return nil, err
+		}
+
+	case "cancel":
+		if node.details == nil {
+			return nil, errors.New("no details in node")
+		}
+
+		answer, err := dict.ExtractValue[bool](info.Values, "confirmation")
+		if err != nil {
+			return nil, err
+		}
+
+		if answer {
+			err := c.Ask.DeleteReservation(node.details.Id)
+			if err != nil {
+				return nil, err
+			}
+
+			_, err = c.Vk.SendMessage(user.id, "Ваша бронь была успешно отменена.", "", nil)
+			return NewActionExit(&ExitInfo{}), err
+		}
 	}
 
-	return false, node.Entry(user, c)
+	return nil, node.Entry(user, c)
 }

@@ -10,11 +10,15 @@ import (
 
 type FormNode struct {
 	f *form.Form
+
+	payload string
 }
 
-func NewFormNode(fields ...*form.Field) *FormNode {
+func NewFormNode(payload string, fields ...*form.Field) *FormNode {
 	return &FormNode{
 		f: form.NewForm(fields...),
+
+		payload: payload,
 	}
 }
 
@@ -31,33 +35,47 @@ func (node *FormNode) Entry(user *User, c *Controls) error {
 	return node.sendRequest(user, c)
 }
 
-func (node *FormNode) NewMessage(user *User, c *Controls, message *vk.Message) (StateNode, bool, error) {
+func (node *FormNode) NewMessage(user *User, c *Controls, message *vk.Message) (*Action, error) {
 	end, err := node.set(user, c, message)
-	return nil, end, err
+	if err != nil {
+		return nil, err
+	}
+
+	if end {
+		return node.exit_action(), nil
+	}
+
+	return nil, nil
 }
 
-func (node *FormNode) KeyboardEvent(user *User, c *Controls, payload *vk.CallbackPayload) (StateNode, bool, error) {
+func (node *FormNode) KeyboardEvent(user *User, c *Controls, payload *vk.CallbackPayload) (*Action, error) {
 	switch payload.Command {
 	case "form":
 		end, err := node.set(user, c, payload.Value)
-		return nil, end, err
+		if err != nil {
+			return nil, err
+		}
+
+		if end {
+			return node.exit_action(), nil
+		}
 
 	case "paginator":
 		back := node.f.Control(payload.Value)
 
 		if back {
-			return nil, true, nil
+			return node.exit_action(), nil
 		}
 
-		return nil, false, c.Vk.ChangeKeyboard(user.id,
+		return nil, c.Vk.ChangeKeyboard(user.id,
 			vk.CreateKeyboard(node.ID(), node.f.Buttons()))
 	}
 
-	return nil, false, nil
+	return nil, nil
 }
 
-func (node *FormNode) Back(user *User, c *Controls, prev_state StateNode) (bool, error) {
-	return false, nil
+func (node *FormNode) Back(user *User, c *Controls, info *ExitInfo) (*Action, error) {
+	return nil, node.Entry(user, c)
 }
 
 func (node *FormNode) sendRequest(user *User, c *Controls) error {
@@ -75,9 +93,9 @@ func (node *FormNode) set(user *User, c *Controls, input interface{}) (end bool,
 
 	switch value := input.(type) {
 	case *vk.Message:
-		node.f.SetFromMessage(value)
+		info, err = node.f.SetFromMessage(value)
 	case string:
-		node.f.SetFromOption(value)
+		info, err = node.f.SetFromOption(value)
 	}
 
 	if err != nil {
@@ -96,10 +114,11 @@ func (node *FormNode) set(user *User, c *Controls, input interface{}) (end bool,
 	return true, nil
 }
 
-func (node *FormNode) Values() map[string]interface{} {
-	return node.f.Values()
-}
-
-func (node *FormNode) IsFilled() bool {
-	return node.f.Values() != nil
+func (node *FormNode) exit_action() *Action {
+	return NewActionExit(&ExitInfo{
+		Values: map[string]interface{}{
+			"form": node.f.Values(),
+		},
+		Payload: node.payload,
+	})
 }

@@ -36,25 +36,25 @@ func (node *FAQNode) Entry(user *User, c *Controls) error {
 	return err
 }
 
-func (node *FAQNode) NewMessage(user *User, c *Controls, message *vk.Message) (StateNode, bool, error) {
-	return nil, false, nil
+func (node *FAQNode) NewMessage(user *User, c *Controls, message *vk.Message) (*Action, error) {
+	return nil, nil
 }
 
-func (node *FAQNode) KeyboardEvent(user *User, c *Controls, payload *vk.CallbackPayload) (StateNode, bool, error) {
+func (node *FAQNode) KeyboardEvent(user *User, c *Controls, payload *vk.CallbackPayload) (*Action, error) {
 	switch payload.Command {
 	case "who":
 		_, err := c.Vk.SendMessage(user.id, "Я подрядчик этого дома.", "", nil)
-		return nil, false, err
+		return nil, err
 	case "what":
 		_, err := c.Vk.SendMessage(user.id, "Я умею отвечать на ваши сообщения и управлять этим домом.", "", nil)
-		return nil, false, err
+		return nil, err
 	case "back":
-		return nil, true, nil
+		return NewActionExit(&ExitInfo{}), nil
 	}
 
-	return nil, false, nil
+	return nil, nil
 }
 
-func (node *FAQNode) Back(user *User, c *Controls, prev_state StateNode) (bool, error) {
-	return false, nil
+func (node *FAQNode) Back(user *User, c *Controls, info *ExitInfo) (*Action, error) {
+	return nil, node.Entry(user, c)
 }

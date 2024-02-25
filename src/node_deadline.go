@@ -64,34 +64,34 @@ func (node *DeadlineNode) Entry(user *User, c *Controls) error {
 	return err
 }
 
-func (node *DeadlineNode) NewMessage(user *User, c *Controls, message *vk.Message) (StateNode, bool, error) {
-	return nil, false, nil
+func (node *DeadlineNode) NewMessage(user *User, c *Controls, message *vk.Message) (*Action, error) {
+	return nil, nil
 }
 
-func (node *DeadlineNode) KeyboardEvent(user *User, c *Controls, payload *vk.CallbackPayload) (StateNode, bool, error) {
+func (node *DeadlineNode) KeyboardEvent(user *User, c *Controls, payload *vk.CallbackPayload) (*Action, error) {
 	switch payload.Command {
 	case "history":
 		history, err := c.Ask.HistoryDeadline(user.id)
 		if err != nil {
-			return nil, false, err
+			return nil, err
 		}
 
 		message, attachment, err := node.PrepareHistory(user.id, c, history)
 		if err != nil {
-			return nil, false, err
+			return nil, err
 		}
 
 		_, err = c.Vk.SendMessage(user.id, message, "", api.Params{"attachment": attachment})
-		return nil, false, err
+		return nil, err
 	case "back":
-		return nil, true, nil
+		return NewActionExit(&ExitInfo{}), nil
 	}
 
-	return nil, false, nil
+	return nil, nil
 }
 
-func (node *DeadlineNode) Back(user *User, c *Controls, prev_state StateNode) (bool, error) {
-	return false, nil
+func (node *DeadlineNode) Back(user *User, c *Controls, info *ExitInfo) (*Action, error) {
+	return nil, node.Entry(user, c)
 }
 
 func (node *DeadlineNode) PrepareHistory(user_id int, c *Controls, history []ask.Deadline) (message string, attachment string, err error) {

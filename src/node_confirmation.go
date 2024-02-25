@@ -4,15 +4,14 @@ import "ask-bot/src/vk"
 
 type ConfirmationNode struct {
 	message string
-	next    StateNode
 
-	Answer bool
+	payload string
 }
 
-func NewConfirmationNode(message string, next StateNode) *ConfirmationNode {
+func NewConfirmationNode(payload string, message string) *ConfirmationNode {
 	return &ConfirmationNode{
 		message: message,
-		next:    next,
+		payload: payload,
 	}
 }
 
@@ -40,32 +39,32 @@ func (node *ConfirmationNode) Entry(user *User, c *Controls) error {
 	return err
 }
 
-func (node *ConfirmationNode) NewMessage(user *User, c *Controls, message *vk.Message) (StateNode, bool, error) {
-	node.Answer = false
-
-	return nil, true, nil
+func (node *ConfirmationNode) NewMessage(user *User, c *Controls, message *vk.Message) (*Action, error) {
+	return nil, nil
 }
 
-func (node *ConfirmationNode) KeyboardEvent(user *User, c *Controls, payload *vk.CallbackPayload) (StateNode, bool, error) {
+func (node *ConfirmationNode) KeyboardEvent(user *User, c *Controls, payload *vk.CallbackPayload) (*Action, error) {
 	switch payload.Command {
 	case "yes":
-		node.Answer = true
-		if node.next == nil {
-			return nil, true, nil
-		}
+		return node.exit_action(true), nil
 
-		return node.next, false, nil
 	case "no":
-		node.Answer = false
+		return node.exit_action(false), nil
+
 	}
 
-	return nil, true, nil
+	return nil, nil
 }
 
-func (node *ConfirmationNode) Back(user *User, c *Controls, prev_state StateNode) (bool, error) {
-	return true, nil
+func (node *ConfirmationNode) Back(user *User, c *Controls, info *ExitInfo) (*Action, error) {
+	return nil, node.Entry(user, c)
 }
 
-func (node *ConfirmationNode) Next() StateNode {
-	return node.next
+func (node *ConfirmationNode) exit_action(answer bool) *Action {
+	return NewActionExit(&ExitInfo{
+		Values: map[string]interface{}{
+			"confirmation": answer,
+		},
+		Payload: node.payload,
+	})
 }

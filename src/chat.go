@@ -30,7 +30,7 @@ func NewChat(user_id int, state StateNode, reset_state StateNode, timeout time.D
 
 func (c *Chat) TimerFunc(expired chan int, controls *Controls) func() {
 	return func() {
-		c.Exit(controls)
+		c.Finish(controls)
 
 		expired <- c.user.id
 	}
@@ -91,8 +91,7 @@ func (c *Chat) work(controls *Controls, input interface{}, init bool) (err error
 		}
 	}
 
-	var next StateNode
-	var back bool
+	var action *Action
 
 	switch event := input.(type) {
 	case events.MessageNewObject:
@@ -102,7 +101,7 @@ func (c *Chat) work(controls *Controls, input interface{}, init bool) (err error
 			Attachments: event.Message.Attachments,
 		}
 
-		next, back, err = c.stack.Peek().NewMessage(c.user, controls, message)
+		action, err = c.stack.Peek().NewMessage(c.user, controls, message)
 		if err != nil {
 			c.Reset(controls)
 			return err
@@ -123,35 +122,66 @@ func (c *Chat) work(controls *Controls, input interface{}, init bool) (err error
 			return nil
 		}
 
-		next, back, err = c.stack.Peek().KeyboardEvent(c.user, controls, payload)
+		action, err = c.stack.Peek().KeyboardEvent(c.user, controls, payload)
 		if err != nil {
 			c.Reset(controls)
 			return err
 		}
 	}
 
-	if next != nil {
-		c.stack.Push(next)
-		err := c.stack.Peek().Entry(c.user, controls)
+	switch action.Kind() {
+	case Next:
+		err = c.next(controls, action.Next())
+	case Exit:
+		err = c.exit(controls, action.Exit())
+	}
+
+	if err != nil {
+		c.Reset(controls)
+		return err
+	}
+	return nil
+}
+
+func (c *Chat) next(controls *Controls, next StateNode) error {
+	c.stack.Push(next)
+	err := c.stack.Peek().Entry(c.user, controls)
+	if err != nil {
+		return err
+	}
+
+	return nil
+}
+
+func (c *Chat) exit(controls *Controls, info *ExitInfo) error {
+	for info != nil {
+		prev := c.stack.Pop()
+		info.ID = prev.ID()
+
+		action, err := c.stack.Peek().Back(c.user, controls, info)
 		if err != nil {
-			c.Reset(controls)
 			return err
 		}
-	} else if back {
-		for back {
-			prev := c.stack.Pop()
-			back, err = c.stack.Peek().Back(c.user, controls, prev)
+
+		switch action.Kind() {
+		case Next:
+			err := c.next(controls, action.Next())
 			if err != nil {
-				c.Reset(controls)
 				return err
 			}
+			return nil
+
+		case Exit:
+			info = action.Exit()
+		case NoAction:
+			return nil
 		}
 	}
 
 	return nil
 }
 
-func (c *Chat) Exit(controls *Controls) {
+func (c *Chat) Finish(controls *Controls) {
 	for len(c.query) > 0 {
 		notification := c.query[0]
 

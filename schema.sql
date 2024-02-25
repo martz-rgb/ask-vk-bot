@@ -81,10 +81,17 @@ CREATE TABLE IF NOT EXISTS reservations (
     vk_id INT NOT NULL UNIQUE,
     deadline DATETIME,
     status TEXT CHECK(
-        status IN ('Under Consideration', 'In Progress', 'Done')
+        status IN (
+            'Under Consideration',
+            'In Progress',
+            'Done',
+            'Poll'
+        )
     ) NOT NULL DEFAULT 'Under Consideration',
     -- id of vk message contained information
     info INT NOT NULL,
+    -- vk attachments contained greeting (attachments\text)
+    greeting TEXT,
     timestamp DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP
 );
 
