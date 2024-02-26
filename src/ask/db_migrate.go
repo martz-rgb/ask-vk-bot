@@ -15,6 +15,7 @@ import (
 
 type Object struct {
 	Name string `db:"name"`
+	Kind string `db:"type"`
 	Sql  string `db:"sql"`
 }
 
@@ -84,6 +85,41 @@ func (db *DB) Migrate(schema string, allow_deletion bool) error {
 			return zaperr.Wrap(err, "failed to create new table",
 				zap.String("name", table.Name),
 				zap.String("statement", table.Sql))
+		}
+	}
+
+	// drop views to prevent errors for "not such table"
+	// they will be restored after tables migration
+	if len(old_tables) > 0 || len(modified_tables) > 0 {
+		views := []Object{}
+
+		query := sqlf.From("sqlite_master").
+			Bind(&Object{}).
+			Where("type = ?", "view").
+			Where("sql IS NOT NULL").
+			OrderBy("name")
+
+		err := db.Select(&views, query.String(), query.Args()...)
+		if err != nil {
+			return zaperr.Wrap(err, "failed to get views",
+				zap.String("statement", query.String()),
+				zap.Any("args", query.Args()))
+		}
+
+		for _, view := range views {
+			drop := fmt.Sprintf("DROP VIEW %s", view.Name)
+
+			zap.S().Infow("delete view before modifying/deleting tables",
+				"name", view.Name,
+				"statement", drop)
+
+			_, err := db.sql.Exec(drop)
+			if err != nil {
+				transaction.Rollback()
+				return zaperr.Wrap(err, "failed to drop view before modifying/deleting tables",
+					zap.String("name", view.Name),
+					zap.String("statement", drop))
+			}
 		}
 	}
 
