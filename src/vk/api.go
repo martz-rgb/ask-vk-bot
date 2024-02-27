@@ -293,6 +293,41 @@ func (v *VK) WallPostNew(group_id int, message string, attachments string, signe
 	return nil
 }
 
+func (v *VK) PostponedWallPosts(group_id int) ([]object.WallWallpost, error) {
+	max_count := 100
+
+	var posts []object.WallWallpost
+	offset := 0
+
+	for {
+		params := api.Params{
+			"owner_id": -group_id,
+			"count":    max_count,
+			"filter":   "postponed",
+			"offset":   offset,
+		}
+
+		response, err := v.api.WallGet(params)
+		if err != nil {
+			return nil, zaperr.Wrap(err, "failed to get postponed wall posts",
+				zap.Any("params", params),
+				zap.Any("response", response))
+		}
+
+		zap.S().Debugw("successfully get postponed wall posts",
+			"params", params,
+			"response", response)
+
+		posts = append(posts, response.Items...)
+
+		offset += max_count
+
+		if response.Count-offset <= 0 {
+			return posts, nil
+		}
+	}
+}
+
 func (v *VK) UploadDocument(peer_id int, name string, file io.Reader) (int, error) {
 	response, err := v.api.UploadMessagesDoc(peer_id, "doc", name, "", file)
 	if err != nil {
