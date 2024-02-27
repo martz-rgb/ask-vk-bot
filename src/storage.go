@@ -12,44 +12,44 @@ type Record[T interface{}] struct {
 	value T
 }
 
-type Cache[K comparable, T interface{}] struct {
+type Storage[K comparable, T interface{}] struct {
 	mu *sync.Mutex
 
 	NotifyExpired chan K
 	records       map[K]*Record[T]
 }
 
-func NewCache[K comparable, T interface{}]() *Cache[K, T] {
-	cache := &Cache[K, T]{
+func NewStorage[K comparable, T interface{}]() *Storage[K, T] {
+	storage := &Storage[K, T]{
 		mu:            &sync.Mutex{},
 		NotifyExpired: make(chan K),
 		records:       make(map[K]*Record[T]),
 	}
 
-	go cache.ListenExpired()
+	go storage.ListenExpired()
 
-	return cache
+	return storage
 }
 
 // get value if it exists
 // if not then return ok false
-func (c *Cache[K, T]) Take(key K) (T, bool) {
-	c.mu.Lock()
+func (s *Storage[K, T]) Take(key K) (T, bool) {
+	s.mu.Lock()
 
-	record, ok := c.records[key]
+	record, ok := s.records[key]
 	if !ok {
-		c.mu.Unlock()
+		s.mu.Unlock()
 		return *new(T), false
 	}
 
 	ok = record.in_use.TryLock()
 	if ok {
-		c.mu.Unlock()
+		s.mu.Unlock()
 		return record.value, true
 	}
 
 	record.waiting.Add(1)
-	c.mu.Unlock()
+	s.mu.Unlock()
 
 	// wait until
 	record.in_use.Lock()
@@ -58,25 +58,25 @@ func (c *Cache[K, T]) Take(key K) (T, bool) {
 	return record.value, true
 }
 
-func (c *Cache[K, T]) Return(key K) {
-	c.mu.Lock()
+func (s *Storage[K, T]) Return(key K) {
+	s.mu.Lock()
 
-	record, ok := c.records[key]
+	record, ok := s.records[key]
 	if !ok {
-		c.mu.Unlock()
+		s.mu.Unlock()
 		return
 	}
 
 	record.in_use.TryLock()
 	record.in_use.Unlock()
 
-	c.mu.Unlock()
+	s.mu.Unlock()
 }
 
-func (c *Cache[K, T]) CreateIfNotExistedAndTake(key K, value T) (v T, was_created bool) {
-	c.mu.Lock()
+func (s *Storage[K, T]) CreateIfNotExistedAndTake(key K, value T) (v T, was_created bool) {
+	s.mu.Lock()
 
-	record, ok := c.records[key]
+	record, ok := s.records[key]
 	if !ok {
 		record := &Record[T]{
 			in_use:  &sync.Mutex{},
@@ -85,21 +85,21 @@ func (c *Cache[K, T]) CreateIfNotExistedAndTake(key K, value T) (v T, was_create
 			value: value,
 		}
 
-		c.records[key] = record
+		s.records[key] = record
 		record.in_use.Lock()
-		c.mu.Unlock()
+		s.mu.Unlock()
 
 		return record.value, true
 	}
 
 	ok = record.in_use.TryLock()
 	if ok {
-		c.mu.Unlock()
+		s.mu.Unlock()
 		return record.value, false
 	}
 
 	record.waiting.Add(1)
-	c.mu.Unlock()
+	s.mu.Unlock()
 
 	record.in_use.Lock()
 	record.waiting.Add(-1)
@@ -107,24 +107,24 @@ func (c *Cache[K, T]) CreateIfNotExistedAndTake(key K, value T) (v T, was_create
 	return record.value, false
 }
 
-func (c *Cache[K, T]) ListenExpired() {
+func (s *Storage[K, T]) ListenExpired() {
 	for {
-		key := <-c.NotifyExpired
+		key := <-s.NotifyExpired
 
-		c.mu.Lock()
-		record, ok := c.records[key]
+		s.mu.Lock()
+		record, ok := s.records[key]
 		if !ok {
-			c.mu.Unlock()
+			s.mu.Unlock()
 			continue
 		}
 
 		ok = record.in_use.TryLock()
 		if ok && record.waiting.Load() == 0 {
-			delete(c.records, key)
-			c.mu.Unlock()
+			delete(s.records, key)
+			s.mu.Unlock()
 			continue
 		}
 		// if it is busy, there is no point to delete it
-		c.mu.Unlock()
+		s.mu.Unlock()
 	}
 }

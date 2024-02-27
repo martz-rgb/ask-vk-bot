@@ -15,7 +15,7 @@ type Controls struct {
 }
 
 type ChatBot struct {
-	cache       *Cache[int, *Chat]
+	cache       *Storage[int, *Chat]
 	reset_state StateNode
 
 	timeout time.Duration
@@ -27,7 +27,7 @@ type ChatBot struct {
 
 func NewChatBot(a *ask.Ask, v *vk.VK, reset_state StateNode, timeout time.Duration, log *zap.SugaredLogger) *ChatBot {
 	bot := &ChatBot{
-		cache:       NewCache[int, *Chat](),
+		cache:       NewStorage[int, *Chat](),
 		reset_state: reset_state,
 		timeout:     timeout,
 		controls: &Controls{
