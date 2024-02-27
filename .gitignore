@@ -1,7 +1,7 @@
 *config.json
-debug/
-db/
-log/
+/debug
+/db
+/log
 
 secret_*.txt
 .env
