@@ -1,6 +1,7 @@
 package ask
 
 import (
+	"ask-bot/src/database"
 	"time"
 
 	"github.com/hori-ryota/zaperr"
@@ -9,7 +10,7 @@ import (
 
 type Ask struct {
 	config *Config
-	db     *DB
+	db     *database.DB
 
 	timezone time.Duration
 }
@@ -24,7 +25,7 @@ func New(config *Config) *Ask {
 }
 
 func (a *Ask) Init(path string, schema string, allow_deletion bool) error {
-	db, err := NewDB(path)
+	db, err := database.NewDB(path)
 	if err != nil {
 		return zaperr.Wrap(err, "failed to create new db")
 	}
