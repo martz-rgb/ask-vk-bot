@@ -10,20 +10,14 @@ import (
 	"go.uber.org/zap"
 )
 
-func ExtractID(message *vk.Message) interface{} {
-	if message == nil {
-		return nil
+func NotEmpty(value interface{}) (*vk.MessageParams, error) {
+	if value == nil {
+		return &vk.MessageParams{
+			Text: "Поле обязательно для заполнения.",
+		}, nil
 	}
 
-	return message.ID
-}
-
-func ExtractAttachments(message *vk.Message) interface{} {
-	if message == nil {
-		return nil
-	}
-
-	return vk.ToAttachments(message.Attachments)
+	return nil, nil
 }
 
 // get info about user
