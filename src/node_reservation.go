@@ -74,8 +74,10 @@ func (node *ReservationNode) KeyboardEvent(user *User, c *Controls, payload *vk.
 		}
 		node.role = role
 
-		message := fmt.Sprintf("Вы хотите забронировать роль %s?",
-			role.AccusativeName)
+		message := &vk.MessageParams{
+			Text: fmt.Sprintf("Вы хотите забронировать роль %s?",
+				role.AccusativeName),
+		}
 
 		return NewActionNext(NewConfirmationNode("confirmation", message)), nil
 
@@ -83,7 +85,7 @@ func (node *ReservationNode) KeyboardEvent(user *User, c *Controls, payload *vk.
 		back := node.paginator.Control(payload.Value)
 
 		if back {
-			return NewActionExit(&ExitInfo{}), nil
+			return NewActionExit(nil), nil
 		}
 
 		return nil, c.Vk.ChangeKeyboard(user.id,
@@ -118,7 +120,7 @@ func (node *ReservationNode) Back(user *User, c *Controls, info *ExitInfo) (*Act
 				InfoAboutValidate,
 				nil)
 
-			return NewActionNext(NewFormNode("about", field)), nil
+			return NewActionNext(NewFormNode("about", nil, field)), nil
 		}
 
 	case "about":
@@ -126,15 +128,7 @@ func (node *ReservationNode) Back(user *User, c *Controls, info *ExitInfo) (*Act
 			return nil, errors.New("no role in node")
 		}
 
-		values, err := dict.ExtractValue[dict.Dictionary](info.Values, "form")
-		if err != nil {
-			return nil, err
-		}
-		if values == nil {
-			return nil, node.Entry(user, c)
-		}
-
-		id, err := dict.ExtractValue[int](values, "about")
+		id, err := dict.ExtractValue[int](info.Values, "about")
 		if err != nil {
 			return nil, err
 		}
@@ -154,7 +148,7 @@ func (node *ReservationNode) Back(user *User, c *Controls, info *ExitInfo) (*Act
 		_, err = c.Vk.SendMessage(user.id, message, "", api.Params{
 			"forward": forward,
 		})
-		return NewActionExit(&ExitInfo{}), err
+		return NewActionExit(nil), err
 	}
 
 	return nil, node.Entry(user, c)

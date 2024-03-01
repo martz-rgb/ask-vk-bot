@@ -1,14 +1,17 @@
 package main
 
-import "ask-bot/src/vk"
+import (
+	"ask-bot/src/dict"
+	"ask-bot/src/vk"
+)
 
 type ConfirmationNode struct {
-	message string
+	message *vk.MessageParams
 
 	payload string
 }
 
-func NewConfirmationNode(payload string, message string) *ConfirmationNode {
+func NewConfirmationNode(payload string, message *vk.MessageParams) *ConfirmationNode {
 	return &ConfirmationNode{
 		message: message,
 		payload: payload,
@@ -35,7 +38,7 @@ func (node *ConfirmationNode) Entry(user *User, c *Controls) error {
 		},
 	}
 
-	_, err := c.Vk.SendMessage(user.id, node.message, vk.CreateKeyboard(node.ID(), buttons), nil)
+	_, err := c.Vk.SendMessageParams(user.id, node.message, vk.CreateKeyboard(node.ID(), buttons))
 	return err
 }
 
@@ -62,7 +65,7 @@ func (node *ConfirmationNode) Back(user *User, c *Controls, info *ExitInfo) (*Ac
 
 func (node *ConfirmationNode) exit_action(answer bool) *Action {
 	return NewActionExit(&ExitInfo{
-		Values: map[string]interface{}{
+		Values: dict.Dictionary{
 			"confirmation": answer,
 		},
 		Payload: node.payload,

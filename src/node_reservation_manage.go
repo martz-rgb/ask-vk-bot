@@ -115,15 +115,17 @@ func (node *ReservationManageNode) KeyboardEvent(user *User, c *Controls, payloa
 			nil,
 		)
 
-		return NewActionNext(NewFormNode("greeting", field)), nil
+		return NewActionNext(NewFormNode("greeting", nil, field)), nil
 
 	case "cancel":
-		message := fmt.Sprintf("Вы уверены, что хотите отменить бронь на %s?",
-			node.details.AccusativeName)
+		message := &vk.MessageParams{
+			Text: fmt.Sprintf("Вы уверены, что хотите отменить бронь на %s?",
+				node.details.AccusativeName),
+		}
 		return NewActionNext(NewConfirmationNode("cancel", message)), nil
 
 	case "back":
-		return NewActionExit(&ExitInfo{}), nil
+		return NewActionExit(nil), nil
 	}
 
 	return nil, nil
@@ -140,15 +142,7 @@ func (node *ReservationManageNode) Back(user *User, c *Controls, info *ExitInfo)
 			return nil, errors.New("no details in node")
 		}
 
-		values, err := dict.ExtractValue[dict.Dictionary](info.Values, "form")
-		if err != nil {
-			return nil, err
-		}
-		if values == nil {
-			return nil, node.Entry(user, c)
-		}
-
-		greeting, err := dict.ExtractValue[string](values, "greeting")
+		greeting, err := dict.ExtractValue[string](info.Values, "greeting")
 		if err != nil {
 			return nil, err
 		}
@@ -175,7 +169,7 @@ func (node *ReservationManageNode) Back(user *User, c *Controls, info *ExitInfo)
 			}
 
 			_, err = c.Vk.SendMessage(user.id, "Ваша бронь была успешно отменена.", "", nil)
-			return NewActionExit(&ExitInfo{}), err
+			return NewActionExit(nil), err
 		}
 	}
 

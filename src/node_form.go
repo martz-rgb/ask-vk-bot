@@ -1,6 +1,7 @@
 package main
 
 import (
+	"ask-bot/src/dict"
 	"ask-bot/src/form"
 	"ask-bot/src/vk"
 	"errors"
@@ -11,12 +12,16 @@ import (
 type FormNode struct {
 	f *form.Form
 
-	payload string
+	payload      string
+	confirmation func(values dict.Dictionary) (*vk.MessageParams, error)
 }
 
-func NewFormNode(payload string, fields ...*form.Field) *FormNode {
+func NewFormNode(payload string,
+	confirmation func(values dict.Dictionary) (*vk.MessageParams, error),
+	fields ...*form.Field) *FormNode {
 	return &FormNode{
-		f: form.NewForm(fields...),
+		f:            form.NewForm(fields...),
+		confirmation: confirmation,
 
 		payload: payload,
 	}
@@ -42,7 +47,7 @@ func (node *FormNode) NewMessage(user *User, c *Controls, message *vk.Message) (
 	}
 
 	if end {
-		return node.exit_action(), nil
+		return node.endAction()
 	}
 
 	return nil, nil
@@ -57,14 +62,14 @@ func (node *FormNode) KeyboardEvent(user *User, c *Controls, payload *vk.Callbac
 		}
 
 		if end {
-			return node.exit_action(), nil
+			return node.endAction()
 		}
 
 	case "paginator":
 		back := node.f.Control(payload.Value)
 
 		if back {
-			return node.exit_action(), nil
+			return NewActionExit(nil), nil
 		}
 
 		return nil, c.Vk.ChangeKeyboard(user.id,
@@ -75,6 +80,24 @@ func (node *FormNode) KeyboardEvent(user *User, c *Controls, payload *vk.Callbac
 }
 
 func (node *FormNode) Back(user *User, c *Controls, info *ExitInfo) (*Action, error) {
+	if info == nil {
+		return nil, node.Entry(user, c)
+	}
+
+	switch info.Payload {
+	case "confirm":
+		answer, err := dict.ExtractValue[bool](info.Values, "confirmation")
+		if err != nil {
+			return nil, err
+		}
+
+		if answer {
+			return NewActionExit(node.exitInfo()), nil
+		} else {
+			return NewActionExit(nil), nil
+		}
+	}
+
 	return nil, node.Entry(user, c)
 }
 
@@ -114,11 +137,24 @@ func (node *FormNode) set(user *User, c *Controls, input interface{}) (end bool,
 	return true, nil
 }
 
-func (node *FormNode) exit_action() *Action {
-	return NewActionExit(&ExitInfo{
-		Values: map[string]interface{}{
-			"form": node.f.Values(),
-		},
+func (node *FormNode) exitInfo() *ExitInfo {
+	return &ExitInfo{
+		Values:  node.f.Values(),
 		Payload: node.payload,
-	})
+	}
+}
+
+func (node *FormNode) endAction() (*Action, error) {
+	if node.confirmation == nil {
+		return NewActionExit(node.exitInfo()), nil
+	}
+
+	message, err := node.confirmation(node.f.Values())
+	if err != nil {
+		return nil, err
+	}
+
+	return NewActionNext(
+		NewConfirmationNode("confirm", message),
+	), nil
 }
