@@ -53,10 +53,10 @@ func (bot *ChatBot) MessageEvent(ctx context.Context, obj events.MessageEventObj
 }
 
 func (bot *ChatBot) Work(ctx context.Context, user_id int, obj interface{}) error {
-	chat, created := bot.TakeChat(user_id, &InitNode{})
+	chat, existed := bot.TakeChat(user_id, &InitNode{})
 	defer bot.ReturnChat(user_id)
 
-	err := chat.Work(bot.controls, obj, created)
+	err := chat.Work(bot.controls, obj, existed)
 	if err != nil {
 		return zaperr.Wrap(err, "",
 			zap.String("state", chat.stack.Peek().ID()))

@@ -15,9 +15,7 @@ type StateNode interface {
 }
 
 type ExitInfo struct {
-	ID     string
-	Values dict.Dictionary
-
+	Values  dict.Dictionary
 	Payload string
 }
 
@@ -48,10 +46,6 @@ func NewActionNext(node StateNode) *Action {
 }
 
 func NewActionExit(exit *ExitInfo) *Action {
-	if exit == nil {
-		return nil
-	}
-
 	return &Action{
 		kind: Exit,
 		exit: exit,

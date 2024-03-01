@@ -82,8 +82,8 @@ func (c *Chat) Work(controls *Controls, input interface{}, init bool) error {
 	return c.tryNotify(controls)
 }
 
-func (c *Chat) work(controls *Controls, input interface{}, init bool) (err error) {
-	if init {
+func (c *Chat) work(controls *Controls, input interface{}, existed bool) (err error) {
+	if !existed {
 		err := c.stack.Peek().Entry(c.user, controls)
 		if err != nil {
 			c.Reset(controls)
@@ -154,15 +154,14 @@ func (c *Chat) next(controls *Controls, next StateNode) error {
 }
 
 func (c *Chat) exit(controls *Controls, info *ExitInfo) error {
-	for info != nil {
-		prev := c.stack.Pop()
-		info.ID = prev.ID()
+	c.stack.Pop()
 
-		action, err := c.stack.Peek().Back(c.user, controls, info)
-		if err != nil {
-			return err
-		}
+	action, err := c.stack.Peek().Back(c.user, controls, info)
+	if err != nil {
+		return err
+	}
 
+	for action != nil {
 		switch action.Kind() {
 		case Next:
 			err := c.next(controls, action.Next())
@@ -172,8 +171,14 @@ func (c *Chat) exit(controls *Controls, info *ExitInfo) error {
 			return nil
 
 		case Exit:
-			info = action.Exit()
-		case NoAction:
+			c.stack.Pop()
+
+			action, err = c.stack.Peek().Back(c.user, controls, action.Exit())
+			if err != nil {
+				return err
+			}
+
+		default:
 			return nil
 		}
 	}

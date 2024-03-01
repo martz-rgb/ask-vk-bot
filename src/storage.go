@@ -73,7 +73,7 @@ func (s *Storage[K, T]) Return(key K) {
 	s.mu.Unlock()
 }
 
-func (s *Storage[K, T]) CreateIfNotExistedAndTake(key K, value T) (v T, was_created bool) {
+func (s *Storage[K, T]) CreateIfNotExistedAndTake(key K, value T) (v T, existed bool) {
 	s.mu.Lock()
 
 	record, ok := s.records[key]
@@ -89,13 +89,13 @@ func (s *Storage[K, T]) CreateIfNotExistedAndTake(key K, value T) (v T, was_crea
 		record.in_use.Lock()
 		s.mu.Unlock()
 
-		return record.value, true
+		return record.value, false
 	}
 
 	ok = record.in_use.TryLock()
 	if ok {
 		s.mu.Unlock()
-		return record.value, false
+		return record.value, true
 	}
 
 	record.waiting.Add(1)
@@ -104,7 +104,7 @@ func (s *Storage[K, T]) CreateIfNotExistedAndTake(key K, value T) (v T, was_crea
 	record.in_use.Lock()
 	record.waiting.Add(-1)
 
-	return record.value, false
+	return record.value, true
 }
 
 func (s *Storage[K, T]) ListenExpired() {
