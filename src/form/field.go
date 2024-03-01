@@ -28,6 +28,7 @@ func NewField(name string,
 		options:  options,
 		extract:  extract,
 		validate: validate,
+		next:     next,
 
 		value: nil,
 	}
