@@ -4,19 +4,13 @@ import (
 	"ask-bot/src/ask"
 	"ask-bot/src/dict"
 	"ask-bot/src/form"
-	"ask-bot/src/paginator"
 	"ask-bot/src/vk"
-	"errors"
 	"fmt"
 	"strconv"
-
-	"github.com/SevereCloud/vksdk/v2/api"
+	"strings"
 )
 
-type AdminReservationNode struct {
-	reservation *ask.ReservationDetail
-	paginator   *paginator.Paginator[ask.ReservationDetail]
-}
+type AdminReservationNode struct{}
 
 func (node *AdminReservationNode) ID() string {
 	return "admin_reservation"
@@ -24,29 +18,68 @@ func (node *AdminReservationNode) ID() string {
 
 // To-DO: print all reservations
 func (node *AdminReservationNode) Entry(user *User, c *Controls) error {
-	reservations, err := c.Ask.UnderConsiderationReservationsDetails()
+	reservations, err := c.Ask.ReservationsDetails()
 	if err != nil {
 		return err
 	}
 
-	to_label := func(r ask.ReservationDetail) string {
-		return r.Name
+	var details []string
+	var under_consideration bool
+	for i, r := range reservations {
+		message := fmt.Sprintf("%d. %s,\n user: @id%d,\n status: %s,\n deadline: %s",
+			i+1,
+			r.ShownName,
+			r.VkID,
+			r.Status,
+			r.Deadline.Time)
+		details = append(details, message)
+
+		if r.Status == ask.ReservationStatuses.UnderConsideration {
+			under_consideration = true
+		}
 	}
 
-	to_value := func(r ask.ReservationDetail) string {
-		return strconv.Itoa(r.Id)
+	var message string
+	var buttons [][]vk.Button
+
+	if len(details) > 0 {
+		message = strings.Join(details, "\n")
+
+		var actions []vk.Button
+
+		if under_consideration {
+			actions = append(actions, vk.Button{
+				Label:   "Подтвердить брони",
+				Color:   vk.PrimaryColor,
+				Command: "confirm",
+			})
+		}
+
+		actions = append(actions, vk.Button{
+			Label:   "Удалить брони",
+			Color:   vk.SecondaryColor,
+			Command: "delete",
+		})
+
+		buttons = append(buttons, actions)
+	} else {
+		message = "Сейчас нет броней."
 	}
 
-	node.paginator = paginator.New[ask.ReservationDetail](reservations,
-		"reservations",
-		paginator.DeafultRows,
-		paginator.DefaultCols,
-		false,
-		to_label,
-		to_value)
+	buttons = append(buttons, []vk.Button{
+		{
+			Label:   "Назад",
+			Color:   vk.NegativeColor,
+			Command: "back",
+		},
+	})
 
-	return c.Vk.ChangeKeyboard(user.id,
-		vk.CreateKeyboard(node.ID(), node.paginator.Buttons()))
+	_, err = c.Vk.SendMessage(user.id,
+		message,
+		vk.CreateKeyboard(node.ID(), buttons),
+		nil)
+
+	return err
 }
 
 func (node *AdminReservationNode) NewMessage(user *User, c *Controls, message *vk.Message) (*Action, error) {
@@ -55,49 +88,64 @@ func (node *AdminReservationNode) NewMessage(user *User, c *Controls, message *v
 
 func (node *AdminReservationNode) KeyboardEvent(user *User, c *Controls, payload *vk.CallbackPayload) (*Action, error) {
 	switch payload.Command {
-	case "reservations":
-		reservation, err := node.paginator.Object(payload.Value)
+	case "confirm":
+		reservations, err := c.Ask.UnderConsiderationReservationsDetails()
 		if err != nil {
 			return nil, err
 		}
 
-		node.reservation = reservation
-
-		text := fmt.Sprintf("Роль: %s\nСтраница: https://vk.com/id%d\n",
-			reservation.AccusativeName,
-			reservation.VkID)
-
-		forward, err := vk.ForwardParam(
-			reservation.VkID,
-			[]int{reservation.Info})
-		if err != nil {
-			return nil, err
+		var options []form.Option
+		for _, r := range reservations {
+			options = append(options, form.Option{
+				ID:    strconv.Itoa(r.Id),
+				Label: r.ShownName,
+				Value: &r,
+			})
 		}
 
 		field := form.NewField(
-			"action",
+			"reservation",
 			&vk.MessageParams{
-				Text: text,
-				Params: api.Params{
-					"forward": forward,
-				},
+				Text: "Выберить бронь для рассмотрения.",
 			},
-			ConfirmReservationOptions,
+			options,
 			nil,
-			ConfirmReservationValidate,
-			nil,
+			NotEmpty,
+			ConfirmReservationField,
 		)
-		return NewActionNext(NewFormNode("action", field)), nil
 
-	case "paginator":
-		back := node.paginator.Control(payload.Value)
+		return NewActionNext(NewFormNode("confirm", nil, field)), nil
 
-		if back {
-			return NewActionExit(&ExitInfo{}), nil
+	case "delete":
+		reservations, err := c.Ask.ReservationsDetails()
+		if err != nil {
+			return nil, err
 		}
 
-		return nil, c.Vk.ChangeKeyboard(user.id,
-			vk.CreateKeyboard(node.ID(), node.paginator.Buttons()))
+		var options []form.Option
+		for _, r := range reservations {
+			options = append(options, form.Option{
+				ID:    strconv.Itoa(r.Id),
+				Label: r.ShownName,
+				Value: &r,
+			})
+		}
+
+		field := form.NewField(
+			"reservation",
+			&vk.MessageParams{
+				Text: "Выберить бронь для удаления.",
+			},
+			options,
+			nil,
+			NotEmpty,
+			nil,
+		)
+
+		return NewActionNext(NewFormNode("delete", ConfirmReservationDeletion, field)), nil
+
+	case "back":
+		return NewActionExit(nil), nil
 	}
 	return nil, nil
 }
@@ -108,54 +156,66 @@ func (node *AdminReservationNode) Back(user *User, c *Controls, info *ExitInfo) 
 	}
 
 	switch info.Payload {
-	case "action":
-		if node.reservation == nil {
-			return nil, errors.New("no reservation in node")
-		}
-		values, err := dict.ExtractValue[dict.Dictionary](info.Values, "form")
+	case "confirm":
+		reservation, err := dict.ExtractValue[*ask.ReservationDetail](info.Values, "reservation")
 		if err != nil {
 			return nil, err
 		}
-		if values == nil {
-			return nil, node.Entry(user, c)
-		}
-
-		action, err := dict.ExtractValue[bool](values, "action")
+		action, err := dict.ExtractValue[bool](info.Values, "details", "action")
 		if err != nil {
 			return nil, err
 		}
 
 		var message, notification_message string
 		if action == true {
-			deadline, err := c.Ask.ConfirmReservation(node.reservation.Id)
+			deadline, err := c.Ask.ConfirmReservation(reservation.Id)
 			if err != nil {
 				return nil, err
 			}
 
 			message = fmt.Sprintf("Бронь на %s была успешно подтверждена.",
-				node.reservation.AccusativeName)
+				reservation.AccusativeName)
 			notification_message = fmt.Sprintf("Ваша бронь на %s успешно подтверждена! Вам нужно отрисовать приветствие до %s.",
-				node.reservation.AccusativeName,
+				reservation.AccusativeName,
 				deadline)
 		} else {
-			err := c.Ask.DeleteReservation(node.reservation.Id)
+			err := c.Ask.DeleteReservation(reservation.Id)
 			if err != nil {
 				return nil, err
 			}
 
 			message = fmt.Sprintf("Бронь на %s была успешно удалена.",
-				node.reservation.AccusativeName)
+				reservation.AccusativeName)
 			notification_message = fmt.Sprintf("Ваша бронь на %s, к сожалению, отклонена. Попробуйте еще раз позже!",
-				node.reservation.AccusativeName)
+				reservation.AccusativeName)
 		}
 
 		// notify user
 		notification := &vk.MessageParams{
-			Id:   node.reservation.VkID,
+			Id:   reservation.VkID,
 			Text: notification_message,
 		}
 		c.Notify <- notification
 
+		_, err = c.Vk.SendMessage(user.id, message, "", nil)
+		if err != nil {
+			return nil, err
+		}
+
+	case "delete":
+		reservation, err := dict.ExtractValue[*ask.ReservationDetail](info.Values, "reservation")
+		if err != nil {
+			return nil, err
+		}
+
+		err = c.Ask.DeleteReservation(reservation.Id)
+		if err != nil {
+			return nil, err
+		}
+
+		message := fmt.Sprintf("Бронь на %s от @id%d была успешно удалена.",
+			reservation.AccusativeName,
+			reservation.VkID)
 		_, err = c.Vk.SendMessage(user.id, message, "", nil)
 		if err != nil {
 			return nil, err
