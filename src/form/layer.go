@@ -1,6 +1,7 @@
 package form
 
 import (
+	"ask-bot/src/dict"
 	"ask-bot/src/vk"
 
 	"go.uber.org/zap"
@@ -12,14 +13,14 @@ type Layer struct {
 	fields []*Field
 	index  int
 
-	values map[string]interface{}
+	values dict.Dictionary
 }
 
 func NewLayer(name string, fields []*Field) *Layer {
 	return &Layer{
 		name:   name,
 		fields: fields,
-		values: make(map[string]interface{}),
+		values: make(dict.Dictionary),
 	}
 }
 
@@ -85,6 +86,6 @@ func (l *Layer) AddValue(name string, value interface{}) {
 	l.values[name] = value
 }
 
-func (l *Layer) Values() map[string]interface{} {
+func (l *Layer) Values() dict.Dictionary {
 	return l.values
 }
