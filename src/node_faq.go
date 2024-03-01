@@ -49,7 +49,7 @@ func (node *FAQNode) KeyboardEvent(user *User, c *Controls, payload *vk.Callback
 		_, err := c.Vk.SendMessage(user.id, "Я умею отвечать на ваши сообщения и управлять этим домом.", "", nil)
 		return nil, err
 	case "back":
-		return NewActionExit(&ExitInfo{}), nil
+		return NewActionExit(nil), nil
 	}
 
 	return nil, nil

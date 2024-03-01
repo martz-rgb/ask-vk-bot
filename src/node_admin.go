@@ -91,7 +91,7 @@ func (node *AdminNode) KeyboardEvent(user *User, c *Controls, payload *vk.Callba
 		back := node.paginator.Control(payload.Value)
 
 		if back {
-			return NewActionExit(&ExitInfo{}), nil
+			return NewActionExit(nil), nil
 		}
 
 		return nil, c.Vk.ChangeKeyboard(user.id,

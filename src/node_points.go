@@ -80,7 +80,7 @@ func (node *PointsNode) KeyboardEvent(user *User, c *Controls, payload *vk.Callb
 		_, err = c.Vk.SendMessage(user.id, message, "", api.Params{"attachment": attachment})
 		return nil, err
 	case "back":
-		return NewActionExit(&ExitInfo{}), nil
+		return NewActionExit(nil), nil
 	}
 
 	return nil, nil
