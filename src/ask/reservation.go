@@ -81,6 +81,21 @@ func (a *Ask) UnderConsiderationReservationsDetails() ([]ReservationDetail, erro
 	return details, nil
 }
 
+func (a *Ask) ReservationsDetails() ([]ReservationDetail, error) {
+	var details []ReservationDetail
+
+	query := sqlf.From("reservations_details").
+		Bind(&ReservationDetail{})
+	err := a.db.Select(&details, query.String(), query.Args()...)
+	if err != nil {
+		return nil, zaperr.Wrap(err, "failed to get reservations details",
+			zap.String("query", query.String()),
+			zap.Any("args", query.Args()))
+	}
+
+	return details, nil
+}
+
 // func (a *Ask) ChangeReservationStatus(id int, status ReservationStatus) error {
 // 	query := sqlf.Update("reservations").
 // 		Set("status", status).
