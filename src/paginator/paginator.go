@@ -22,10 +22,11 @@ type Paginator[T interface{}] struct {
 	without_back bool
 
 	ToLabel func(T) string
+	ToColor func(T) string
 	ToValue func(T) string
 }
 
-func New[T interface{}](objects []T, command string, rows, cols int, without_back bool, label, value func(T) string) *Paginator[T] {
+func New[T interface{}](objects []T, command string, rows, cols int, without_back bool, label, color, value func(T) string) *Paginator[T] {
 	return &Paginator[T]{
 		objects: objects,
 		page:    0,
@@ -36,6 +37,7 @@ func New[T interface{}](objects []T, command string, rows, cols int, without_bac
 		cols:         cols,
 		without_back: without_back,
 		ToLabel:      label,
+		ToColor:      color,
 		ToValue:      value,
 	}
 }
@@ -91,9 +93,19 @@ func (p *Paginator[T]) Buttons(special ...vk.Button) [][]vk.Button {
 				break
 			}
 
+			var color string
+			if p.ToColor == nil {
+				color = vk.SecondaryColor
+			} else {
+				color = p.ToColor(p.objects[index])
+				if color == vk.NoneColor {
+					color = vk.SecondaryColor
+				}
+			}
+
 			buttons[i] = append(buttons[i], vk.Button{
 				Label: p.ToLabel(p.objects[index]),
-				Color: "secondary",
+				Color: color,
 
 				Command: p.command,
 				Value:   p.ToValue(p.objects[index]),

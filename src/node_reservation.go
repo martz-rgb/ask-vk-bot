@@ -42,6 +42,7 @@ func (node *ReservationNode) Entry(user *User, c *Controls) error {
 		paginator.DefaultCols,
 		false,
 		to_label,
+		nil,
 		to_value)
 
 	message := `Выберите нужную роль с помощи клавиатуры или начните вводить и отправьте часть, с которой начинается имя роли.

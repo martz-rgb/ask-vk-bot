@@ -61,6 +61,7 @@ func (node *InitNode) options(user *User, c *Controls) ([]form.Option, error) {
 		options = append(options, form.Option{
 			ID:    (&AdminNode{}).ID(),
 			Label: "Админ",
+			Color: vk.PrimaryColor,
 			Value: &AdminNode{},
 		})
 	}
@@ -82,6 +83,7 @@ func (node *InitNode) updatePaginator(user *User, c *Controls) error {
 			paginator.DefaultCols,
 			true,
 			form.OptionToLabel,
+			form.OptionToColor,
 			form.OptionToValue)
 		return nil
 	}

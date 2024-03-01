@@ -44,6 +44,7 @@ func (node *AdminNode) updatePaginator() error {
 			paginator.DefaultCols,
 			false,
 			form.OptionToLabel,
+			form.OptionToColor,
 			form.OptionToValue)
 		return nil
 	}

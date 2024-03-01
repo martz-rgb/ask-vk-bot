@@ -85,6 +85,7 @@ func (f *Form) update() {
 			paginator.DefaultCols,
 			false,
 			OptionToLabel,
+			OptionToColor,
 			OptionToValue,
 		)
 		return

@@ -18,6 +18,7 @@ import (
 )
 
 const (
+	NoneColor      = ""
 	PrimaryColor   = "primary"
 	SecondaryColor = "secondary"
 	PositiveColor  = "positive"
