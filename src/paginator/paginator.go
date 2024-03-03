@@ -79,7 +79,7 @@ func (p *Paginator[T]) Buttons(special ...vk.Button) [][]vk.Button {
 	buttons := [][]vk.Button{}
 
 	for i := 0; i < p.rows; i++ {
-		if i*p.cols >= len(p.objects) {
+		if p.page*(p.rows*p.cols)+i*p.cols >= len(p.objects) {
 			break
 		}
 
