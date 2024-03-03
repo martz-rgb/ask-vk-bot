@@ -4,6 +4,8 @@ import (
 	"database/sql"
 	"database/sql/driver"
 	"errors"
+	"strconv"
+	"strings"
 	"time"
 )
 
@@ -179,4 +181,45 @@ type Reservation struct {
 type ReservationDetail struct {
 	Reservation
 	Role
+}
+
+type VkIDs []int
+
+func (ids VkIDs) Value() (driver.Value, error) {
+	return []int(ids), nil
+}
+
+func (ids *VkIDs) Scan(value interface{}) error {
+	if value == nil {
+		ids = &VkIDs{}
+		return nil
+	}
+
+	if str, err := driver.String.ConvertValue(value); err == nil {
+		if v, ok := str.(string); ok {
+			strs := strings.Split(v, ",")
+			var ints []int
+
+			for _, s := range strs {
+				i, err := strconv.Atoi(s)
+				if err != nil {
+					return err
+				}
+
+				ints = append(ints, i)
+			}
+
+			*ids = VkIDs(ints)
+			return nil
+		}
+
+	}
+	return errors.New("failed to scan VkIDs")
+}
+
+type ReservationPoll struct {
+	Role
+
+	Participants VkIDs  `db:"participants"`
+	Greetings    string `db:"greetings"`
 }

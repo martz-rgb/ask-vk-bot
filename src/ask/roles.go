@@ -24,17 +24,8 @@ func (a *Ask) Roles() ([]Role, error) {
 func (a *Ask) AvailableRoles() ([]Role, error) {
 	var roles []Role
 
-	query := sqlf.From("roles").
-		Bind(&Role{}).
-		With("busy_roles",
-			sqlf.From("members").
-				Select("role")).
-		With("reserved_roles",
-			sqlf.From("reservations").
-				Select("role").
-				Where("status == ?", ReservationStatuses.Done)).
-		Where("name NOT IN busy_roles").
-		Where("name NOT IN reserved_roles")
+	query := sqlf.From("available_roles").
+		Bind(&Role{})
 
 	err := a.db.Select(&roles, query.String(), query.Args()...)
 	if err != nil {

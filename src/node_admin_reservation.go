@@ -26,9 +26,9 @@ func (node *AdminReservationNode) Entry(user *User, c *Controls) error {
 	var details []string
 	var under_consideration bool
 	for i, r := range reservations {
-		message := fmt.Sprintf("%d. %s,\n user: @id%d,\n status: %s,\n deadline: %s",
+		message := fmt.Sprintf("%d. %s\n user: @id%d\n status: %s\n deadline: %s",
 			i+1,
-			r.ShownName,
+			r.Tag,
 			r.VkID,
 			r.Status,
 			r.Deadline.Time)

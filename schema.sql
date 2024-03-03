@@ -95,6 +95,39 @@ CREATE TABLE IF NOT EXISTS reservations (
     timestamp DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP
 );
 
+-- views
+CREATE VIEW IF NOT EXISTS available_roles AS
+SELECT
+    *
+FROM
+    roles
+WHERE
+    name NOT IN (
+        SELECT
+            role
+        FROM
+            members
+    )
+    AND name NOT IN (
+        SELECT
+            role AS reserved_role
+        FROM
+            reservations
+        WHERE
+            NOT EXISTS(
+                SELECT
+                    *
+                FROM
+                    reservations AS other
+                where
+                    other.role = reservations.role
+                    AND (
+                        other.status = 'Under Consideration'
+                        OR other.status = 'In Progress'
+                    )
+            )
+    );
+
 CREATE VIEW IF NOT EXISTS reservations_details AS
 SELECT
     *
@@ -103,3 +136,27 @@ FROM
     roles
 WHERE
     roles.name = reservations.role;
+
+CREATE VIEW IF NOT EXISTS reservations_polls AS
+SELECT
+    roles.*,
+    group_concat(vk_id) AS participants,
+    group_concat(greeting, ';') AS greetings
+FROM
+    reservations,
+    roles
+WHERE
+    NOT EXISTS(
+        SELECT
+            *
+        FROM
+            reservations AS other
+        where
+            other.role = reservations.role
+            AND other.status != 'Done'
+    )
+    AND reservations.role = roles.name
+GROUP BY
+    role
+ORDER BY
+    role;
