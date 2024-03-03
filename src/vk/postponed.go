@@ -24,7 +24,7 @@ func Parse(post *object.WallWallpost) Post {
 	}
 }
 
-type Wall struct {
+type Postponed struct {
 	group int
 	vk    *VK
 
@@ -34,15 +34,15 @@ type Wall struct {
 	posts []Post
 }
 
-func NewWall(group int, vk *VK) *Wall {
-	return &Wall{
+func NewPostponed(group int, vk *VK) *Postponed {
+	return &Postponed{
 		group: group,
 		vk:    vk,
 	}
 }
 
-func (w *Wall) Update() error {
-	posts, err := w.vk.PostponedWallPosts(w.group)
+func (p *Postponed) Update() error {
+	posts, err := p.vk.PostponedWallPosts(p.group)
 	if err != nil {
 		return err
 	}
@@ -53,33 +53,33 @@ func (w *Wall) Update() error {
 		})
 
 	i, j := 0, 0
-	for i < len(w.posts) && j < len(posts) {
-		if w.posts[i].ID == posts[j].ID {
-			if int64(posts[j].Edited) > w.updated {
-				w.posts[i] = Parse(&posts[j])
+	for i < len(p.posts) && j < len(posts) {
+		if p.posts[i].ID == posts[j].ID {
+			if int64(posts[j].Edited) > p.updated {
+				p.posts[i] = Parse(&posts[j])
 			}
 			i, j = i+1, j+1
 			continue
 		}
 
-		if w.posts[i].ID < posts[j].ID {
-			w.posts = append(w.posts[:i], w.posts[i+1:]...)
+		if p.posts[i].ID < posts[j].ID {
+			p.posts = append(p.posts[:i], p.posts[i+1:]...)
 		} else {
-			w.posts = append(w.posts[:i+1], w.posts[i:]...)
-			w.posts[i] = Parse(&posts[j])
+			p.posts = append(p.posts[:i+1], p.posts[i:]...)
+			p.posts[i] = Parse(&posts[j])
 
 			i, j = i+1, j+1
 		}
 	}
 
-	if i < len(w.posts) {
-		w.posts = w.posts[:i+1]
+	if i < len(p.posts) {
+		p.posts = p.posts[:i+1]
 	}
 	for ; j < len(posts); j++ {
-		w.posts = append(w.posts, Parse(&posts[j]))
+		p.posts = append(p.posts, Parse(&posts[j]))
 	}
 
-	w.updated = time.Now().Unix()
+	p.updated = time.Now().Unix()
 
 	return nil
 }
