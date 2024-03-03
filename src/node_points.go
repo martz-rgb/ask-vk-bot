@@ -22,7 +22,7 @@ func (node *PointsNode) ID() string {
 }
 
 func (node *PointsNode) Entry(user *User, c *Controls) error {
-	points, err := c.Ask.Points(user.id)
+	points, err := c.Ask.PointsByVkID(user.id)
 	if err != nil {
 		return err
 	}
@@ -67,7 +67,7 @@ func (node *PointsNode) KeyboardEvent(user *User, c *Controls, payload *vk.Callb
 		_, err := c.Vk.SendMessage(user.id, message, "", nil)
 		return nil, err
 	case "history":
-		history, err := c.Ask.HistoryPoints(user.id)
+		history, err := c.Ask.HistoryPointsByVkID(user.id)
 		if err != nil {
 			return nil, err
 		}

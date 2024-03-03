@@ -11,11 +11,13 @@ import (
 func (a *Ask) MemberByRole(role string) (Member, error) {
 	var member Member
 
-	query := sqlf.From("members").Bind(&Member{}).Where("role == ?", role)
+	query := sqlf.From("members").
+		Bind(&Member{}).
+		Where("role = ?", role)
+
 	err := a.db.Get(&member, query.String(), query.Args()...)
 	if err != nil {
 		return Member{}, zaperr.Wrap(err, "failed to get member by role",
-			zap.String("role", role),
 			zap.String("query", query.String()),
 			zap.Any("args", query.Args()))
 	}
@@ -26,7 +28,10 @@ func (a *Ask) MemberByRole(role string) (Member, error) {
 func (a *Ask) MembersByVkID(vk_id int) ([]Member, error) {
 	var members []Member
 
-	query := sqlf.From("members").Bind(&Member{}).Where("vk_id == ?", vk_id)
+	query := sqlf.From("members").
+		Bind(&Member{}).
+		Where("vk_id = ?", vk_id)
+
 	err := a.db.Select(&members, query.String(), query.Args()...)
 	if err != nil {
 		return nil, zaperr.Wrap(err, "failed to get members by vk_id",
@@ -45,8 +50,6 @@ func (a *Ask) AddMember(vk_id int, role string) error {
 	result, err := a.db.Exec(query.String(), query.Args()...)
 	if err != nil {
 		return zaperr.Wrap(err, "failed to add member",
-			zap.Int("vk_id", vk_id),
-			zap.String("role", role),
 			zap.String("query", query.String()),
 			zap.Any("args", query.Args()))
 	}
@@ -54,8 +57,6 @@ func (a *Ask) AddMember(vk_id int, role string) error {
 	member, err := result.LastInsertId()
 	if err != nil {
 		return zaperr.Wrap(err, "failed to get last inserted id",
-			zap.Int("vk_id", vk_id),
-			zap.String("role", role),
 			zap.String("query", query.String()),
 			zap.Any("args", query.Args()))
 	}

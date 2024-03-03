@@ -17,30 +17,11 @@ func (a *Ask) AddReservation(role string, vk_id int, info int) error {
 	_, err := a.db.Exec(query.String(), query.Args()...)
 	if err != nil {
 		return zaperr.Wrap(err, "failed to add reservation",
-			zap.String("role", role),
-			zap.Int("vk_id", vk_id),
 			zap.String("query", query.String()),
-			zap.Int("info", info),
 			zap.Any("args", query.Args()))
 	}
 
 	return nil
-}
-
-func (a *Ask) ReservationsByVkID(vk_id int) ([]Reservation, error) {
-	var reservations []Reservation
-
-	query := sqlf.From("reservations").
-		Bind(&Reservation{}).
-		Where("vk_id", vk_id)
-	err := a.db.Select(&reservations, query.String(), query.Args()...)
-	if err != nil {
-		return nil, zaperr.Wrap(err, "failed to get reservations by vk id",
-			zap.String("query", query.String()),
-			zap.Any("args", query.Args()))
-	}
-
-	return reservations, nil
 }
 
 func (a *Ask) ReservationsDetailsByVkID(vk_id int) (*ReservationDetail, error) {
@@ -48,8 +29,9 @@ func (a *Ask) ReservationsDetailsByVkID(vk_id int) (*ReservationDetail, error) {
 
 	query := sqlf.From("reservations_details").
 		Bind(&ReservationDetail{}).
-		Where("vk_id", vk_id).
+		Where("vk_id = ?", vk_id).
 		Limit(1)
+
 	err := a.db.Select(&reservations_details, query.String(), query.Args()...)
 	if err != nil {
 		return nil, zaperr.Wrap(err, "failed to get reservations details by vk id",
@@ -69,7 +51,7 @@ func (a *Ask) UnderConsiderationReservationsDetails() ([]ReservationDetail, erro
 
 	query := sqlf.From("reservations_details").
 		Bind(&ReservationDetail{}).
-		Where("status == ?", ReservationStatuses.UnderConsideration)
+		Where("status = ?", ReservationStatuses.UnderConsideration)
 
 	err := a.db.Select(&details, query.String(), query.Args()...)
 	if err != nil {
@@ -86,6 +68,7 @@ func (a *Ask) ReservationsDetails() ([]ReservationDetail, error) {
 
 	query := sqlf.From("reservations_details").
 		Bind(&ReservationDetail{})
+
 	err := a.db.Select(&details, query.String(), query.Args()...)
 	if err != nil {
 		return nil, zaperr.Wrap(err, "failed to get reservations details",
@@ -95,21 +78,6 @@ func (a *Ask) ReservationsDetails() ([]ReservationDetail, error) {
 
 	return details, nil
 }
-
-// func (a *Ask) ChangeReservationStatus(id int, status ReservationStatus) error {
-// 	query := sqlf.Update("reservations").
-// 		Set("status", status).
-// 		Where("id == ?", id)
-
-// 	_, err := a.db.Exec(query.String(), query.Args()...)
-// 	if err != nil {
-// 		return zaperr.Wrap(err, "failed to change reservation status",
-// 			zap.String("query", query.String()),
-// 			zap.Any("args", query.Args()))
-// 	}
-
-// 	return nil
-// }
 
 func (a *Ask) CalculateReservationDeadline() time.Time {
 	// got right date
@@ -131,7 +99,7 @@ func (a *Ask) CalculateReservationDeadline() time.Time {
 func (a *Ask) ChangeReservationDeadline(id int, deadline time.Time) error {
 	query := sqlf.Update("reservations").
 		Set("deadline", deadline).
-		Where("id", id)
+		Where("id = ?", id)
 
 	_, err := a.db.Exec(query.String(), query.Args()...)
 	if err != nil {
@@ -150,7 +118,8 @@ func (a *Ask) ConfirmReservation(id int) (time.Time, error) {
 	query := sqlf.Update("reservations").
 		Set("deadline", deadline).
 		Set("status", status).
-		Where("id", id)
+		Where("id = ?", id)
+
 	_, err := a.db.Exec(query.String(), query.Args()...)
 	if err != nil {
 		return time.Time{}, zaperr.Wrap(err, "failed to confirm reservation",
@@ -165,7 +134,7 @@ func (a *Ask) CompleteReservation(id int, greeting string) error {
 	query := sqlf.Update("reservations").
 		Set("status", ReservationStatuses.Done).
 		Set("greeting", greeting).
-		Where("id == ?", id)
+		Where("id = ?", id)
 
 	_, err := a.db.Exec(query.String(), query.Args()...)
 	if err != nil {
@@ -179,7 +148,7 @@ func (a *Ask) CompleteReservation(id int, greeting string) error {
 
 func (a *Ask) DeleteReservation(id int) error {
 	query := sqlf.DeleteFrom("reservations").
-		Where("id == ?", id)
+		Where("id = ?", id)
 
 	_, err := a.db.Exec(query.String(), query.Args()...)
 	if err != nil {

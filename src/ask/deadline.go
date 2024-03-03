@@ -13,11 +13,13 @@ func (a *Ask) Deadline(member int) (time.Time, error) {
 	var deadline int64
 
 	// should be at least one record
-	query := sqlf.From("deadline").Select("SUM(diff)").Where("member == ?", member)
+	query := sqlf.From("deadline").
+		Select("SUM(diff)").
+		Where("member = ?", member)
+
 	err := a.db.Get(&deadline, query.String(), query.Args()...)
 	if err != nil {
 		return time.Time{}, zaperr.Wrap(err, "failed to get deadline for memeber",
-			zap.Int("member", member),
 			zap.String("query", query.String()),
 			zap.Any("args", query.Args()))
 	}
@@ -28,11 +30,14 @@ func (a *Ask) Deadline(member int) (time.Time, error) {
 func (a *Ask) HistoryDeadline(member int) ([]Deadline, error) {
 	var history []Deadline
 
-	query := sqlf.From("deadline").Bind(&Deadline{}).Where("member == ?", member).OrderBy("timestamp DESC")
+	query := sqlf.From("deadline").
+		Bind(&Deadline{}).
+		Where("member = ?", member).
+		OrderBy("timestamp DESC")
+
 	err := a.db.Select(&history, query.String(), query.Args()...)
 	if err != nil {
 		return nil, zaperr.Wrap(err, "failed to get history of deadline for member",
-			zap.Int("member", member),
 			zap.String("query", query.String()),
 			zap.Any("args", query.Args()))
 	}
@@ -51,10 +56,6 @@ func (a *Ask) ChangeDeadline(member int, diff time.Duration, kind DeadlineCause,
 	_, err := a.db.Exec(query.String(), query.Args()...)
 	if err != nil {
 		return zaperr.Wrap(err, "failed to insert deadline event",
-			zap.Int("member", member),
-			zap.Duration("diff", diff),
-			zap.Any("kind", kind),
-			zap.String("cause", cause),
 			zap.String("query", query.String()),
 			zap.Any("args", query.Args()))
 	}
