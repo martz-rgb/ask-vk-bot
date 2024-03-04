@@ -148,10 +148,10 @@ func main() {
 		zap.S().Fatalw("failed to validate ask config",
 			"error", err)
 	}
-	ask := ask.New(ask_config)
+	a := ask.New(ask_config)
 
 	// init db + migrate
-	err = ask.Init(config.DB, config.Schema, config.AllowDeletion)
+	err = a.Init(config.DB, config.Schema, config.AllowDeletion)
 	if err != nil {
 		zap.S().Fatalw("failed to init ask",
 			"error", err)
@@ -169,8 +169,8 @@ func main() {
 			"error", err)
 	}
 
-	chat_bot := NewChatBot(ask, group, &InitNode{}, config.Timeout, bot_logger.Sugar())
-	listener := NewListener(ask, group, admin)
+	chat_bot := NewChatBot(a, group, &InitNode{}, config.Timeout, bot_logger.Sugar())
+	listener := NewListener(a, group, admin)
 
 	ctx, stop := signal.NotifyContext(context.Background(), os.Interrupt)
 	defer stop()
