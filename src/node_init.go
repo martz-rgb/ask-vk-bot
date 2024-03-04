@@ -27,15 +27,17 @@ func (node *InitNode) options(user *User, c *Controls) ([]form.Option, error) {
 	if err != nil {
 		return nil, err
 	}
+
+	// same  id because i want to mask the difference between them
 	if reservation_details == nil {
 		options = append(options, form.Option{
-			ID:    (&ReservationNode{}).ID(),
+			ID:    "reservation",
 			Label: "Бронь",
 			Value: &ReservationNode{},
 		})
 	} else {
 		options = append(options, form.Option{
-			ID:    (&ReservationManageNode{}).ID(),
+			ID:    "reservation",
 			Label: "Бронь",
 			Value: &ReservationManageNode{},
 		})
