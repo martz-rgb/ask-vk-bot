@@ -28,7 +28,7 @@ func (node *AdminReservationNode) Entry(user *User, c *Controls) error {
 	for i, r := range reservations {
 		message := fmt.Sprintf("%d. %s\n user: @id%d\n status: %s\n deadline: %s",
 			i+1,
-			r.Tag,
+			r.Hashtag,
 			r.VkID,
 			r.Status,
 			r.Deadline.Time)

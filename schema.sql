@@ -2,7 +2,7 @@ CREATE TABLE IF NOT EXISTS administration (vk_id INT PRIMARY KEY NOT NULL);
 
 CREATE TABLE IF NOT EXISTS roles (
     name TEXT PRIMARY KEY NOT NULL,
-    tag TEXT NOT NULL,
+    hashtag TEXT NOT NULL,
     shown_name TEXT NOT NULL,
     accusative_name TEXT,
     caption_name TEXT,

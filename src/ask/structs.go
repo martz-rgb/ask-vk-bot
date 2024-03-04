@@ -21,7 +21,7 @@ type Info struct {
 
 type Role struct {
 	Name           string         `db:"name"`
-	Tag            string         `db:"tag"`
+	Hashtag        string         `db:"hashtag"`
 	ShownName      string         `db:"shown_name"`
 	AccusativeName string         `db:"accusative_name"`
 	CaptionName    sql.NullString `db:"caption_name"`

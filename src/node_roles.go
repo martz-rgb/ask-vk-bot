@@ -67,8 +67,8 @@ func (node *RolesNode) KeyboardEvent(user *User, c *Controls, payload *vk.Callba
 			return nil, err
 		}
 
-		message := fmt.Sprintf("Идентификатор: %s\nТег: %s\nИмя: %s\nЗаголовок: %s\n",
-			role.Name, role.Tag, role.ShownName, role.CaptionName.String)
+		message := fmt.Sprintf("Идентификатор: %s\nТег: %s\nИмя: %s\nПадеж: %s\nЗаголовок: %s\n",
+			role.Name, role.Hashtag, role.ShownName, role.AccusativeName, role.CaptionName.String)
 
 		_, err = c.Vk.SendMessage(user.id, message, "", nil)
 		return nil, err
