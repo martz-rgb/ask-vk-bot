@@ -9,9 +9,12 @@ import (
 )
 
 type Post struct {
-	ID int
+	ID      int
+	Created time.Time
 
-	Tags []string
+	Tags       []string
+	Text       string
+	Attachment []object.WallWallpostAttachment
 }
 
 func Parse(post *object.WallWallpost) Post {
@@ -19,8 +22,12 @@ func Parse(post *object.WallWallpost) Post {
 	tags := regexp.MustCompile(`#([\w@]+)`).FindAllString(post.Text, -1)
 
 	return Post{
-		ID:   post.ID,
-		Tags: tags,
+		post.ID,
+		time.Now(),
+
+		tags,
+		post.Text,
+		post.Attachments,
 	}
 }
 
@@ -28,7 +35,7 @@ type Postponed struct {
 	group int
 	vk    *VK
 
-	updated int64
+	updated time.Time
 
 	// sorted by id
 	posts []Post
@@ -41,10 +48,10 @@ func NewPostponed(group int, vk *VK) *Postponed {
 	}
 }
 
-func (p *Postponed) Update() error {
+func (p *Postponed) Update() ([]Post, error) {
 	posts, err := p.vk.PostponedWallPosts(p.group)
 	if err != nil {
-		return err
+		return nil, err
 	}
 	slices.SortFunc[[]object.WallWallpost, object.WallWallpost](
 		posts,
@@ -55,7 +62,7 @@ func (p *Postponed) Update() error {
 	i, j := 0, 0
 	for i < len(p.posts) && j < len(posts) {
 		if p.posts[i].ID == posts[j].ID {
-			if int64(posts[j].Edited) > p.updated {
+			if time.Unix(int64(posts[j].Edited), 0).After(p.updated) {
 				p.posts[i] = Parse(&posts[j])
 			}
 			i, j = i+1, j+1
@@ -79,7 +86,7 @@ func (p *Postponed) Update() error {
 		p.posts = append(p.posts, Parse(&posts[j]))
 	}
 
-	p.updated = time.Now().Unix()
+	p.updated = time.Now()
 
-	return nil
+	return p.posts, nil
 }

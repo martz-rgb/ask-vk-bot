@@ -2,81 +2,24 @@ package vk
 
 import (
 	"errors"
-	"io"
 	"maps"
-	"math/rand"
-	"os"
-	"strings"
-	"time"
 
 	"github.com/SevereCloud/vksdk/v2/api"
-	"github.com/SevereCloud/vksdk/v2/longpoll-bot"
 	"github.com/SevereCloud/vksdk/v2/object"
-	"github.com/awnumar/memguard"
 	"github.com/hori-ryota/zaperr"
 	"go.uber.org/zap"
 )
 
-const (
-	NoneColor      = ""
-	PrimaryColor   = "primary"
-	SecondaryColor = "secondary"
-	PositiveColor  = "positive"
-	NegativeColor  = "negative"
-)
-
-// api.VK is based on http.Client and http.Client is claimed to be concurrency safe
-type VK struct {
-	id int
-
-	api *api.VK
-	r   *rand.Rand
+type MessageParams struct {
+	Id     int
+	Text   string
+	Params api.Params
 }
 
-func NewFromFile(name string, id int) (*VK, error) {
-	file, err := os.Open(name)
-	if err != nil {
-		return nil, err
-	}
-	defer file.Close()
-
-	token, err := memguard.NewBufferFromEntireReader(file)
-	if err != nil {
-		return nil, err
-	}
-	defer token.Destroy()
-
-	if token.Size() == 0 {
-		return nil, errors.New("group token is not provided")
-	}
-
-	api, err := New(id, token)
-	if err != nil {
-		return nil, err
-	}
-
-	return api, nil
-}
-
-func New(id int, token *memguard.LockedBuffer) (*VK, error) {
-	v := &VK{}
-	source := rand.NewSource(time.Now().UnixNano())
-	v.r = rand.New(source)
-	v.id = id
-
-	// should copy string because VK saves it inside and use,
-	// but i destroy LockedBuffers with pointer on string
-	v.api = api.NewVK(strings.Clone(token.String()))
-
-	return v, nil
-}
-
-func (v *VK) ID() int {
-	return v.id
-}
-
-func (v *VK) NewLongPoll() (*longpoll.LongPoll, error) {
-	return longpoll.NewLongPoll(v.api, v.id)
+type Message struct {
+	ID          int
+	Text        string
+	Attachments []object.MessagesMessageAttachment
 }
 
 func (v *VK) MarkAsRead(user_id int) error {
@@ -242,7 +185,7 @@ func (v *VK) GetLastBotMessage(user_id int) (*object.MessagesMessage, error) {
 func (v *VK) ChangeKeyboard(user_id int, keyboard string) error {
 	err := v.ChangeKeyboardWithoutDelete(user_id, keyboard)
 	if err != nil {
-		zap.S().Debugw("unable to change keyboard without delete")
+		zap.S().Infow("unable to change keyboard without delete", "error", err)
 		return v.ChangeKeyboardWithDelete(user_id, keyboard)
 	}
 
@@ -268,111 +211,4 @@ func (v *VK) ChangeKeyboardWithoutDelete(user_id int, keyboard string) error {
 	attachments := message.Attachments
 
 	return v.EditMessage(user_id, message.ID, message.Text, keyboard, ToAttachments(attachments))
-}
-
-func (v *VK) WallPostNew(group_id int, message string, attachments string, signed bool, publish_date int64) error {
-	params := api.Params{
-		"owner_id":     -group_id,
-		"from_group":   1,
-		"message":      message,
-		"attachments":  attachments,
-		"signed":       signed,
-		"publish_date": publish_date,
-	}
-
-	response, err := v.api.WallPost(params)
-	if err != nil {
-		return zaperr.Wrap(err, "failed to post on wall",
-			zap.Any("params", params),
-			zap.Any("response", response))
-	}
-
-	zap.S().Debugw("successfully posted on wall",
-		"params", params,
-		"response", response)
-
-	return nil
-}
-
-func (v *VK) PostponedWallPosts(group_id int) ([]object.WallWallpost, error) {
-	max_count := 100
-
-	var posts []object.WallWallpost
-	offset := 0
-
-	for {
-		params := api.Params{
-			"owner_id": -group_id,
-			"count":    max_count,
-			"filter":   "postponed",
-			"offset":   offset,
-		}
-
-		response, err := v.api.WallGet(params)
-		if err != nil {
-			return nil, zaperr.Wrap(err, "failed to get postponed wall posts",
-				zap.Any("params", params),
-				zap.Any("response", response))
-		}
-
-		zap.S().Debugw("successfully get postponed wall posts",
-			"params", params,
-			"response", response)
-
-		posts = append(posts, response.Items...)
-
-		offset += max_count
-
-		if response.Count-offset <= 0 {
-			return posts, nil
-		}
-	}
-}
-
-func (v *VK) UploadDocument(peer_id int, name string, file io.Reader) (int, error) {
-	response, err := v.api.UploadMessagesDoc(peer_id, "doc", name, "", file)
-	if err != nil {
-		return -1, zaperr.Wrap(err, "failed to upload document",
-			zap.Int("peer_id", peer_id),
-			zap.Any("response", response))
-	}
-
-	zap.S().Debugw("successfully upload document",
-		"peer_id", peer_id,
-		"response", response)
-
-	return response.Doc.ID, nil
-}
-
-func ToAttachments(attachments []object.MessagesMessageAttachment) string {
-	result := []string{}
-
-	for _, a := range attachments {
-		switch a.Type {
-		case "photo":
-			result = append(result, a.Photo.ToAttachment())
-		case "video":
-			result = append(result, a.Video.ToAttachment())
-		case "audio":
-			result = append(result, a.Audio.ToAttachment())
-		case "doc":
-			result = append(result, a.Doc.ToAttachment())
-		case "link":
-			//result = append(result, a.Link.ToAttachment())
-		case "market":
-			result = append(result, a.Market.ToAttachment())
-		case "market_album":
-			result = append(result, a.MarketMarketAlbum.ToAttachment())
-		case "wall":
-			//result = append(resul)
-		case "wall_reply":
-			//result = append(result, a.WallReply.ToAttachment())
-		case "sticker":
-			//result =append(result, a.Sticker.ToAttachment())
-		case "gift":
-			//result = append(result, a.Gift.ToAttachment())
-		}
-	}
-
-	return strings.Join(result, ",")
 }

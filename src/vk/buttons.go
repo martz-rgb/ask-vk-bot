@@ -3,23 +3,18 @@ package vk
 import (
 	"encoding/json"
 
-	"github.com/SevereCloud/vksdk/v2/api"
 	"github.com/SevereCloud/vksdk/v2/object"
 	"github.com/hori-ryota/zaperr"
 	"go.uber.org/zap"
 )
 
-type MessageParams struct {
-	Id     int
-	Text   string
-	Params api.Params
-}
-
-type Message struct {
-	ID          int
-	Text        string
-	Attachments []object.MessagesMessageAttachment
-}
+const (
+	NoneColor      = ""
+	PrimaryColor   = "primary"
+	SecondaryColor = "secondary"
+	PositiveColor  = "positive"
+	NegativeColor  = "negative"
+)
 
 type CallbackPayload struct {
 	Command string `json:"command"`
