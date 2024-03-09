@@ -4,6 +4,7 @@ import (
 	"ask-bot/src/ask"
 	"ask-bot/src/dict"
 	"ask-bot/src/form"
+	"ask-bot/src/paginator"
 	"ask-bot/src/vk"
 	"errors"
 	"fmt"
@@ -13,42 +14,30 @@ import (
 )
 
 type ReservationManageNode struct {
-	details *ask.ReservationDetail
+	paginator *paginator.Paginator[form.Option]
+	details   *ask.ReservationDetail
 }
 
 func (node *ReservationManageNode) ID() string {
 	return "reservation_manage"
 }
 
-func (node *ReservationManageNode) buttons() [][]vk.Button {
-	actions := []vk.Button{}
-
+func (node *ReservationManageNode) options() (options []form.Option) {
 	if node.details.Status == ask.ReservationStatuses.InProgress {
-		actions = append(actions, vk.Button{
-			Label:   "Прислать приветствие",
-			Color:   vk.PrimaryColor,
-			Command: "greeting",
+		options = append(options, form.Option{
+			ID:    "greeting",
+			Label: "Прислать приветствие",
+			Color: vk.PrimaryColor,
 		})
 	}
 
-	if node.details.Status != ask.ReservationStatuses.Poll {
-		actions = append(actions, vk.Button{
-			Label:   "Отменить бронь",
-			Color:   vk.SecondaryColor,
-			Command: "cancel",
-		})
-	}
+	options = append(options, form.Option{
+		ID:    "cancel",
+		Label: "Отменить бронь",
+		Color: vk.SecondaryColor,
+	})
 
-	return [][]vk.Button{
-		actions,
-		{
-			{
-				Label:   "Назад",
-				Color:   vk.NegativeColor,
-				Command: "back",
-			},
-		},
-	}
+	return
 }
 
 func (node *ReservationManageNode) Entry(user *User, c *Controls) error {
@@ -80,16 +69,24 @@ func (node *ReservationManageNode) Entry(user *User, c *Controls) error {
 	case ask.ReservationStatuses.Done:
 		message = fmt.Sprintf("Мы получили ваше приветствие на %s! Скоро будет создан опрос.",
 			node.details.AccusativeName)
-
-	case ask.ReservationStatuses.Poll:
-		message = fmt.Sprintf("Ваше приветствие на %s уже на голосовании!",
-			node.details.AccusativeName)
 	}
+
+	config := &paginator.Config[form.Option]{
+		Command: "options",
+
+		ToLabel: form.OptionToLabel,
+		ToColor: form.OptionToColor,
+		ToValue: form.OptionToValue,
+	}
+
+	node.paginator = paginator.New[form.Option](
+		node.options(),
+		config.MustBuild())
 
 	_, err = c.Vk.SendMessage(
 		user.id,
 		message,
-		vk.CreateKeyboard(node.ID(), node.buttons()),
+		vk.CreateKeyboard(node.ID(), node.paginator.Buttons()),
 		nil)
 	return err
 }
@@ -100,32 +97,46 @@ func (node *ReservationManageNode) NewMessage(user *User, c *Controls, message *
 
 func (node *ReservationManageNode) KeyboardEvent(user *User, c *Controls, payload *vk.CallbackPayload) (*Action, error) {
 	switch payload.Command {
-	case "greeting":
-		request := &vk.MessageParams{
-			Text:   "Пришлите свое приветствие.",
-			Params: nil,
+	case "options":
+		option, err := node.paginator.Object(payload.Value)
+		if err != nil {
+			return nil, err
 		}
 
-		field := form.NewField(
-			"greeting",
-			request,
-			nil,
-			ExtractAttachments,
-			GreetingValidate,
-			nil,
-		)
+		switch option.ID {
+		case "greeting":
+			request := &vk.MessageParams{
+				Text:   "Пришлите свое приветствие.",
+				Params: nil,
+			}
 
-		return NewActionNext(NewFormNode("greeting", nil, field)), nil
+			field := form.NewField(
+				"greeting",
+				request,
+				nil,
+				ExtractAttachments,
+				GreetingValidate,
+				nil,
+			)
 
-	case "cancel":
-		message := &vk.MessageParams{
-			Text: fmt.Sprintf("Вы уверены, что хотите отменить бронь на %s?",
-				node.details.AccusativeName),
+			return NewActionNext(NewFormNode("greeting", nil, field)), nil
+
+		case "cancel":
+			message := &vk.MessageParams{
+				Text: fmt.Sprintf("Вы уверены, что хотите отменить бронь на %s?",
+					node.details.AccusativeName),
+			}
+			return NewActionNext(NewConfirmationNode("cancel", message)), nil
 		}
-		return NewActionNext(NewConfirmationNode("cancel", message)), nil
+	case "paginator":
+		back := node.paginator.Control(payload.Value)
 
-	case "back":
-		return NewActionExit(nil), nil
+		if back {
+			return NewActionExit(nil), nil
+		}
+
+		return nil, c.Vk.ChangeKeyboard(user.id,
+			vk.CreateKeyboard(node.ID(), node.paginator.Buttons()))
 	}
 
 	return nil, nil
