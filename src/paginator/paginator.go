@@ -8,9 +8,6 @@ import (
 	"go.uber.org/zap"
 )
 
-var DeafultRows int = 2
-var DefaultCols int = 3
-
 type Paginator[T interface{}] struct {
 	objects     []T
 	page        int
@@ -26,19 +23,24 @@ type Paginator[T interface{}] struct {
 	ToValue func(T) string
 }
 
-func New[T interface{}](objects []T, command string, rows, cols int, without_back bool, label, color, value func(T) string) *Paginator[T] {
+// should call config.Build() or config.MustBuild() before using  New()
+func New[T interface{}](objects []T, config *Config[T]) *Paginator[T] {
+	if !config.is_build {
+		return nil
+	}
+
 	return &Paginator[T]{
 		objects: objects,
 		page:    0,
 		// ceil function
-		total_pages:  1 + (len(objects)-1)/(rows*cols),
-		command:      command,
-		rows:         rows,
-		cols:         cols,
-		without_back: without_back,
-		ToLabel:      label,
-		ToColor:      color,
-		ToValue:      value,
+		total_pages:  1 + (len(objects)-1)/(config.Rows*config.Cols),
+		command:      config.Command,
+		rows:         config.Rows,
+		cols:         config.Cols,
+		without_back: config.WithoutBack,
+		ToLabel:      config.ToLabel,
+		ToColor:      config.ToColor,
+		ToValue:      config.ToValue,
 	}
 }
 

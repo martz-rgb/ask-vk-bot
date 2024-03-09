@@ -21,22 +21,20 @@ func (node *RolesNode) Entry(user *User, c *Controls) error {
 		return err
 	}
 
-	to_label := func(role ask.Role) string {
-		return role.ShownName
-	}
-	to_value := func(role ask.Role) string {
-		return role.Name
+	config := &paginator.Config[ask.Role]{
+		Command: "roles",
+
+		ToLabel: func(role ask.Role) string {
+			return role.ShownName
+		},
+		ToValue: func(role ask.Role) string {
+			return role.Name
+		},
 	}
 
-	node.paginator = paginator.New[ask.Role](
+	node.paginator = paginator.New(
 		roles,
-		"roles",
-		paginator.DeafultRows,
-		paginator.DefaultCols,
-		false,
-		to_label,
-		nil,
-		to_value)
+		config.MustBuild())
 
 	message := `Выберите нужную роль с помощи клавиатуры или начните вводить и отправьте часть, с которой начинается имя роли.
 				Отправьте специальный символ '%' для того, чтобы вернуться к полному списку ролей.`

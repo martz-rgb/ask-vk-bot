@@ -37,15 +37,16 @@ func (node *AdminNode) updatePaginator() error {
 	options := node.options()
 
 	if node.paginator == nil {
+		config := &paginator.Config[form.Option]{
+			Command: "options",
+			ToLabel: form.OptionToLabel,
+			ToColor: form.OptionToColor,
+			ToValue: form.OptionToValue,
+		}
+
 		node.paginator = paginator.New[form.Option](
 			options,
-			"options",
-			paginator.DeafultRows,
-			paginator.DefaultCols,
-			false,
-			form.OptionToLabel,
-			form.OptionToColor,
-			form.OptionToValue)
+			config.MustBuild())
 		return nil
 	}
 	node.paginator.ChangeObjects(options)
