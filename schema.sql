@@ -2,7 +2,7 @@ CREATE TABLE IF NOT EXISTS administration (vk_id INT PRIMARY KEY NOT NULL);
 
 CREATE TABLE IF NOT EXISTS roles (
     name TEXT PRIMARY KEY NOT NULL,
-    hashtag TEXT NOT NULL,
+    hashtag TEXT UNIQUE NOT NULL,
     shown_name TEXT NOT NULL,
     accusative_name TEXT,
     caption_name TEXT,
@@ -84,8 +84,7 @@ CREATE TABLE IF NOT EXISTS reservations (
         status IN (
             'Under Consideration',
             'In Progress',
-            'Done',
-            'Poll'
+            'Done'
         )
     ) NOT NULL DEFAULT 'Under Consideration',
     -- id of vk message contained information
@@ -95,56 +94,25 @@ CREATE TABLE IF NOT EXISTS reservations (
     timestamp DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP
 );
 
+CREATE TABLE IF NOT EXISTS ongoing_polls (
+    post INT PRIMARY KEY NOT NULL,
+    -- one poll per role
+    role TEXT REFERENCES roles(name) UNIQUE NOT NULL,
+    timestamp DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP
+);
+
 -- views
-CREATE VIEW IF NOT EXISTS available_roles AS
+CREATE VIEW IF NOT EXISTS polls AS
 SELECT
-    *
-FROM
-    roles
-WHERE
-    name NOT IN (
-        SELECT
-            role
-        FROM
-            members
-    )
-    AND name NOT IN (
-        SELECT
-            role AS reserved_role
-        FROM
-            reservations
-        WHERE
-            NOT EXISTS(
-                SELECT
-                    *
-                FROM
-                    reservations AS other
-                where
-                    other.role = reservations.role
-                    AND (
-                        other.status = 'Under Consideration'
-                        OR other.status = 'In Progress'
-                    )
-            )
-    );
-
-CREATE VIEW IF NOT EXISTS reservations_details AS
-SELECT
-    *
-FROM
-    reservations,
-    roles
-WHERE
-    roles.name = reservations.role;
-
-CREATE VIEW IF NOT EXISTS reservations_polls AS
-SELECT
-    roles.*,
+    role,
+    hashtag as hashtag,
     group_concat(vk_id) AS participants,
-    group_concat(greeting, ';') AS greetings
+    group_concat(greeting, ';') AS greetings,
+    post
 FROM
-    reservations,
-    roles
+    reservations
+    INNER JOIN roles ON reservations.role = roles.name
+    LEFT JOIN ongoing_polls USING (role)
 WHERE
     NOT EXISTS(
         SELECT
@@ -155,8 +123,40 @@ WHERE
             other.role = reservations.role
             AND other.status != 'Done'
     )
-    AND reservations.role = roles.name
 GROUP BY
     role
 ORDER BY
     role;
+
+CREATE VIEW IF NOT EXISTS pending_polls AS
+SELECT
+    *
+FROM
+    polls
+WHERE
+    post IS NULL;
+
+CREATE VIEW IF NOT EXISTS available_roles AS
+SELECT
+    *
+FROM
+    roles
+WHERE
+    name NOT IN (
+        SELECT
+            role
+        FROM
+            polls
+        UNION
+        SELECT
+            role
+        FROM
+            members
+    );
+
+CREATE VIEW IF NOT EXISTS reservations_details AS
+SELECT
+    *
+FROM
+    reservations
+    INNER JOIN roles ON reservations.role = roles.name;
