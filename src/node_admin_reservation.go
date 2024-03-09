@@ -4,16 +4,41 @@ import (
 	"ask-bot/src/ask"
 	"ask-bot/src/dict"
 	"ask-bot/src/form"
+	"ask-bot/src/paginator"
 	"ask-bot/src/vk"
 	"fmt"
 	"strconv"
 	"strings"
 )
 
-type AdminReservationNode struct{}
+type AdminReservationNode struct {
+	paginator *paginator.Paginator[form.Option]
+}
 
 func (node *AdminReservationNode) ID() string {
 	return "admin_reservation"
+}
+
+func (node *AdminReservationNode) options(num_reservations int, under_consideration bool) (options []form.Option) {
+	if num_reservations == 0 {
+		return nil
+	}
+
+	if under_consideration {
+		options = append(options, form.Option{
+			ID:    "confirm",
+			Label: "Подтвердить брони",
+			Color: vk.PrimaryColor,
+		})
+	}
+
+	options = append(options, form.Option{
+		ID:    "delete",
+		Label: "Удалить брони",
+		Color: vk.SecondaryColor,
+	})
+
+	return
 }
 
 // To-DO: print all reservations
@@ -40,43 +65,27 @@ func (node *AdminReservationNode) Entry(user *User, c *Controls) error {
 	}
 
 	var message string
-	var buttons [][]vk.Button
 
 	if len(details) > 0 {
 		message = strings.Join(details, "\n")
-
-		var actions []vk.Button
-
-		if under_consideration {
-			actions = append(actions, vk.Button{
-				Label:   "Подтвердить брони",
-				Color:   vk.PrimaryColor,
-				Command: "confirm",
-			})
-		}
-
-		actions = append(actions, vk.Button{
-			Label:   "Удалить брони",
-			Color:   vk.SecondaryColor,
-			Command: "delete",
-		})
-
-		buttons = append(buttons, actions)
 	} else {
 		message = "Сейчас нет броней."
 	}
 
-	buttons = append(buttons, []vk.Button{
-		{
-			Label:   "Назад",
-			Color:   vk.NegativeColor,
-			Command: "back",
-		},
-	})
+	config := &paginator.Config[form.Option]{
+		Command: "options",
+
+		ToLabel: form.OptionToLabel,
+		ToColor: form.OptionToColor,
+		ToValue: form.OptionToValue,
+	}
+
+	node.paginator = paginator.New[form.Option](node.options(len(reservations), under_consideration),
+		config.MustBuild())
 
 	_, err = c.Vk.SendMessage(user.id,
 		message,
-		vk.CreateKeyboard(node.ID(), buttons),
+		vk.CreateKeyboard(node.ID(), node.paginator.Buttons()),
 		nil)
 
 	return err
@@ -88,65 +97,80 @@ func (node *AdminReservationNode) NewMessage(user *User, c *Controls, message *v
 
 func (node *AdminReservationNode) KeyboardEvent(user *User, c *Controls, payload *vk.CallbackPayload) (*Action, error) {
 	switch payload.Command {
-	case "confirm":
-		reservations, err := c.Ask.UnderConsiderationReservationsDetails()
+	case "options":
+		option, err := node.paginator.Object(payload.Value)
 		if err != nil {
 			return nil, err
 		}
 
-		var options []form.Option
-		for _, r := range reservations {
-			options = append(options, form.Option{
-				ID:    strconv.Itoa(r.Id),
-				Label: r.ShownName,
-				Value: &r,
-			})
+		switch option.ID {
+		case "confirm":
+			reservations, err := c.Ask.UnderConsiderationReservationsDetails()
+			if err != nil {
+				return nil, err
+			}
+
+			var options []form.Option
+			for _, r := range reservations {
+				options = append(options, form.Option{
+					ID:    strconv.Itoa(r.Id),
+					Label: r.ShownName,
+					Value: &r,
+				})
+			}
+
+			field := form.NewField(
+				"reservation",
+				&vk.MessageParams{
+					Text: "Выберить бронь для рассмотрения.",
+				},
+				options,
+				nil,
+				NotEmpty,
+				ConfirmReservationField,
+			)
+
+			return NewActionNext(NewFormNode("confirm", nil, field)), nil
+
+		case "delete":
+			reservations, err := c.Ask.ReservationsDetails()
+			if err != nil {
+				return nil, err
+			}
+
+			var options []form.Option
+			for _, r := range reservations {
+				options = append(options, form.Option{
+					ID:    strconv.Itoa(r.Id),
+					Label: r.ShownName,
+					Value: &r,
+				})
+			}
+
+			field := form.NewField(
+				"reservation",
+				&vk.MessageParams{
+					Text: "Выберить бронь для удаления.",
+				},
+				options,
+				nil,
+				NotEmpty,
+				nil,
+			)
+
+			return NewActionNext(NewFormNode("delete", ConfirmReservationDeletion, field)), nil
+		}
+	case "paginator":
+		back := node.paginator.Control(payload.Value)
+
+		if back {
+			return NewActionExit(nil), nil
 		}
 
-		field := form.NewField(
-			"reservation",
-			&vk.MessageParams{
-				Text: "Выберить бронь для рассмотрения.",
-			},
-			options,
-			nil,
-			NotEmpty,
-			ConfirmReservationField,
-		)
-
-		return NewActionNext(NewFormNode("confirm", nil, field)), nil
-
-	case "delete":
-		reservations, err := c.Ask.ReservationsDetails()
-		if err != nil {
-			return nil, err
-		}
-
-		var options []form.Option
-		for _, r := range reservations {
-			options = append(options, form.Option{
-				ID:    strconv.Itoa(r.Id),
-				Label: r.ShownName,
-				Value: &r,
-			})
-		}
-
-		field := form.NewField(
-			"reservation",
-			&vk.MessageParams{
-				Text: "Выберить бронь для удаления.",
-			},
-			options,
-			nil,
-			NotEmpty,
-			nil,
-		)
-
-		return NewActionNext(NewFormNode("delete", ConfirmReservationDeletion, field)), nil
-
-	case "back":
-		return NewActionExit(nil), nil
+		return nil, c.Vk.ChangeKeyboard(user.id,
+			vk.CreateKeyboard(node.ID(), node.paginator.Buttons()))
 	}
+
 	return nil, nil
 }
 
