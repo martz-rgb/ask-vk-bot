@@ -78,16 +78,16 @@ func (f *Form) update() {
 	}
 
 	if f.paginator == nil {
+		config := &paginator.Config[Option]{
+			Command: "form",
+			ToLabel: OptionToLabel,
+			ToColor: OptionToColor,
+			ToValue: OptionToValue,
+		}
+
 		f.paginator = paginator.New[Option](
 			f.layers.Peek().Current().Options(),
-			"form",
-			paginator.DeafultRows,
-			paginator.DefaultCols,
-			false,
-			OptionToLabel,
-			OptionToColor,
-			OptionToValue,
-		)
+			config.MustBuild())
 		return
 	}
 
