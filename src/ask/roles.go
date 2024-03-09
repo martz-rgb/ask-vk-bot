@@ -10,7 +10,16 @@ import (
 	"go.uber.org/zap"
 )
 
-// roles
+type Role struct {
+	Name           string         `db:"name"`
+	Hashtag        string         `db:"hashtag"`
+	ShownName      string         `db:"shown_name"`
+	AccusativeName string         `db:"accusative_name"`
+	CaptionName    sql.NullString `db:"caption_name"`
+	Album          sql.NullString `db:"album_link"`
+	Board          sql.NullString `db:"board_link"`
+}
+
 // TO-DO should roles be sorted alphabetically or by groups
 func (a *Ask) Roles() ([]Role, error) {
 	var roles []Role

@@ -10,10 +10,20 @@ import (
 	"go.uber.org/zap"
 )
 
+type OrganizationHashtags struct {
+	PollHashtag       string `json:"ASK_POLL_HASHTAG"`
+	GreetingHashtag   string `json:"ASK_GREETING_HASHTAG"`
+	FreeAnswerHashtag string `json:"ASK_FREE_ANSWER_HASHTAG"`
+	LeavingHashtag    string `json:"ASK_LEAVING_HASHTAG"`
+}
+
 type Config struct {
 	Timezone            int           `json:"ASK_TIMEZONE"`
 	Deadline            time.Duration `json:"ASK_DEADLINE"`
 	ReservationDuration time.Duration `json:"ASK_RESERVATION_DURATION"`
+
+	// TO-DO valudation
+	OrganizationHashtags
 }
 
 func ConfigFromEnv() *Config {
@@ -51,4 +61,8 @@ func (c *Config) Validate() error {
 	}
 
 	return nil
+}
+
+func (a *Ask) OrganizationHashtags() OrganizationHashtags {
+	return a.config.OrganizationHashtags
 }

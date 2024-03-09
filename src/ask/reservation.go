@@ -1,12 +1,68 @@
 package ask
 
 import (
+	"database/sql"
+	"database/sql/driver"
+	"errors"
 	"time"
 
 	"github.com/hori-ryota/zaperr"
 	"github.com/leporo/sqlf"
 	"go.uber.org/zap"
 )
+
+type ReservationStatus string
+
+var ReservationStatuses = struct {
+	UnderConsideration ReservationStatus
+	InProgress         ReservationStatus
+	Done               ReservationStatus
+}{
+	UnderConsideration: "Under Consideration",
+	InProgress:         "In Progress",
+	Done:               "Done",
+}
+
+func (s ReservationStatus) Value() (driver.Value, error) {
+	return string(s), nil
+}
+
+func (s *ReservationStatus) Scan(value interface{}) error {
+	if value == nil {
+		return errors.New("ReservationStatus is not nullable")
+	}
+
+	if str, err := driver.String.ConvertValue(value); err == nil {
+		if v, ok := str.(string); ok {
+			if v != string(ReservationStatuses.UnderConsideration) &&
+				v != string(ReservationStatuses.InProgress) &&
+				v != string(ReservationStatuses.Done) {
+				return errors.New("value is not valid ReservationStatus value")
+			}
+
+			*s = ReservationStatus(v)
+			return nil
+		}
+
+	}
+	return errors.New("failed to scan ReservationStatus")
+}
+
+type Reservation struct {
+	Id        int               `db:"id"`
+	Role      string            `db:"role"`
+	VkID      int               `db:"vk_id"`
+	Deadline  sql.NullTime      `db:"deadline"`
+	Status    ReservationStatus `db:"status"`
+	Info      int               `db:"info"` // id of vk message contained information
+	Greeting  sql.NullString    `db:"greeting"`
+	Timestamp time.Time         `db:"timestamp"`
+}
+
+type ReservationDetail struct {
+	Reservation
+	Role
+}
 
 func (a *Ask) AddReservation(role string, vk_id int, info int) error {
 	query := sqlf.InsertInto("reservations").

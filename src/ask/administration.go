@@ -6,7 +6,10 @@ import (
 	"go.uber.org/zap"
 )
 
-// administration
+type Administration struct {
+	VkID int `db:"vk_id"`
+}
+
 func (a *Ask) IsAdmin(vk_id int) (bool, error) {
 	var admin []Administration
 

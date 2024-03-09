@@ -1,12 +1,20 @@
 package ask
 
 import (
+	"time"
+
 	"github.com/hori-ryota/zaperr"
 	"github.com/leporo/sqlf"
 	"go.uber.org/zap"
 )
 
-// points
+type Points struct {
+	VkID      int       `db:"vk_id"`
+	Diff      int       `db:"diff"`
+	Cause     string    `db:"cause"`
+	Timestamp time.Time `db:"timestamp"`
+}
+
 func (a *Ask) PointsByVkID(vk_id int) (int, error) {
 	var points int
 

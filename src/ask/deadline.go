@@ -1,6 +1,8 @@
 package ask
 
 import (
+	"database/sql/driver"
+	"errors"
 	"time"
 
 	"github.com/hori-ryota/zaperr"
@@ -8,7 +10,58 @@ import (
 	"go.uber.org/zap"
 )
 
-// deadline
+type DeadlineCause string
+
+var DeadlineCauses = struct {
+	Init   DeadlineCause
+	Answer DeadlineCause
+	Delay  DeadlineCause
+	Rest   DeadlineCause
+	Freeze DeadlineCause
+	Other  DeadlineCause
+}{
+	Init:   "Init",
+	Answer: "Answer",
+	Delay:  "Delay",
+	Rest:   "Rest",
+	Freeze: "Freeze",
+	Other:  "Other",
+}
+
+func (c DeadlineCause) Value() (driver.Value, error) {
+	return string(c), nil
+}
+
+func (c *DeadlineCause) Scan(value interface{}) error {
+	if value == nil {
+		return errors.New("DeadlineCause is not nullable")
+	}
+	if str, err := driver.String.ConvertValue(value); err == nil {
+		if v, ok := str.(string); ok {
+			// check if is valid
+			if v != string(DeadlineCauses.Init) &&
+				v != string(DeadlineCauses.Answer) &&
+				v != string(DeadlineCauses.Delay) &&
+				v != string(DeadlineCauses.Rest) &&
+				v != string(DeadlineCauses.Freeze) &&
+				v != string(DeadlineCauses.Other) {
+				return errors.New("value is not valid DeadlineCause value")
+			}
+			*c = DeadlineCause(v)
+			return nil
+		}
+	}
+	return errors.New("failed to scan DeadlineCause")
+}
+
+type Deadline struct {
+	Member    int           `db:"member"`
+	Diff      int           `db:"diff"` // unix time in seconds!
+	Kind      DeadlineCause `db:"kind"`
+	Cause     string        `db:"cause"`
+	Timestamp time.Time     `db:"timestamp"`
+}
+
 func (a *Ask) Deadline(member int) (time.Time, error) {
 	var deadline int64
 
