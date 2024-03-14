@@ -2,6 +2,7 @@ package main
 
 import (
 	"ask-bot/src/ask"
+	"ask-bot/src/postponed"
 	"ask-bot/src/vk"
 	"time"
 
@@ -9,9 +10,10 @@ import (
 )
 
 type Controls struct {
-	Ask    *ask.Ask
-	Vk     *vk.VK
-	Notify chan *vk.MessageParams
+	Ask       *ask.Ask
+	Vk        *vk.VK
+	Notify    chan *vk.MessageParams
+	Postponed *postponed.Postponed
 }
 
 type ChatBot struct {
@@ -25,15 +27,21 @@ type ChatBot struct {
 	log *zap.SugaredLogger
 }
 
-func NewChatBot(a *ask.Ask, v *vk.VK, reset_state StateNode, timeout time.Duration, log *zap.SugaredLogger) *ChatBot {
+func NewChatBot(a *ask.Ask,
+	v *vk.VK,
+	p *postponed.Postponed,
+	reset_state StateNode,
+	timeout time.Duration,
+	log *zap.SugaredLogger) *ChatBot {
 	bot := &ChatBot{
 		cache:       NewStorage[int, *Chat](),
 		reset_state: reset_state,
 		timeout:     timeout,
 		controls: &Controls{
-			Ask:    a,
-			Vk:     v,
-			Notify: make(chan *vk.MessageParams),
+			Ask:       a,
+			Vk:        v,
+			Notify:    make(chan *vk.MessageParams),
+			Postponed: p,
 		},
 		log: log,
 	}

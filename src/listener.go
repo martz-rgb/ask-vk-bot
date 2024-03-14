@@ -2,6 +2,7 @@ package main
 
 import (
 	"ask-bot/src/ask"
+	"ask-bot/src/postponed"
 	"ask-bot/src/vk"
 	"context"
 	"sync"
@@ -16,14 +17,24 @@ type Listener struct {
 	group *vk.VK
 	admin *vk.VK
 
+	postponed *postponed.Postponed
+	notify    chan bool
+
 	log *zap.SugaredLogger
 }
 
-func NewListener(ask *ask.Ask, group *vk.VK, admin *vk.VK) *Listener {
+func NewListener(
+	ask *ask.Ask,
+	group *vk.VK,
+	admin *vk.VK,
+	p *postponed.Postponed,
+	notify chan bool) *Listener {
 	return &Listener{
-		ask:   ask,
-		group: group,
-		admin: admin,
+		ask:       ask,
+		group:     group,
+		admin:     admin,
+		postponed: p,
+		notify:    notify,
 	}
 }
 
