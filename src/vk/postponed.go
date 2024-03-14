@@ -49,7 +49,7 @@ func NewPostponed(group int, vk *VK) *Postponed {
 }
 
 func (p *Postponed) Update() ([]Post, error) {
-	posts, err := p.vk.PostponedWallPosts(p.group)
+	posts, err := p.vk.PostponedPosts(p.group)
 	if err != nil {
 		return nil, err
 	}
