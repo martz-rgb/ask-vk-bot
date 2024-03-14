@@ -1,6 +1,7 @@
 package ask
 
 import (
+	"database/sql"
 	"database/sql/driver"
 	"errors"
 	"strconv"
@@ -53,10 +54,28 @@ type PendingPoll struct {
 }
 
 type Poll struct {
+	PendingPoll
+	Post sql.NullInt32 `db:"post"`
 }
 
 func (a *Ask) PendingPolls() ([]PendingPoll, error) {
 	var polls []PendingPoll
+
+	query := sqlf.From("polls").
+		Bind(&PendingPoll{})
+
+	err := a.db.Select(&polls, query.String(), query.Args()...)
+	if err != nil {
+		return nil, zaperr.Wrap(err, "failed to get pending polls",
+			zap.String("query", query.String()),
+			zap.Any("args", query.Args()))
+	}
+
+	return polls, nil
+}
+
+func (a *Ask) Polls() ([]Poll, error) {
+	var polls []Poll
 
 	query := sqlf.From("polls").
 		Bind(&Poll{})
