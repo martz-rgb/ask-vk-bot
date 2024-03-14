@@ -7,7 +7,7 @@ import (
 	"go.uber.org/zap"
 )
 
-func (v *VK) WallPostNew(group_id int, message string, attachments string, signed bool, publish_date int64) error {
+func (v *VK) CreatePost(group_id int, message string, attachments string, signed bool, publish_date int64) (int, error) {
 	params := api.Params{
 		"owner_id":     -group_id,
 		"from_group":   1,
@@ -19,19 +19,39 @@ func (v *VK) WallPostNew(group_id int, message string, attachments string, signe
 
 	response, err := v.api.WallPost(params)
 	if err != nil {
-		return zaperr.Wrap(err, "failed to post on wall",
+		return 0, zaperr.Wrap(err, "failed to create post",
 			zap.Any("params", params),
 			zap.Any("response", response))
 	}
 
-	zap.S().Debugw("successfully posted on wall",
+	zap.S().Debugw("successfully created post",
+		"params", params,
+		"response", response)
+
+	return response.PostID, nil
+}
+
+func (v *VK) DeletePost(group_id int, post_id int) error {
+	params := api.Params{
+		"owner_id": -group_id,
+		"post_id":  post_id,
+	}
+
+	response, err := v.api.WallDelete(params)
+	if err != nil {
+		return zaperr.Wrap(err, "failed to delete post",
+			zap.Any("params", params),
+			zap.Any("response", response))
+	}
+
+	zap.S().Debugw("successfully deleted post",
 		"params", params,
 		"response", response)
 
 	return nil
 }
 
-func (v *VK) PostponedWallPosts(group_id int) ([]object.WallWallpost, error) {
+func (v *VK) PostponedPosts(group_id int) ([]object.WallWallpost, error) {
 	max_count := 100
 
 	var posts []object.WallWallpost

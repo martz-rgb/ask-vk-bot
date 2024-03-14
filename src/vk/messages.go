@@ -156,7 +156,7 @@ func (v *VK) SendEventAnswer(event_id string, user_id int, peer_id int) error {
 	return nil
 }
 
-func (v *VK) GetLastBotMessage(user_id int) (*object.MessagesMessage, error) {
+func (v *VK) LastBotMessage(user_id int) (*object.MessagesMessage, error) {
 	params := api.Params{
 		"count":   20, // heuristic value
 		"user_id": user_id,
@@ -202,7 +202,7 @@ func (v *VK) ChangeKeyboardWithDelete(user_id int, keyboard string) error {
 }
 
 func (v *VK) ChangeKeyboardWithoutDelete(user_id int, keyboard string) error {
-	message, err := v.GetLastBotMessage(user_id)
+	message, err := v.LastBotMessage(user_id)
 	if err != nil {
 		return err
 	}
