@@ -167,6 +167,8 @@ func (a *Ask) ChangeReservationDeadline(id int, deadline time.Time) error {
 	return nil
 }
 
+// TO-DO update also other deadlines on role
+// transaction logic for db...
 func (a *Ask) ConfirmReservation(id int) (time.Time, error) {
 	status := ReservationStatuses.InProgress
 	deadline := a.CalculateReservationDeadline()

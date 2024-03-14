@@ -103,6 +103,25 @@ func (a *Ask) Role(name string) (Role, error) {
 	return role, nil
 }
 
+// roles order by hashtags
+func (a *Ask) RolesDictionary() ([]Role, error) {
+	var roles []Role
+
+	query := sqlf.From("roles").
+		Bind(&Role{}).
+		OrderBy("hashtag")
+
+	err := a.db.Select(&roles, query.String())
+	if err != nil {
+		return nil, zaperr.Wrap(err, "failed to get roles dictionary",
+			zap.String("query", query.String()),
+			zap.Any("args", query.Args()))
+	}
+
+	return roles, nil
+}
+
+// unused!
 type MatchedHashtag struct {
 	Hashtag string         `db:"hashtag"`
 	Role    sql.NullString `db:"role"`
