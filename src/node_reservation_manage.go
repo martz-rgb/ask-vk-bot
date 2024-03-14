@@ -142,6 +142,7 @@ func (node *ReservationManageNode) KeyboardEvent(user *User, c *Controls, payloa
 	return nil, nil
 }
 
+// TO-DO resend greeting maybe?
 func (node *ReservationManageNode) Back(user *User, c *Controls, info *ExitInfo) (*Action, error) {
 	if info == nil {
 		return nil, node.Entry(user, c)

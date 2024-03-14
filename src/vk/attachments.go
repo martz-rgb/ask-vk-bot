@@ -1,6 +1,7 @@
 package vk
 
 import (
+	"fmt"
 	"io"
 	"strings"
 
@@ -24,13 +25,17 @@ func (v *VK) UploadDocument(peer_id int, name string, file io.Reader) (int, erro
 	return response.Doc.ID, nil
 }
 
+// TO-DO maybe they all should have access key?
 func ToAttachments(attachments []object.MessagesMessageAttachment) string {
 	result := []string{}
 
 	for _, a := range attachments {
 		switch a.Type {
 		case "photo":
-			result = append(result, a.Photo.ToAttachment())
+			attachment := fmt.Sprintf("photo%d_%d_%s", a.Photo.OwnerID, a.Photo.ID, a.Photo.AccessKey)
+			result = append(result, attachment)
+
+			//result = append(result, a.Photo.ToAttachment())
 		case "video":
 			result = append(result, a.Video.ToAttachment())
 		case "audio":
