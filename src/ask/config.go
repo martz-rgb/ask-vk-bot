@@ -22,7 +22,6 @@ type Config struct {
 	Deadline            time.Duration `json:"ASK_DEADLINE"`
 	ReservationDuration time.Duration `json:"ASK_RESERVATION_DURATION"`
 
-	// TO-DO valudation
 	OrganizationHashtags
 }
 
@@ -47,6 +46,14 @@ func ConfigFromEnv() *Config {
 		Timezone:            timezone,
 		Deadline:            deadline,
 		ReservationDuration: reservation,
+
+		// hashtags
+		OrganizationHashtags: OrganizationHashtags{
+			PollHashtag:       os.Getenv("ASK_POLL_HASHTAG"),
+			GreetingHashtag:   os.Getenv("ASK_GREETING_HASHTAG"),
+			FreeAnswerHashtag: os.Getenv("ASK_FREE_ANSWER_HASHTAG"),
+			LeavingHashtag:    os.Getenv("ASK_LEAVING_HASHTAG"),
+		},
 	}
 }
 
@@ -58,6 +65,19 @@ func (c *Config) Validate() error {
 	}
 	if c.ReservationDuration == 0 {
 		return errors.New("ask reservation duration is not provided")
+	}
+	if len(c.PollHashtag) == 0 {
+		return errors.New("ask poll hashtag is not provided")
+	}
+	if len(c.GreetingHashtag) == 0 {
+		return errors.New("ask poll hashtag is not provided")
+	}
+	// TO-DO: free answers are additional feature
+	if len(c.FreeAnswerHashtag) == 0 {
+		return errors.New("ask poll hashtag is not provided")
+	}
+	if len(c.GreetingHashtag) == 0 {
+		return errors.New("ask poll hashtag is not provided")
 	}
 
 	return nil
