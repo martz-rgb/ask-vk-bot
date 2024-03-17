@@ -4,11 +4,13 @@ import (
 	"ask-bot/src/ask"
 	"ask-bot/src/vk"
 	"fmt"
+	"net/http"
 	"slices"
 	"strings"
 	"sync"
 	"time"
 
+	"github.com/hori-ryota/zaperr"
 	"go.uber.org/zap"
 )
 
@@ -158,8 +160,36 @@ func (p *Postponed) markPoll(polls *[]ask.PendingPoll, role string) bool {
 
 func (p *Postponed) createPoll(poll *ask.PendingPoll, organization_tags *ask.OrganizationHashtags) error {
 	//  create vk post
+
 	p.log.Infow("creating new poll",
 		"poll", poll)
+
+	message := fmt.Sprintf("%s %s\nГолосование на %s!", organization_tags.PollHashtag, poll.Hashtag, poll.Role)
+
+	var attachments []string
+
+	greetings := strings.Split(poll.Greetings, ";")
+	for _, greeting := range greetings {
+		images := strings.Split(greeting, ",")
+
+		for _, image := range images {
+			file, err := http.Get(image)
+			if err != nil {
+				return zaperr.Wrap(err, "failed to download image",
+					zap.String("url", image))
+			}
+
+			photos, err := p.vk.UploadPhotoToWall(p.group, file.Body)
+			if err != nil {
+				return err
+			}
+
+			for _, photo := range photos {
+				attachments = append(attachments,
+					fmt.Sprintf("photo%d_%d_%s", photo.OwnerID, photo.ID, photo.AccessKey))
+			}
+		}
+	}
 
 	post_time := time.Now().Add(3 * time.Hour)
 
@@ -168,12 +198,7 @@ func (p *Postponed) createPoll(poll *ask.PendingPoll, organization_tags *ask.Org
 	if err != nil {
 		return err
 	}
-	poll_attachment := fmt.Sprintf("poll%d_%d", -p.group, vk_poll)
-
-	message := fmt.Sprintf("%s %s\nГолосование на %s!", organization_tags.PollHashtag, poll.Hashtag, poll.Role)
-
-	attachments := []string{poll.Greetings}
-	attachments = append(attachments, poll_attachment)
+	attachments = append(attachments, fmt.Sprintf("poll%d_%d", vk_poll.OwnerID, vk_poll.ID))
 
 	id, err := p.vk.CreatePost(p.group, message, strings.Join(attachments, ","), false, post_time.Unix())
 	if err != nil {

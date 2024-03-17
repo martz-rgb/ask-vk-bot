@@ -26,14 +26,14 @@ func (node *ReservationManageNode) options() (options []form.Option) {
 	if node.details.Status == ask.ReservationStatuses.InProgress {
 		options = append(options, form.Option{
 			ID:    "greeting",
-			Label: "Прислать приветствие",
+			Label: "Приветствие",
 			Color: vk.PrimaryColor,
 		})
 	}
 
 	options = append(options, form.Option{
 		ID:    "cancel",
-		Label: "Отменить бронь",
+		Label: "Отменить",
 		Color: vk.SecondaryColor,
 	})
 
@@ -114,8 +114,8 @@ func (node *ReservationManageNode) KeyboardEvent(user *User, c *Controls, payloa
 				"greeting",
 				request,
 				nil,
-				ExtractAttachments,
-				GreetingValidate,
+				ExtractImages,
+				NotEmpty,
 				nil,
 			)
 

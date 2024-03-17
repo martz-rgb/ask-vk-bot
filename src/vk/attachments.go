@@ -25,6 +25,18 @@ func (v *VK) UploadDocument(peer_id int, name string, file io.Reader) (int, erro
 	return response.Doc.ID, nil
 }
 
+// i don't know why it returns array
+func (v *VK) UploadPhotoToWall(group_id int, file io.Reader) ([]object.PhotosPhoto, error) {
+	response, err := v.api.UploadGroupWallPhoto(group_id, file)
+	if err != nil {
+		return nil, zaperr.Wrap(err, "failed to upload photo to group wall",
+			zap.Int("peer_id", group_id),
+			zap.Any("response", response))
+	}
+
+	return response, nil
+}
+
 // TO-DO maybe they all should have access key?
 func ToAttachments(attachments []object.MessagesMessageAttachment) string {
 	result := []string{}

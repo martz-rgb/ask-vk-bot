@@ -89,7 +89,7 @@ CREATE TABLE IF NOT EXISTS reservations (
     ) NOT NULL DEFAULT 'Under Consideration',
     -- id of vk message contained information
     info INT NOT NULL,
-    -- vk attachments contained greeting (attachments\text)
+    -- url for images 
     greeting TEXT,
     timestamp DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP
 );

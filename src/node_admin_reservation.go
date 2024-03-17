@@ -27,14 +27,14 @@ func (node *AdminReservationNode) options(num_reservations int, under_considerat
 	if under_consideration {
 		options = append(options, form.Option{
 			ID:    "confirm",
-			Label: "Подтвердить брони",
+			Label: "Подтвердить",
 			Color: vk.PrimaryColor,
 		})
 	}
 
 	options = append(options, form.Option{
 		ID:    "delete",
-		Label: "Удалить брони",
+		Label: "Удалить",
 		Color: vk.SecondaryColor,
 	})
 
