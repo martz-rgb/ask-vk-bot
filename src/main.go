@@ -2,6 +2,8 @@ package main
 
 import (
 	"ask-bot/src/ask"
+	"ask-bot/src/chatbot"
+	"ask-bot/src/listener"
 	"ask-bot/src/postponed"
 	"ask-bot/src/vk"
 	"context"
@@ -184,9 +186,8 @@ func main() {
 	}
 
 	postponed, notify := postponed.New(config.GroupID, config.UpdatePostponed, admin, a, postponed_logger.Sugar())
-
-	chat_bot := NewChatBot(a, group, postponed, &InitNode{}, config.Timeout, bot_logger.Sugar())
-	listener := NewListener(a, group, admin, postponed, notify)
+	chat_bot := chatbot.New(a, group, postponed, config.Timeout, bot_logger.Sugar())
+	listener := listener.New(a, group, admin, postponed, notify)
 
 	ctx, stop := signal.NotifyContext(context.Background(), os.Interrupt)
 	defer stop()

@@ -1,7 +1,9 @@
-package main
+package states
 
 import (
 	"ask-bot/src/ask"
+	"ask-bot/src/chatbot/states/extract"
+	"ask-bot/src/chatbot/states/validate"
 	"ask-bot/src/dict"
 	"ask-bot/src/form"
 	"ask-bot/src/paginator"
@@ -13,17 +15,17 @@ import (
 	"go.uber.org/zap"
 )
 
-type ReservationManageNode struct {
+type ReservationManage struct {
 	paginator *paginator.Paginator[form.Option]
 	details   *ask.ReservationDetail
 }
 
-func (node *ReservationManageNode) ID() string {
+func (state *ReservationManage) ID() string {
 	return "reservation_manage"
 }
 
-func (node *ReservationManageNode) options() (options []form.Option) {
-	if node.details.Status == ask.ReservationStatuses.InProgress {
+func (state *ReservationManage) options() (options []form.Option) {
+	if state.details.Status == ask.ReservationStatuses.InProgress {
 		options = append(options, form.Option{
 			ID:    "greeting",
 			Label: "Приветствие",
@@ -40,8 +42,8 @@ func (node *ReservationManageNode) options() (options []form.Option) {
 	return
 }
 
-func (node *ReservationManageNode) Entry(user *User, c *Controls) error {
-	details, err := c.Ask.ReservationsDetailsByVkID(user.id)
+func (state *ReservationManage) Entry(user *User, c *Controls) error {
+	details, err := c.Ask.ReservationsDetailsByVkID(user.Id)
 	if err != nil {
 		return err
 	}
@@ -49,26 +51,26 @@ func (node *ReservationManageNode) Entry(user *User, c *Controls) error {
 	if details == nil {
 		err = errors.New("there is no reservations")
 		return zaperr.Wrap(err, "",
-			zap.Int("user", user.id))
+			zap.Int("user", user.Id))
 	}
 
-	node.details = details
+	state.details = details
 
 	var message string
 
-	switch node.details.Status {
+	switch state.details.Status {
 	case ask.ReservationStatuses.UnderConsideration:
 		message = fmt.Sprintf("У вас есть бронь на %s на рассмотрении. Когда ее рассмотрят, вам придет сообщение.",
-			node.details.AccusativeName)
+			state.details.AccusativeName)
 
 	case ask.ReservationStatuses.InProgress:
 		message = fmt.Sprintf("У вас есть бронь на %s до %s.",
-			node.details.AccusativeName,
-			node.details.Deadline.Time)
+			state.details.AccusativeName,
+			state.details.Deadline.Time)
 
 	case ask.ReservationStatuses.Done:
 		message = fmt.Sprintf("Мы получили ваше приветствие на %s! Скоро будет создан опрос.",
-			node.details.AccusativeName)
+			state.details.AccusativeName)
 	}
 
 	config := &paginator.Config[form.Option]{
@@ -79,26 +81,26 @@ func (node *ReservationManageNode) Entry(user *User, c *Controls) error {
 		ToValue: form.OptionToValue,
 	}
 
-	node.paginator = paginator.New[form.Option](
-		node.options(),
+	state.paginator = paginator.New[form.Option](
+		state.options(),
 		config.MustBuild())
 
 	_, err = c.Vk.SendMessage(
-		user.id,
+		user.Id,
 		message,
-		vk.CreateKeyboard(node.ID(), node.paginator.Buttons()),
+		vk.CreateKeyboard(state.ID(), state.paginator.Buttons()),
 		nil)
 	return err
 }
 
-func (node *ReservationManageNode) NewMessage(user *User, c *Controls, message *vk.Message) (*Action, error) {
+func (state *ReservationManage) NewMessage(user *User, c *Controls, message *vk.Message) (*Action, error) {
 	return nil, nil
 }
 
-func (node *ReservationManageNode) KeyboardEvent(user *User, c *Controls, payload *vk.CallbackPayload) (*Action, error) {
+func (state *ReservationManage) KeyboardEvent(user *User, c *Controls, payload *vk.CallbackPayload) (*Action, error) {
 	switch payload.Command {
 	case "options":
-		option, err := node.paginator.Object(payload.Value)
+		option, err := state.paginator.Object(payload.Value)
 		if err != nil {
 			return nil, err
 		}
@@ -114,44 +116,44 @@ func (node *ReservationManageNode) KeyboardEvent(user *User, c *Controls, payloa
 				"greeting",
 				request,
 				nil,
-				ExtractImages,
-				NotEmpty,
+				extract.Images,
+				validate.NotEmpty,
 				nil,
 			)
 
-			return NewActionNext(NewFormNode("greeting", nil, field)), nil
+			return NewActionNext(NewForm("greeting", nil, field)), nil
 
 		case "cancel":
 			message := &vk.MessageParams{
 				Text: fmt.Sprintf("Вы уверены, что хотите отменить бронь на %s?",
-					node.details.AccusativeName),
+					state.details.AccusativeName),
 			}
-			return NewActionNext(NewConfirmationNode("cancel", message)), nil
+			return NewActionNext(NewConfirmation("cancel", message)), nil
 		}
 	case "paginator":
-		back := node.paginator.Control(payload.Value)
+		back := state.paginator.Control(payload.Value)
 
 		if back {
 			return NewActionExit(nil), nil
 		}
 
-		return nil, c.Vk.ChangeKeyboard(user.id,
-			vk.CreateKeyboard(node.ID(), node.paginator.Buttons()))
+		return nil, c.Vk.ChangeKeyboard(user.Id,
+			vk.CreateKeyboard(state.ID(), state.paginator.Buttons()))
 	}
 
 	return nil, nil
 }
 
 // TO-DO resend greeting maybe?
-func (node *ReservationManageNode) Back(user *User, c *Controls, info *ExitInfo) (*Action, error) {
+func (state *ReservationManage) Back(user *User, c *Controls, info *ExitInfo) (*Action, error) {
 	if info == nil {
-		return nil, node.Entry(user, c)
+		return nil, state.Entry(user, c)
 	}
 
 	switch info.Payload {
 	case "greeting":
-		if node.details == nil {
-			return nil, errors.New("no details in node")
+		if state.details == nil {
+			return nil, errors.New("no details in state")
 		}
 
 		greeting, err := dict.ExtractValue[string](info.Values, "greeting")
@@ -159,14 +161,14 @@ func (node *ReservationManageNode) Back(user *User, c *Controls, info *ExitInfo)
 			return nil, err
 		}
 
-		err = c.Ask.CompleteReservation(node.details.Id, greeting)
+		err = c.Ask.CompleteReservation(state.details.Id, greeting)
 		if err != nil {
 			return nil, err
 		}
 
 	case "cancel":
-		if node.details == nil {
-			return nil, errors.New("no details in node")
+		if state.details == nil {
+			return nil, errors.New("no details in state")
 		}
 
 		answer, err := dict.ExtractValue[bool](info.Values, "confirmation")
@@ -175,15 +177,15 @@ func (node *ReservationManageNode) Back(user *User, c *Controls, info *ExitInfo)
 		}
 
 		if answer {
-			err := c.Ask.DeleteReservation(node.details.Id)
+			err := c.Ask.DeleteReservation(state.details.Id)
 			if err != nil {
 				return nil, err
 			}
 
-			_, err = c.Vk.SendMessage(user.id, "Ваша бронь была успешно отменена.", "", nil)
+			_, err = c.Vk.SendMessage(user.Id, "Ваша бронь была успешно отменена.", "", nil)
 			return NewActionExit(nil), err
 		}
 	}
 
-	return nil, node.Entry(user, c)
+	return nil, state.Entry(user, c)
 }

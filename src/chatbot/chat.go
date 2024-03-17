@@ -1,6 +1,7 @@
-package main
+package chatbot
 
 import (
+	"ask-bot/src/chatbot/states"
 	"ask-bot/src/stack"
 	"ask-bot/src/vk"
 	"time"
@@ -10,34 +11,32 @@ import (
 )
 
 type Chat struct {
-	user        *User
-	stack       *stack.Stack[StateNode]
-	reset_state StateNode
+	user        *states.User
+	stack       *stack.Stack[states.State]
+	reset_state states.State
 	query       []*vk.MessageParams
 
 	timer *time.Timer
 }
 
-func NewChat(user_id int, state StateNode, reset_state StateNode, timeout time.Duration, expired chan int, controls *Controls) *Chat {
+func NewChat(user_id int, state states.State, reset_state states.State, timeout time.Duration, expired chan int, controls *states.Controls) *Chat {
 	return &Chat{
-		user: &User{
-			id: user_id,
-		},
-		stack:       stack.New[StateNode](state),
+		user:        &states.User{Id: user_id},
+		stack:       stack.New[states.State](state),
 		reset_state: reset_state,
 	}
 }
 
-func (c *Chat) TimerFunc(expired chan int, controls *Controls) func() {
+func (c *Chat) TimerFunc(expired chan int, controls *states.Controls) func() {
 	return func() {
 		c.Finish(controls)
 
-		expired <- c.user.id
+		expired <- c.user.Id
 	}
 }
 
 // reset timer and make new if timer was expired
-func (c *Chat) ResetTimer(timeout time.Duration, expired chan int, controls *Controls) {
+func (c *Chat) ResetTimer(timeout time.Duration, expired chan int, controls *states.Controls) {
 	if c.timer == nil {
 		c.timer = time.AfterFunc(timeout, c.TimerFunc(expired, controls))
 		return
@@ -47,12 +46,12 @@ func (c *Chat) ResetTimer(timeout time.Duration, expired chan int, controls *Con
 	c.timer.Reset(timeout)
 }
 
-func (c *Chat) tryNotify(controls *Controls) error {
+func (c *Chat) tryNotify(controls *states.Controls) error {
 	if c.stack.Len() <= 1 {
 		for len(c.query) > 0 {
 			notification := c.query[0]
 
-			_, err := controls.Vk.SendMessage(c.user.id,
+			_, err := controls.Vk.SendMessage(c.user.Id,
 				notification.Text,
 				"",
 				notification.Params)
@@ -67,13 +66,13 @@ func (c *Chat) tryNotify(controls *Controls) error {
 	return nil
 }
 
-func (c *Chat) Notify(controls *Controls, message *vk.MessageParams) error {
+func (c *Chat) Notify(controls *states.Controls, message *vk.MessageParams) error {
 	c.query = append(c.query, message)
 
 	return c.tryNotify(controls)
 }
 
-func (c *Chat) Work(controls *Controls, input interface{}, init bool) error {
+func (c *Chat) Work(controls *states.Controls, input interface{}, init bool) error {
 	err := c.work(controls, input, init)
 	if err != nil {
 		return err
@@ -82,7 +81,7 @@ func (c *Chat) Work(controls *Controls, input interface{}, init bool) error {
 	return c.tryNotify(controls)
 }
 
-func (c *Chat) work(controls *Controls, input interface{}, existed bool) (err error) {
+func (c *Chat) work(controls *states.Controls, input interface{}, existed bool) (err error) {
 	if !existed {
 		err := c.stack.Peek().Entry(c.user, controls)
 		if err != nil {
@@ -91,7 +90,7 @@ func (c *Chat) work(controls *Controls, input interface{}, existed bool) (err er
 		}
 	}
 
-	var action *Action
+	var action *states.Action
 
 	switch event := input.(type) {
 	case events.MessageNewObject:
@@ -130,9 +129,9 @@ func (c *Chat) work(controls *Controls, input interface{}, existed bool) (err er
 	}
 
 	switch action.Kind() {
-	case Next:
+	case states.Next:
 		err = c.next(controls, action.Next())
-	case Exit:
+	case states.Exit:
 		err = c.exit(controls, action.Exit())
 	}
 
@@ -143,7 +142,7 @@ func (c *Chat) work(controls *Controls, input interface{}, existed bool) (err er
 	return nil
 }
 
-func (c *Chat) next(controls *Controls, next StateNode) error {
+func (c *Chat) next(controls *states.Controls, next states.State) error {
 	c.stack.Push(next)
 	err := c.stack.Peek().Entry(c.user, controls)
 	if err != nil {
@@ -153,7 +152,7 @@ func (c *Chat) next(controls *Controls, next StateNode) error {
 	return nil
 }
 
-func (c *Chat) exit(controls *Controls, info *ExitInfo) error {
+func (c *Chat) exit(controls *states.Controls, info *states.ExitInfo) error {
 	c.stack.Pop()
 
 	action, err := c.stack.Peek().Back(c.user, controls, info)
@@ -163,14 +162,14 @@ func (c *Chat) exit(controls *Controls, info *ExitInfo) error {
 
 	for action != nil {
 		switch action.Kind() {
-		case Next:
+		case states.Next:
 			err := c.next(controls, action.Next())
 			if err != nil {
 				return err
 			}
 			return nil
 
-		case Exit:
+		case states.Exit:
 			c.stack.Pop()
 
 			action, err = c.stack.Peek().Back(c.user, controls, action.Exit())
@@ -186,11 +185,11 @@ func (c *Chat) exit(controls *Controls, info *ExitInfo) error {
 	return nil
 }
 
-func (c *Chat) Finish(controls *Controls) {
+func (c *Chat) Finish(controls *states.Controls) {
 	for len(c.query) > 0 {
 		notification := c.query[0]
 
-		_, err := controls.Vk.SendMessage(c.user.id,
+		_, err := controls.Vk.SendMessage(c.user.Id,
 			notification.Text,
 			"",
 			notification.Params)
@@ -206,11 +205,11 @@ func (c *Chat) Finish(controls *Controls) {
 	}
 }
 
-func (c *Chat) Reset(controls *Controls) {
-	c.stack = stack.New[StateNode](c.reset_state)
+func (c *Chat) Reset(controls *states.Controls) {
+	c.stack = stack.New[states.State](c.reset_state)
 
 	message := "В ходе работы произошла ошибка. Пожалуйста, попробуйте еще раз попозже."
-	controls.Vk.SendMessage(c.user.id, message, "", nil)
+	controls.Vk.SendMessage(c.user.Id, message, "", nil)
 
 	c.stack.Peek().Back(c.user, controls, nil)
 }

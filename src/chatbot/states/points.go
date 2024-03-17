@@ -1,7 +1,8 @@
-package main
+package states
 
 import (
 	"ask-bot/src/ask"
+	"ask-bot/src/russian"
 	"ask-bot/src/vk"
 	"bytes"
 	"errors"
@@ -14,15 +15,15 @@ import (
 
 const MaxLengthHistory int = 10
 
-type PointsNode struct {
+type Points struct {
 }
 
-func (node *PointsNode) ID() string {
+func (state *Points) ID() string {
 	return "points"
 }
 
-func (node *PointsNode) Entry(user *User, c *Controls) error {
-	points, err := c.Ask.PointsByVkID(user.id)
+func (state *Points) Entry(user *User, c *Controls) error {
+	points, err := c.Ask.PointsByVkID(user.Id)
 	if err != nil {
 		return err
 	}
@@ -52,32 +53,32 @@ func (node *PointsNode) Entry(user *User, c *Controls) error {
 
 	message := fmt.Sprintf("Ваше текущее количество баллов: %d", points)
 
-	_, err = c.Vk.SendMessage(user.id, message, vk.CreateKeyboard(node.ID(), buttons), nil)
+	_, err = c.Vk.SendMessage(user.Id, message, vk.CreateKeyboard(state.ID(), buttons), nil)
 	return err
 }
 
-func (node *PointsNode) NewMessage(user *User, c *Controls, message *vk.Message) (*Action, error) {
+func (state *Points) NewMessage(user *User, c *Controls, message *vk.Message) (*Action, error) {
 	return nil, nil
 }
 
-func (node *PointsNode) KeyboardEvent(user *User, c *Controls, payload *vk.CallbackPayload) (*Action, error) {
+func (state *Points) KeyboardEvent(user *User, c *Controls, payload *vk.CallbackPayload) (*Action, error) {
 	switch payload.Command {
 	case "spend":
 		message := `Пока что не на что тратить баллы.`
-		_, err := c.Vk.SendMessage(user.id, message, "", nil)
+		_, err := c.Vk.SendMessage(user.Id, message, "", nil)
 		return nil, err
 	case "history":
-		history, err := c.Ask.HistoryPointsByVkID(user.id)
+		history, err := c.Ask.HistoryPointsByVkID(user.Id)
 		if err != nil {
 			return nil, err
 		}
 
-		message, attachment, err := node.PrepareHistory(user.id, c, history)
+		message, attachment, err := state.PrepareHistory(user.Id, c, history)
 		if err != nil {
 			return nil, err
 		}
 
-		_, err = c.Vk.SendMessage(user.id, message, "", api.Params{"attachment": attachment})
+		_, err = c.Vk.SendMessage(user.Id, message, "", api.Params{"attachment": attachment})
 		return nil, err
 	case "back":
 		return NewActionExit(nil), nil
@@ -86,16 +87,16 @@ func (node *PointsNode) KeyboardEvent(user *User, c *Controls, payload *vk.Callb
 	return nil, nil
 }
 
-func (node *PointsNode) Back(user *User, c *Controls, info *ExitInfo) (*Action, error) {
-	return nil, node.Entry(user, c)
+func (state *Points) Back(user *User, c *Controls, info *ExitInfo) (*Action, error) {
+	return nil, state.Entry(user, c)
 }
 
-func (node *PointsNode) PrepareHistory(user_id int, c *Controls, history []ask.Points) (message string, attachment string, err error) {
+func (state *Points) PrepareHistory(user_id int, c *Controls, history []ask.Points) (message string, attachment string, err error) {
 	if len(history) == 0 {
 		return "Вы еще не получали баллы в нашем сообществе.", "", nil
 	}
 
-	points_noun := PluralNoun("балл", "балла", "баллов")
+	points_noun := russian.PluralNoun("балл", "балла", "баллов")
 
 	events := []string{}
 	for _, event := range history {
@@ -114,7 +115,7 @@ func (node *PointsNode) PrepareHistory(user_id int, c *Controls, history []ask.P
 			event.Diff,
 			points_noun(event.Diff),
 			event.Timestamp.Day(),
-			MonthGenitive(event.Timestamp.Month()),
+			russian.MonthGenitive(event.Timestamp.Month()),
 			event.Timestamp.Year(),
 			event.Timestamp.Format(time.TimeOnly),
 			event.Cause))
@@ -123,7 +124,7 @@ func (node *PointsNode) PrepareHistory(user_id int, c *Controls, history []ask.P
 	if len(history) <= MaxLengthHistory {
 		return strings.Join(events, "\n"), "", nil
 	}
-	record_noun := PluralNoun("запись", "записи", "записей")
+	record_noun := russian.PluralNoun("запись", "записи", "записей")
 
 	message = strings.Join(events[:MaxLengthHistory], "\n")
 	message += fmt.Sprintf("\n... и еще %d %s. Смотрите полную историю в прикрепленном файле.",

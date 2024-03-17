@@ -1,43 +1,37 @@
-package main
+package chatbot
 
 import (
 	"ask-bot/src/ask"
+	"ask-bot/src/chatbot/states"
 	"ask-bot/src/postponed"
+	"ask-bot/src/storage"
 	"ask-bot/src/vk"
 	"time"
 
 	"go.uber.org/zap"
 )
 
-type Controls struct {
-	Ask       *ask.Ask
-	Vk        *vk.VK
-	Notify    chan *vk.MessageParams
-	Postponed *postponed.Postponed
-}
-
-type ChatBot struct {
-	cache       *Storage[int, *Chat]
-	reset_state StateNode
+type Chatbot struct {
+	cache       *storage.Storage[int, *Chat]
+	reset_state states.State
 
 	timeout time.Duration
 
-	controls *Controls
+	controls *states.Controls
 
 	log *zap.SugaredLogger
 }
 
-func NewChatBot(a *ask.Ask,
+func New(a *ask.Ask,
 	v *vk.VK,
 	p *postponed.Postponed,
-	reset_state StateNode,
 	timeout time.Duration,
-	log *zap.SugaredLogger) *ChatBot {
-	bot := &ChatBot{
-		cache:       NewStorage[int, *Chat](),
-		reset_state: reset_state,
+	log *zap.SugaredLogger) *Chatbot {
+	bot := &Chatbot{
+		cache:       storage.New[int, *Chat](),
+		reset_state: &states.Init{},
 		timeout:     timeout,
-		controls: &Controls{
+		controls: &states.Controls{
 			Ask:       a,
 			Vk:        v,
 			Notify:    make(chan *vk.MessageParams),
@@ -51,7 +45,7 @@ func NewChatBot(a *ask.Ask,
 	return bot
 }
 
-func (bot *ChatBot) TakeChat(user_id int, init StateNode) (*Chat, bool) {
+func (bot *Chatbot) TakeChat(user_id int, init states.State) (*Chat, bool) {
 	chat, existed := bot.cache.CreateIfNotExistedAndTake(user_id,
 		NewChat(user_id,
 			init,
@@ -64,11 +58,11 @@ func (bot *ChatBot) TakeChat(user_id int, init StateNode) (*Chat, bool) {
 	return chat, existed
 }
 
-func (bot *ChatBot) ReturnChat(user_id int) {
+func (bot *Chatbot) ReturnChat(user_id int) {
 	bot.cache.Return(user_id)
 }
 
-func (bot *ChatBot) ListenNotification() {
+func (bot *Chatbot) ListenNotification() {
 	for {
 		message := <-bot.controls.Notify
 		err := bot.NotifyChat(message)
@@ -80,8 +74,8 @@ func (bot *ChatBot) ListenNotification() {
 	}
 }
 
-func (bot *ChatBot) NotifyChat(message *vk.MessageParams) error {
-	chat, existed := bot.TakeChat(message.Id, &InitNode{
+func (bot *Chatbot) NotifyChat(message *vk.MessageParams) error {
+	chat, existed := bot.TakeChat(message.Id, &states.Init{
 		Silent: true,
 	})
 	defer bot.ReturnChat(message.Id)

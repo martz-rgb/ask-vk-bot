@@ -1,4 +1,4 @@
-package main
+package states
 
 import (
 	"ask-bot/src/form"
@@ -10,20 +10,20 @@ import (
 	"go.uber.org/zap"
 )
 
-type InitNode struct {
+type Init struct {
 	Silent bool
 
 	paginator *paginator.Paginator[form.Option]
 }
 
-func (node *InitNode) ID() string {
+func (state *Init) ID() string {
 	return "init"
 }
 
-func (node *InitNode) options(user *User, c *Controls) ([]form.Option, error) {
+func (state *Init) options(user *User, c *Controls) ([]form.Option, error) {
 	options := []form.Option{}
 
-	reservation_details, err := c.Ask.ReservationsDetailsByVkID(user.id)
+	reservation_details, err := c.Ask.ReservationsDetailsByVkID(user.Id)
 	if err != nil {
 		return nil, err
 	}
@@ -33,51 +33,51 @@ func (node *InitNode) options(user *User, c *Controls) ([]form.Option, error) {
 		options = append(options, form.Option{
 			ID:    "reservation",
 			Label: "Бронь",
-			Value: &ReservationNode{},
+			Value: &ReservationNew{},
 		})
 	} else {
 		options = append(options, form.Option{
 			ID:    "reservation",
 			Label: "Бронь",
-			Value: &ReservationManageNode{},
+			Value: &ReservationManage{},
 		})
 	}
 
 	options = append(options,
 		form.Option{
-			ID:    (&PointsNode{}).ID(),
+			ID:    (&Points{}).ID(),
 			Label: "Баллы",
-			Value: &PointsNode{},
+			Value: &Points{},
 		},
 		form.Option{
-			ID:    (&FAQNode{}).ID(),
+			ID:    (&FAQ{}).ID(),
 			Label: "FAQ",
-			Value: &FAQNode{},
+			Value: &FAQ{},
 		})
 
-	is_admin, err := c.Ask.IsAdmin(user.id)
+	is_admin, err := c.Ask.IsAdmin(user.Id)
 	if err != nil {
 		return nil, err
 	}
 	if is_admin {
 		options = append(options, form.Option{
-			ID:    (&AdminNode{}).ID(),
+			ID:    (&Admin{}).ID(),
 			Label: "Админ",
 			Color: vk.PrimaryColor,
-			Value: &AdminNode{},
+			Value: &Admin{},
 		})
 	}
 
 	return options, nil
 }
 
-func (node *InitNode) updatePaginator(user *User, c *Controls) error {
-	options, err := node.options(user, c)
+func (state *Init) updatePaginator(user *User, c *Controls) error {
+	options, err := state.options(user, c)
 	if err != nil {
 		return err
 	}
 
-	if node.paginator == nil {
+	if state.paginator == nil {
 		config := &paginator.Config[form.Option]{
 			Command:     "options",
 			WithoutBack: true,
@@ -87,48 +87,48 @@ func (node *InitNode) updatePaginator(user *User, c *Controls) error {
 			ToValue: form.OptionToValue,
 		}
 
-		node.paginator = paginator.New[form.Option](
+		state.paginator = paginator.New[form.Option](
 			options,
 			config.MustBuild())
 		return nil
 	}
 
-	node.paginator.ChangeObjects(options)
+	state.paginator.ChangeObjects(options)
 
 	return nil
 }
 
-func (node *InitNode) Entry(user *User, c *Controls) error {
-	err := node.updatePaginator(user, c)
+func (state *Init) Entry(user *User, c *Controls) error {
+	err := state.updatePaginator(user, c)
 	if err != nil {
 		return err
 	}
 
-	if node.Silent {
-		return c.Vk.ChangeKeyboard(user.id,
-			vk.CreateKeyboard(node.ID(), node.paginator.Buttons()))
+	if state.Silent {
+		return c.Vk.ChangeKeyboard(user.Id,
+			vk.CreateKeyboard(state.ID(), state.paginator.Buttons()))
 	}
 
-	_, err = c.Vk.SendMessage(user.id,
+	_, err = c.Vk.SendMessage(user.Id,
 		"Здравствуйте!",
-		vk.CreateKeyboard(node.ID(), node.paginator.Buttons()),
+		vk.CreateKeyboard(state.ID(), state.paginator.Buttons()),
 		nil)
 	return err
 }
 
-func (node *InitNode) NewMessage(user *User, c *Controls, message *vk.Message) (*Action, error) {
+func (state *Init) NewMessage(user *User, c *Controls, message *vk.Message) (*Action, error) {
 	return nil, nil
 }
 
-func (node *InitNode) KeyboardEvent(user *User, c *Controls, payload *vk.CallbackPayload) (*Action, error) {
+func (state *Init) KeyboardEvent(user *User, c *Controls, payload *vk.CallbackPayload) (*Action, error) {
 	switch payload.Command {
 	case "options":
-		option, err := node.paginator.Object(payload.Value)
+		option, err := state.paginator.Object(payload.Value)
 		if err != nil {
 			return nil, err
 		}
 
-		next, ok := option.Value.(StateNode)
+		next, ok := option.Value.(State)
 		if !ok {
 			err := errors.New("failed to convert to StateNode")
 			return nil, zaperr.Wrap(err, "",
@@ -136,14 +136,14 @@ func (node *InitNode) KeyboardEvent(user *User, c *Controls, payload *vk.Callbac
 		}
 		return NewActionNext(next), nil
 	case "paginator":
-		node.paginator.Control(payload.Value)
+		state.paginator.Control(payload.Value)
 	}
 
 	return nil, nil
 }
 
-func (node *InitNode) Back(user *User, c *Controls, info *ExitInfo) (*Action, error) {
-	node.Silent = true
+func (state *Init) Back(user *User, c *Controls, info *ExitInfo) (*Action, error) {
+	state.Silent = true
 
-	return nil, node.Entry(user, c)
+	return nil, state.Entry(user, c)
 }

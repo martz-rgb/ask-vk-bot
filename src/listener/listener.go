@@ -1,4 +1,4 @@
-package main
+package listener
 
 import (
 	"ask-bot/src/ask"
@@ -23,7 +23,7 @@ type Listener struct {
 	log *zap.SugaredLogger
 }
 
-func NewListener(
+func New(
 	ask *ask.Ask,
 	group *vk.VK,
 	admin *vk.VK,

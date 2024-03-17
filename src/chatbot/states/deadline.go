@@ -1,7 +1,8 @@
-package main
+package states
 
 import (
 	"ask-bot/src/ask"
+	"ask-bot/src/russian"
 	"ask-bot/src/vk"
 	"bytes"
 	"errors"
@@ -12,14 +13,14 @@ import (
 	"github.com/SevereCloud/vksdk/v2/api"
 )
 
-type DeadlineNode struct{}
+type Deadline struct{}
 
-func (node *DeadlineNode) ID() string {
+func (state *Deadline) ID() string {
 	return "deadline"
 }
 
-func (node *DeadlineNode) Entry(user *User, c *Controls) error {
-	members, roles, err := user.MembersRoles(c.Ask)
+func (state *Deadline) Entry(user *User, c *Controls) error {
+	members, err := c.Ask.MembersByVkID(user.Id)
 	if err != nil {
 		return err
 	}
@@ -32,10 +33,9 @@ func (node *DeadlineNode) Entry(user *User, c *Controls) error {
 			return err
 		}
 
-		message := fmt.Sprintf("Ваш дедлайн за роль %s: %d %s %d",
-			roles[i].ShownName,
+		message := fmt.Sprintf("Ваш дедлайн за роль: %d %s %d",
 			deadline.Day(),
-			MonthGenitive(deadline.Month()),
+			russian.MonthGenitive(deadline.Month()),
 			deadline.Year())
 		deadlines = append(deadlines, message)
 	}
@@ -57,31 +57,31 @@ func (node *DeadlineNode) Entry(user *User, c *Controls) error {
 		},
 	}
 
-	_, err = c.Vk.SendMessage(user.id,
+	_, err = c.Vk.SendMessage(user.Id,
 		strings.Join(deadlines, "\n"),
-		vk.CreateKeyboard(node.ID(), buttons),
+		vk.CreateKeyboard(state.ID(), buttons),
 		nil)
 	return err
 }
 
-func (node *DeadlineNode) NewMessage(user *User, c *Controls, message *vk.Message) (*Action, error) {
+func (state *Deadline) NewMessage(user *User, c *Controls, message *vk.Message) (*Action, error) {
 	return nil, nil
 }
 
-func (node *DeadlineNode) KeyboardEvent(user *User, c *Controls, payload *vk.CallbackPayload) (*Action, error) {
+func (state *Deadline) KeyboardEvent(user *User, c *Controls, payload *vk.CallbackPayload) (*Action, error) {
 	switch payload.Command {
 	case "history":
-		history, err := c.Ask.HistoryDeadline(user.id)
+		history, err := c.Ask.HistoryDeadline(user.Id)
 		if err != nil {
 			return nil, err
 		}
 
-		message, attachment, err := node.PrepareHistory(user.id, c, history)
+		message, attachment, err := state.PrepareHistory(user.Id, c, history)
 		if err != nil {
 			return nil, err
 		}
 
-		_, err = c.Vk.SendMessage(user.id, message, "", api.Params{"attachment": attachment})
+		_, err = c.Vk.SendMessage(user.Id, message, "", api.Params{"attachment": attachment})
 		return nil, err
 	case "back":
 		return NewActionExit(nil), nil
@@ -90,16 +90,16 @@ func (node *DeadlineNode) KeyboardEvent(user *User, c *Controls, payload *vk.Cal
 	return nil, nil
 }
 
-func (node *DeadlineNode) Back(user *User, c *Controls, info *ExitInfo) (*Action, error) {
-	return nil, node.Entry(user, c)
+func (state *Deadline) Back(user *User, c *Controls, info *ExitInfo) (*Action, error) {
+	return nil, state.Entry(user, c)
 }
 
-func (node *DeadlineNode) PrepareHistory(user_id int, c *Controls, history []ask.Deadline) (message string, attachment string, err error) {
+func (state *Deadline) PrepareHistory(user_id int, c *Controls, history []ask.Deadline) (message string, attachment string, err error) {
 	if len(history) == 0 {
 		return "Нет событий.", "", nil
 	}
 
-	points_noun := PluralNoun("секунда", "секунды", "секунд")
+	points_noun := russian.PluralNoun("секунда", "секунды", "секунд")
 
 	events := []string{}
 	for _, event := range history {
@@ -118,7 +118,7 @@ func (node *DeadlineNode) PrepareHistory(user_id int, c *Controls, history []ask
 			event.Diff,
 			points_noun(event.Diff),
 			event.Timestamp.Day(),
-			MonthGenitive(event.Timestamp.Month()),
+			russian.MonthGenitive(event.Timestamp.Month()),
 			event.Timestamp.Year(),
 			event.Timestamp.Format(time.TimeOnly),
 			event.Cause))
@@ -127,7 +127,7 @@ func (node *DeadlineNode) PrepareHistory(user_id int, c *Controls, history []ask
 	if len(history) <= MaxLengthHistory {
 		return strings.Join(events, "\n"), "", nil
 	}
-	record_noun := PluralNoun("запись", "записи", "записей")
+	record_noun := russian.PluralNoun("запись", "записи", "записей")
 
 	message = strings.Join(events[:MaxLengthHistory], "\n")
 	message += fmt.Sprintf("\n... и еще %d %s. Смотрите полную историю в прикрепленном файле.",

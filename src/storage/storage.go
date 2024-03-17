@@ -1,4 +1,4 @@
-package main
+package storage
 
 import (
 	"sync"
@@ -19,7 +19,7 @@ type Storage[K comparable, T interface{}] struct {
 	records       map[K]*Record[T]
 }
 
-func NewStorage[K comparable, T interface{}]() *Storage[K, T] {
+func New[K comparable, T interface{}]() *Storage[K, T] {
 	storage := &Storage[K, T]{
 		mu:            &sync.Mutex{},
 		NotifyExpired: make(chan K),

@@ -1,4 +1,4 @@
-package main
+package extract
 
 import (
 	"ask-bot/src/vk"
@@ -6,7 +6,7 @@ import (
 )
 
 // int
-func ExtractID(message *vk.Message) interface{} {
+func ID(message *vk.Message) interface{} {
 	if message == nil {
 		return nil
 	}
@@ -15,7 +15,7 @@ func ExtractID(message *vk.Message) interface{} {
 }
 
 // string
-func ExtractAttachments(message *vk.Message) interface{} {
+func Attachments(message *vk.Message) interface{} {
 	if message == nil {
 		return nil
 	}
@@ -51,7 +51,7 @@ var doc_size_order = map[string]int{
 }
 
 // string
-func ExtractImages(message *vk.Message) interface{} {
+func Images(message *vk.Message) interface{} {
 	var images []string
 
 	for _, attachment := range message.Attachments {

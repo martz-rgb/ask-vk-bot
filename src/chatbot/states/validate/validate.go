@@ -1,7 +1,6 @@
-package main
+package validate
 
 import (
-	"ask-bot/src/form"
 	"ask-bot/src/vk"
 	"errors"
 	"strings"
@@ -21,7 +20,7 @@ func NotEmpty(value interface{}) (*vk.MessageParams, error) {
 }
 
 // get info about user
-func InfoAboutValidate(value interface{}) (*vk.MessageParams, error) {
+func InfoAbout(value interface{}) (*vk.MessageParams, error) {
 	if value == nil {
 		return &vk.MessageParams{
 			Text: "Поле обязательно для заполнения.",
@@ -45,21 +44,7 @@ func InfoAboutValidate(value interface{}) (*vk.MessageParams, error) {
 	return nil, nil
 }
 
-// (admin) confirm reservation
-var ConfirmReservationOptions = []form.Option{
-	{
-		ID:    "confirm",
-		Label: "Потвердить",
-		Value: true,
-	},
-	{
-		ID:    "delete",
-		Label: "Удалить",
-		Value: false,
-	},
-}
-
-func ConfirmReservationValidate(value interface{}) (*vk.MessageParams, error) {
+func ConfirmReservation(value interface{}) (*vk.MessageParams, error) {
 	if value == nil {
 		return &vk.MessageParams{
 			Text: "Поле обязательно для заполнения.",
@@ -77,7 +62,7 @@ func ConfirmReservationValidate(value interface{}) (*vk.MessageParams, error) {
 }
 
 // check for photo attachments
-func GreetingValidate(value interface{}) (*vk.MessageParams, error) {
+func Greeting(value interface{}) (*vk.MessageParams, error) {
 	if value == nil {
 		return &vk.MessageParams{
 			Text: "Поле обязательно для заполнения.",

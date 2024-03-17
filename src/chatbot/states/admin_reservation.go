@@ -1,7 +1,9 @@
-package main
+package states
 
 import (
 	"ask-bot/src/ask"
+	"ask-bot/src/chatbot/states/fields"
+	"ask-bot/src/chatbot/states/validate"
 	"ask-bot/src/dict"
 	"ask-bot/src/form"
 	"ask-bot/src/paginator"
@@ -11,15 +13,15 @@ import (
 	"strings"
 )
 
-type AdminReservationNode struct {
+type AdminReservation struct {
 	paginator *paginator.Paginator[form.Option]
 }
 
-func (node *AdminReservationNode) ID() string {
+func (state *AdminReservation) ID() string {
 	return "admin_reservation"
 }
 
-func (node *AdminReservationNode) options(num_reservations int, under_consideration bool) (options []form.Option) {
+func (state *AdminReservation) options(num_reservations int, under_consideration bool) (options []form.Option) {
 	if num_reservations == 0 {
 		return nil
 	}
@@ -42,7 +44,7 @@ func (node *AdminReservationNode) options(num_reservations int, under_considerat
 }
 
 // To-DO: print all reservations
-func (node *AdminReservationNode) Entry(user *User, c *Controls) error {
+func (state *AdminReservation) Entry(user *User, c *Controls) error {
 	reservations, err := c.Ask.ReservationsDetails()
 	if err != nil {
 		return err
@@ -80,25 +82,25 @@ func (node *AdminReservationNode) Entry(user *User, c *Controls) error {
 		ToValue: form.OptionToValue,
 	}
 
-	node.paginator = paginator.New[form.Option](node.options(len(reservations), under_consideration),
+	state.paginator = paginator.New[form.Option](state.options(len(reservations), under_consideration),
 		config.MustBuild())
 
-	_, err = c.Vk.SendMessage(user.id,
+	_, err = c.Vk.SendMessage(user.Id,
 		message,
-		vk.CreateKeyboard(node.ID(), node.paginator.Buttons()),
+		vk.CreateKeyboard(state.ID(), state.paginator.Buttons()),
 		nil)
 
 	return err
 }
 
-func (node *AdminReservationNode) NewMessage(user *User, c *Controls, message *vk.Message) (*Action, error) {
+func (state *AdminReservation) NewMessage(user *User, c *Controls, message *vk.Message) (*Action, error) {
 	return nil, nil
 }
 
-func (node *AdminReservationNode) KeyboardEvent(user *User, c *Controls, payload *vk.CallbackPayload) (*Action, error) {
+func (state *AdminReservation) KeyboardEvent(user *User, c *Controls, payload *vk.CallbackPayload) (*Action, error) {
 	switch payload.Command {
 	case "options":
-		option, err := node.paginator.Object(payload.Value)
+		option, err := state.paginator.Object(payload.Value)
 		if err != nil {
 			return nil, err
 		}
@@ -126,11 +128,11 @@ func (node *AdminReservationNode) KeyboardEvent(user *User, c *Controls, payload
 				},
 				options,
 				nil,
-				NotEmpty,
-				ConfirmReservationField,
+				validate.NotEmpty,
+				fields.ConfirmReservationField,
 			)
 
-			return NewActionNext(NewFormNode("confirm", nil, field)), nil
+			return NewActionNext(NewForm("confirm", nil, field)), nil
 
 		case "delete":
 			reservations, err := c.Ask.ReservationsDetails()
@@ -154,29 +156,29 @@ func (node *AdminReservationNode) KeyboardEvent(user *User, c *Controls, payload
 				},
 				options,
 				nil,
-				NotEmpty,
+				validate.NotEmpty,
 				nil,
 			)
 
-			return NewActionNext(NewFormNode("delete", ConfirmReservationDeletion, field)), nil
+			return NewActionNext(NewForm("delete", fields.ConfirmReservationDeletion, field)), nil
 		}
 	case "paginator":
-		back := node.paginator.Control(payload.Value)
+		back := state.paginator.Control(payload.Value)
 
 		if back {
 			return NewActionExit(nil), nil
 		}
 
-		return nil, c.Vk.ChangeKeyboard(user.id,
-			vk.CreateKeyboard(node.ID(), node.paginator.Buttons()))
+		return nil, c.Vk.ChangeKeyboard(user.Id,
+			vk.CreateKeyboard(state.ID(), state.paginator.Buttons()))
 	}
 
 	return nil, nil
 }
 
-func (node *AdminReservationNode) Back(user *User, c *Controls, info *ExitInfo) (*Action, error) {
+func (state *AdminReservation) Back(user *User, c *Controls, info *ExitInfo) (*Action, error) {
 	if info == nil {
-		return nil, node.Entry(user, c)
+		return nil, state.Entry(user, c)
 	}
 
 	switch info.Payload {
@@ -221,7 +223,7 @@ func (node *AdminReservationNode) Back(user *User, c *Controls, info *ExitInfo) 
 		}
 		c.Notify <- notification
 
-		_, err = c.Vk.SendMessage(user.id, message, "", nil)
+		_, err = c.Vk.SendMessage(user.Id, message, "", nil)
 		if err != nil {
 			return nil, err
 		}
@@ -240,11 +242,11 @@ func (node *AdminReservationNode) Back(user *User, c *Controls, info *ExitInfo) 
 		message := fmt.Sprintf("Бронь на %s от @id%d была успешно удалена.",
 			reservation.AccusativeName,
 			reservation.VkID)
-		_, err = c.Vk.SendMessage(user.id, message, "", nil)
+		_, err = c.Vk.SendMessage(user.Id, message, "", nil)
 		if err != nil {
 			return nil, err
 		}
 	}
 
-	return nil, node.Entry(user, c)
+	return nil, state.Entry(user, c)
 }

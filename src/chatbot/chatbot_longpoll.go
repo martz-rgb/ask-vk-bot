@@ -1,6 +1,7 @@
-package main
+package chatbot
 
 import (
+	"ask-bot/src/chatbot/states"
 	"context"
 	"sync"
 
@@ -9,7 +10,7 @@ import (
 	"go.uber.org/zap"
 )
 
-func (bot *ChatBot) RunLongPoll(ctx context.Context, wg *sync.WaitGroup) {
+func (bot *Chatbot) RunLongPoll(ctx context.Context, wg *sync.WaitGroup) {
 	defer wg.Done()
 
 	lp, err := bot.controls.Vk.NewLongPoll()
@@ -26,7 +27,7 @@ func (bot *ChatBot) RunLongPoll(ctx context.Context, wg *sync.WaitGroup) {
 	lp.RunWithContext(ctx)
 }
 
-func (bot *ChatBot) MessageNew(ctx context.Context, obj events.MessageNewObject) {
+func (bot *Chatbot) MessageNew(ctx context.Context, obj events.MessageNewObject) {
 	user_id := obj.Message.FromID
 
 	bot.controls.Vk.MarkAsRead(user_id)
@@ -39,7 +40,7 @@ func (bot *ChatBot) MessageNew(ctx context.Context, obj events.MessageNewObject)
 	}
 }
 
-func (bot *ChatBot) MessageEvent(ctx context.Context, obj events.MessageEventObject) {
+func (bot *Chatbot) MessageEvent(ctx context.Context, obj events.MessageEventObject) {
 	user_id := obj.UserID
 
 	bot.controls.Vk.SendEventAnswer(obj.EventID, user_id, obj.PeerID)
@@ -52,8 +53,8 @@ func (bot *ChatBot) MessageEvent(ctx context.Context, obj events.MessageEventObj
 	}
 }
 
-func (bot *ChatBot) Work(ctx context.Context, user_id int, obj interface{}) error {
-	chat, existed := bot.TakeChat(user_id, &InitNode{})
+func (bot *Chatbot) Work(ctx context.Context, user_id int, obj interface{}) error {
+	chat, existed := bot.TakeChat(user_id, &states.Init{})
 	defer bot.ReturnChat(user_id)
 
 	err := chat.Work(bot.controls, obj, existed)

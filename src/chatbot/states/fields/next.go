@@ -1,13 +1,28 @@
-package main
+package fields
 
 import (
 	"ask-bot/src/ask"
+	"ask-bot/src/chatbot/states/validate"
 	"ask-bot/src/form"
 	"ask-bot/src/vk"
 	"fmt"
 
 	"github.com/SevereCloud/vksdk/v2/api"
 )
+
+// (admin) confirm reservation
+var ConfirmReservationOptions = []form.Option{
+	{
+		ID:    "confirm",
+		Label: "Потвердить",
+		Value: true,
+	},
+	{
+		ID:    "delete",
+		Label: "Удалить",
+		Value: false,
+	},
+}
 
 func ConfirmReservationField(value interface{}) (string, []*form.Field) {
 	reservation, ok := value.(*ask.ReservationDetail)
@@ -38,7 +53,7 @@ func ConfirmReservationField(value interface{}) (string, []*form.Field) {
 		request,
 		ConfirmReservationOptions,
 		nil,
-		ConfirmReservationValidate,
+		validate.ConfirmReservation,
 		nil,
 	)
 

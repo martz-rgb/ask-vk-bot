@@ -1,4 +1,4 @@
-package main
+package russian
 
 import (
 	"time"
