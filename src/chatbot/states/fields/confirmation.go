@@ -8,7 +8,7 @@ import (
 )
 
 func ConfirmReservationDeletion(values dict.Dictionary) (*vk.MessageParams, error) {
-	reservation, err := dict.ExtractValue[*ask.ReservationDetail](values, "reservation")
+	reservation, err := dict.ExtractValue[*ask.ReservationDetails](values, "reservation")
 	if err != nil {
 		return nil, err
 	}

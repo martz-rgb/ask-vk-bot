@@ -17,10 +17,12 @@ var ReservationStatuses = struct {
 	UnderConsideration ReservationStatus
 	InProgress         ReservationStatus
 	Done               ReservationStatus
+	Poll               ReservationStatus
 }{
 	UnderConsideration: "Under Consideration",
 	InProgress:         "In Progress",
 	Done:               "Done",
+	Poll:               "Poll",
 }
 
 func (s ReservationStatus) Value() (driver.Value, error) {
@@ -36,7 +38,8 @@ func (s *ReservationStatus) Scan(value interface{}) error {
 		if v, ok := str.(string); ok {
 			if v != string(ReservationStatuses.UnderConsideration) &&
 				v != string(ReservationStatuses.InProgress) &&
-				v != string(ReservationStatuses.Done) {
+				v != string(ReservationStatuses.Done) &&
+				v != string(ReservationStatuses.Poll) {
 				return errors.New("value is not valid ReservationStatus value")
 			}
 
@@ -49,19 +52,22 @@ func (s *ReservationStatus) Scan(value interface{}) error {
 }
 
 type Reservation struct {
-	Id        int               `db:"id"`
-	Role      string            `db:"role"`
-	VkID      int               `db:"vk_id"`
-	Deadline  sql.NullTime      `db:"deadline"`
-	Status    ReservationStatus `db:"status"`
-	Info      int               `db:"info"` // id of vk message contained information
-	Greeting  sql.NullString    `db:"greeting"`
-	Timestamp time.Time         `db:"timestamp"`
+	Id          int            `db:"id"`
+	Role        string         `db:"role"`
+	VkID        int            `db:"vk_id"`
+	Deadline    sql.NullTime   `db:"deadline"`
+	IsConfirmed int            `db:"is_confirmed"`
+	Info        int            `db:"info"` // id of vk message contained information
+	Greeting    sql.NullString `db:"greeting"`
+	Timestamp   time.Time      `db:"timestamp"`
 }
 
-type ReservationDetail struct {
+type ReservationDetails struct {
 	Reservation
 	Role
+
+	Status ReservationStatus `db:"status"`
+	Post   sql.NullInt32     `db:"post"`
 }
 
 func (a *Ask) AddReservation(role string, vk_id int, info int) error {
@@ -80,11 +86,11 @@ func (a *Ask) AddReservation(role string, vk_id int, info int) error {
 	return nil
 }
 
-func (a *Ask) ReservationsDetailsByVkID(vk_id int) (*ReservationDetail, error) {
-	var reservations_details []ReservationDetail
+func (a *Ask) ReservationDetailsByVkID(vk_id int) (*ReservationDetails, error) {
+	var reservations_details []ReservationDetails
 
 	query := sqlf.From("reservations_details").
-		Bind(&ReservationDetail{}).
+		Bind(&ReservationDetails{}).
 		Where("vk_id = ?", vk_id).
 		Limit(1)
 
@@ -102,11 +108,11 @@ func (a *Ask) ReservationsDetailsByVkID(vk_id int) (*ReservationDetail, error) {
 	return &reservations_details[0], nil
 }
 
-func (a *Ask) UnderConsiderationReservationsDetails() ([]ReservationDetail, error) {
-	var details []ReservationDetail
+func (a *Ask) UnderConsiderationReservationsDetails() ([]ReservationDetails, error) {
+	var details []ReservationDetails
 
 	query := sqlf.From("reservations_details").
-		Bind(&ReservationDetail{}).
+		Bind(&ReservationDetails{}).
 		Where("status = ?", ReservationStatuses.UnderConsideration)
 
 	err := a.db.Select(&details, query.String(), query.Args()...)
@@ -119,11 +125,11 @@ func (a *Ask) UnderConsiderationReservationsDetails() ([]ReservationDetail, erro
 	return details, nil
 }
 
-func (a *Ask) ReservationsDetails() ([]ReservationDetail, error) {
-	var details []ReservationDetail
+func (a *Ask) ReservationsDetails() ([]ReservationDetails, error) {
+	var details []ReservationDetails
 
 	query := sqlf.From("reservations_details").
-		Bind(&ReservationDetail{})
+		Bind(&ReservationDetails{})
 
 	err := a.db.Select(&details, query.String(), query.Args()...)
 	if err != nil {
@@ -170,12 +176,11 @@ func (a *Ask) ChangeReservationDeadline(id int, deadline time.Time) error {
 // TO-DO update also other deadlines on role
 // transaction logic for db...
 func (a *Ask) ConfirmReservation(id int) (time.Time, error) {
-	status := ReservationStatuses.InProgress
 	deadline := a.CalculateReservationDeadline()
 
 	query := sqlf.Update("reservations").
 		Set("deadline", deadline).
-		Set("status", status).
+		Set("is_confirmed", 1).
 		Where("id = ?", id)
 
 	_, err := a.db.Exec(query.String(), query.Args()...)
@@ -190,7 +195,6 @@ func (a *Ask) ConfirmReservation(id int) (time.Time, error) {
 
 func (a *Ask) CompleteReservation(id int, greeting string) error {
 	query := sqlf.Update("reservations").
-		Set("status", ReservationStatuses.Done).
 		Set("greeting", greeting).
 		Where("id = ?", id)
 

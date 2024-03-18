@@ -80,13 +80,7 @@ CREATE TABLE IF NOT EXISTS reservations (
     -- only one reservation per user
     vk_id INT NOT NULL UNIQUE,
     deadline DATETIME,
-    status TEXT CHECK(
-        status IN (
-            'Under Consideration',
-            'In Progress',
-            'Done'
-        )
-    ) NOT NULL DEFAULT 'Under Consideration',
+    is_confirmed INT NOT NULL DEFAULT 0,
     -- id of vk message contained information
     info INT NOT NULL,
     -- url for images 
@@ -102,10 +96,32 @@ CREATE TABLE IF NOT EXISTS ongoing_polls (
 );
 
 -- views
+CREATE VIEW IF NOT EXISTS reservations_details AS
+SELECT
+    reservations.*,
+    roles.*,
+    (
+        CASE
+            WHEN is_confirmed = 0 THEN 'Under Consideration'
+            ELSE CASE
+                WHEN greeting IS NULL THEN 'In Progress'
+                ELSE CASE
+                    WHEN post IS NULL THEN 'Done'
+                    ELSE 'Poll'
+                END
+            END
+        END
+    ) AS status,
+    post
+FROM
+    reservations
+    INNER JOIN roles ON reservations.role = roles.name
+    LEFT JOIN ongoing_polls USING (role);
+
 CREATE VIEW IF NOT EXISTS polls AS
 SELECT
     role,
-    hashtag as hashtag,
+    roles.*,
     group_concat(vk_id) AS participants,
     group_concat(greeting, ';') AS greetings,
     post
@@ -118,8 +134,8 @@ WHERE
         SELECT
             *
         FROM
-            reservations AS other
-        where
+            reservations_details AS other
+        WHERE
             other.role = reservations.role
             AND other.status != 'Done'
     )
@@ -153,10 +169,3 @@ WHERE
         FROM
             members
     );
-
-CREATE VIEW IF NOT EXISTS reservations_details AS
-SELECT
-    *
-FROM
-    reservations
-    INNER JOIN roles ON reservations.role = roles.name;

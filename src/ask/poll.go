@@ -46,23 +46,19 @@ func (ids *VkIDs) Scan(value interface{}) error {
 	return errors.New("failed to scan VkIDs")
 }
 
-type PendingPoll struct {
-	Role         string `db:"role"`
-	Hashtag      string `db:"hashtag"`
-	Participants VkIDs  `db:"participants"`
-	Greetings    string `db:"greetings"`
-}
-
 type Poll struct {
-	PendingPoll
-	Post sql.NullInt32 `db:"post"`
+	Role
+
+	Participants VkIDs         `db:"participants"`
+	Greetings    string        `db:"greetings"`
+	Post         sql.NullInt32 `db:"post"`
 }
 
-func (a *Ask) PendingPolls() ([]PendingPoll, error) {
-	var polls []PendingPoll
+func (a *Ask) PendingPolls() ([]Poll, error) {
+	var polls []Poll
 
 	query := sqlf.From("polls").
-		Bind(&PendingPoll{})
+		Bind(&Poll{})
 
 	err := a.db.Select(&polls, query.String(), query.Args()...)
 	if err != nil {

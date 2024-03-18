@@ -81,20 +81,16 @@ func Images(message *vk.Message) interface{} {
 				continue
 			}
 
-			var image string
-			current_size := ""
-
-			for _, size := range attachment.Photo.Sizes {
-				if photo_size_order[current_size] < doc_size_order[size.Type] {
-					current_size = size.Type
-					image = size.URL
-				}
-			}
+			var image = attachment.Doc.URL
 
 			if len(image) != 0 {
 				images = append(images, image)
 			}
 		}
+	}
+
+	if len(images) == 0 {
+		return nil
 	}
 
 	return strings.Join(images, ",")

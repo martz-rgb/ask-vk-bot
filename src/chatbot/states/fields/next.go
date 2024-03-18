@@ -25,7 +25,7 @@ var ConfirmReservationOptions = []form.Option{
 }
 
 func ConfirmReservationField(value interface{}) (string, []*form.Field) {
-	reservation, ok := value.(*ask.ReservationDetail)
+	reservation, ok := value.(*ask.ReservationDetails)
 	if !ok {
 		return "", nil
 	}

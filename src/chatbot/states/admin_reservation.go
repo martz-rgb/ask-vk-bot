@@ -183,7 +183,7 @@ func (state *AdminReservation) Back(user *User, c *Controls, info *ExitInfo) (*A
 
 	switch info.Payload {
 	case "confirm":
-		reservation, err := dict.ExtractValue[*ask.ReservationDetail](info.Values, "reservation")
+		reservation, err := dict.ExtractValue[*ask.ReservationDetails](info.Values, "reservation")
 		if err != nil {
 			return nil, err
 		}
@@ -229,7 +229,7 @@ func (state *AdminReservation) Back(user *User, c *Controls, info *ExitInfo) (*A
 		}
 
 	case "delete":
-		reservation, err := dict.ExtractValue[*ask.ReservationDetail](info.Values, "reservation")
+		reservation, err := dict.ExtractValue[*ask.ReservationDetails](info.Values, "reservation")
 		if err != nil {
 			return nil, err
 		}

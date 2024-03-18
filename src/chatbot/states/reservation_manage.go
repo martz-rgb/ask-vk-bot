@@ -17,7 +17,7 @@ import (
 
 type ReservationManage struct {
 	paginator *paginator.Paginator[form.Option]
-	details   *ask.ReservationDetail
+	details   *ask.ReservationDetails
 }
 
 func (state *ReservationManage) ID() string {
@@ -43,7 +43,7 @@ func (state *ReservationManage) options() (options []form.Option) {
 }
 
 func (state *ReservationManage) Entry(user *User, c *Controls) error {
-	details, err := c.Ask.ReservationsDetailsByVkID(user.Id)
+	details, err := c.Ask.ReservationDetailsByVkID(user.Id)
 	if err != nil {
 		return err
 	}
@@ -69,8 +69,13 @@ func (state *ReservationManage) Entry(user *User, c *Controls) error {
 			state.details.Deadline.Time)
 
 	case ask.ReservationStatuses.Done:
+		// TO-DO: try to get info about postponed poll from postponed
 		message = fmt.Sprintf("Мы получили ваше приветствие на %s! Скоро будет создан опрос.",
 			state.details.AccusativeName)
+
+	case ask.ReservationStatuses.Poll:
+		message = fmt.Sprintf("Опрос начался! Посмотреть на него можно здесь: https://vk.com/wall%d_%d",
+			-c.Vk.ID(), details.Post.Int32)
 	}
 
 	config := &paginator.Config[form.Option]{

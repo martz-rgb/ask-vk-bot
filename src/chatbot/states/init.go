@@ -23,13 +23,13 @@ func (state *Init) ID() string {
 func (state *Init) options(user *User, c *Controls) ([]form.Option, error) {
 	options := []form.Option{}
 
-	reservation_details, err := c.Ask.ReservationsDetailsByVkID(user.Id)
+	reservation, err := c.Ask.ReservationDetailsByVkID(user.Id)
 	if err != nil {
 		return nil, err
 	}
 
 	// same  id because i want to mask the difference between them
-	if reservation_details == nil {
+	if reservation == nil {
 		options = append(options, form.Option{
 			ID:    "reservation",
 			Label: "Бронь",

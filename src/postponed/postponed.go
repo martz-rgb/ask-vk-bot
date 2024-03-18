@@ -86,8 +86,8 @@ func (p *Postponed) update() error {
 	if err != nil {
 		return err
 	}
-	slices.SortFunc[[]ask.PendingPoll](db_polls, func(a, b ask.PendingPoll) int {
-		return strings.Compare(a.Role, b.Role)
+	slices.SortFunc[[]ask.Poll](db_polls, func(a, b ask.Poll) int {
+		return strings.Compare(a.Role.Name, b.Role.Name)
 	})
 
 	// update info about vk postponed posts
@@ -145,9 +145,9 @@ func (p *Postponed) update() error {
 	return nil
 }
 
-func (p *Postponed) markPoll(polls *[]ask.PendingPoll, role string) bool {
-	index, ok := slices.BinarySearchFunc(*polls, role, func(poll ask.PendingPoll, role string) int {
-		return strings.Compare(poll.Role, role)
+func (p *Postponed) markPoll(polls *[]ask.Poll, role string) bool {
+	index, ok := slices.BinarySearchFunc(*polls, role, func(poll ask.Poll, role string) int {
+		return strings.Compare(poll.Role.Name, role)
 	})
 
 	if !ok {
@@ -158,13 +158,13 @@ func (p *Postponed) markPoll(polls *[]ask.PendingPoll, role string) bool {
 	return true
 }
 
-func (p *Postponed) createPoll(poll *ask.PendingPoll, organization_tags *ask.OrganizationHashtags) error {
+func (p *Postponed) createPoll(poll *ask.Poll, organization_tags *ask.OrganizationHashtags) error {
 	//  create vk post
 
 	p.log.Infow("creating new poll",
 		"poll", poll)
 
-	message := fmt.Sprintf("%s %s\nГолосование на %s!", organization_tags.PollHashtag, poll.Hashtag, poll.Role)
+	message := fmt.Sprintf("%s %s\nГолосование на %s!", organization_tags.PollHashtag, poll.Hashtag, poll.Role.Name)
 
 	var attachments []string
 
