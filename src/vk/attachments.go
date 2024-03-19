@@ -26,11 +26,17 @@ func (v *VK) UploadDocument(peer_id int, name string, file io.Reader) (int, erro
 }
 
 // i don't know why it returns array
-func (v *VK) UploadPhotoToWall(group_id int, file io.Reader) ([]object.PhotosPhoto, error) {
-	response, err := v.api.UploadGroupWallPhoto(group_id, file)
+func (v *VK) UploadPhotoToWall(file io.Reader) ([]object.PhotosPhoto, error) {
+	// group_id here should be grateer than 0
+	id := v.id
+	if id < 0 {
+		id = -id
+	}
+
+	response, err := v.api.UploadGroupWallPhoto(id, file)
 	if err != nil {
 		return nil, zaperr.Wrap(err, "failed to upload photo to group wall",
-			zap.Int("peer_id", group_id),
+			zap.Int("peer_id", v.id),
 			zap.Any("response", response))
 	}
 

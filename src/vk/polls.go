@@ -9,7 +9,7 @@ import (
 	"go.uber.org/zap"
 )
 
-func (v *VK) CreatePoll(group_id int, question string, answers []string, is_anonymous bool, end_date int64) (*object.PollsPoll, error) {
+func (v *VK) CreatePoll(question string, answers []string, is_anonymous bool, end_date int64) (*object.PollsPoll, error) {
 	json_answers, err := json.Marshal(answers)
 	if err != nil {
 		return nil, zaperr.Wrap(err, "failed to marshal answers",
@@ -17,7 +17,7 @@ func (v *VK) CreatePoll(group_id int, question string, answers []string, is_anon
 	}
 
 	params := api.Params{
-		"owner_id":     -group_id,
+		"owner_id":     v.id,
 		"question":     question,
 		"add_answers":  string(json_answers),
 		"is_anonymous": is_anonymous,

@@ -7,9 +7,18 @@ import (
 	"go.uber.org/zap"
 )
 
-func (v *VK) CreatePost(group_id int, message string, attachments string, signed bool, publish_date int64) (int, error) {
+// i honestly don't know when reply and copy types are used
+const (
+	PostponedPost = "postpone"
+	SuggestedPost = "suggest"
+	ReplyPost     = "reply"
+	CopyPost      = "copy"
+	NewPost       = "post"
+)
+
+func (v *VK) CreatePost(message string, attachments string, signed bool, publish_date int64) (int, error) {
 	params := api.Params{
-		"owner_id":     -group_id,
+		"owner_id":     v.id,
 		"from_group":   1,
 		"message":      message,
 		"attachments":  attachments,
@@ -31,27 +40,7 @@ func (v *VK) CreatePost(group_id int, message string, attachments string, signed
 	return response.PostID, nil
 }
 
-func (v *VK) DeletePost(group_id int, post_id int) error {
-	params := api.Params{
-		"owner_id": -group_id,
-		"post_id":  post_id,
-	}
-
-	response, err := v.api.WallDelete(params)
-	if err != nil {
-		return zaperr.Wrap(err, "failed to delete post",
-			zap.Any("params", params),
-			zap.Any("response", response))
-	}
-
-	zap.S().Debugw("successfully deleted post",
-		"params", params,
-		"response", response)
-
-	return nil
-}
-
-func (v *VK) PostponedPosts(group_id int) ([]object.WallWallpost, error) {
+func (v *VK) PostponedPosts() ([]object.WallWallpost, error) {
 	max_count := 100
 
 	var posts []object.WallWallpost
@@ -59,7 +48,7 @@ func (v *VK) PostponedPosts(group_id int) ([]object.WallWallpost, error) {
 
 	for {
 		params := api.Params{
-			"owner_id": -group_id,
+			"owner_id": v.id,
 			"count":    max_count,
 			"filter":   "postponed",
 			"offset":   offset,
@@ -84,4 +73,24 @@ func (v *VK) PostponedPosts(group_id int) ([]object.WallWallpost, error) {
 			return posts, nil
 		}
 	}
+}
+
+func (v *VK) DeletePost(post_id int) error {
+	params := api.Params{
+		"owner_id": v.id,
+		"post_id":  post_id,
+	}
+
+	response, err := v.api.WallDelete(params)
+	if err != nil {
+		return zaperr.Wrap(err, "failed to delete post",
+			zap.Any("params", params),
+			zap.Any("response", response))
+	}
+
+	zap.S().Debugw("successfully deleted post",
+		"params", params,
+		"response", response)
+
+	return nil
 }

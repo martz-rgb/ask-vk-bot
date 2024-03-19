@@ -63,5 +63,11 @@ func (v *VK) ID() int {
 }
 
 func (v *VK) NewLongPoll() (*longpoll.LongPoll, error) {
-	return longpoll.NewLongPoll(v.api, v.id)
+	// group_id here should be greater than 0
+	id := v.id
+	if id < 0 {
+		id = -id
+	}
+
+	return longpoll.NewLongPoll(v.api, id)
 }
