@@ -33,11 +33,13 @@ func (state *ReservationManage) options() (options []form.Option) {
 		})
 	}
 
-	options = append(options, form.Option{
-		ID:    "cancel",
-		Label: "Отменить",
-		Color: vk.SecondaryColor,
-	})
+	if state.details.Status != ask.ReservationStatuses.Poll {
+		options = append(options, form.Option{
+			ID:    "cancel",
+			Label: "Отменить",
+			Color: vk.SecondaryColor,
+		})
+	}
 
 	return
 }
@@ -75,7 +77,7 @@ func (state *ReservationManage) Entry(user *User, c *Controls) error {
 
 	case ask.ReservationStatuses.Poll:
 		message = fmt.Sprintf("Опрос начался! Посмотреть на него можно здесь: https://vk.com/wall%d_%d",
-			-c.Vk.ID(), details.Post.Int32)
+			c.Vk.ID(), details.Post.Int32)
 	}
 
 	config := &paginator.Config[form.Option]{
