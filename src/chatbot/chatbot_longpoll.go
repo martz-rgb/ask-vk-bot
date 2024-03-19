@@ -10,8 +10,12 @@ import (
 	"go.uber.org/zap"
 )
 
-func (bot *Chatbot) RunLongPoll(ctx context.Context, wg *sync.WaitGroup) {
+func (bot *Chatbot) Run(ctx context.Context, wg *sync.WaitGroup) {
 	defer wg.Done()
+
+	wg.Add(2)
+	go bot.ListenNotification(ctx, wg)
+	go bot.storage.ListenExpired(ctx, wg)
 
 	lp, err := bot.controls.Vk.NewLongPoll()
 	if err != nil {

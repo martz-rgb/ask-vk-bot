@@ -2,7 +2,9 @@ package postponed
 
 import (
 	"ask-bot/src/ask"
+	"ask-bot/src/posts"
 	"ask-bot/src/vk"
+	"context"
 	"fmt"
 	"net/http"
 	"slices"
@@ -14,42 +16,40 @@ import (
 	"go.uber.org/zap"
 )
 
+type Controls struct {
+	Vk  *vk.VK
+	Ask *ask.Ask
+}
+
 type Postponed struct {
 	mu     *sync.Mutex
 	notify chan bool
 
-	group int
-	vk    *vk.VK
-	ask   *ask.Ask
+	c    *Controls
+	tick time.Duration
 
 	log *zap.SugaredLogger
 }
 
-func New(group int, tick time.Duration, v *vk.VK, a *ask.Ask, log *zap.SugaredLogger) (*Postponed, chan bool) {
+func New(c *Controls, tick time.Duration, log *zap.SugaredLogger) (*Postponed, chan bool) {
 	p := &Postponed{
 		&sync.Mutex{},
 		make(chan bool),
-
-		group,
-		v,
-		a,
-
+		c,
+		tick,
 		log,
 	}
-
-	go p.loop(tick)
-
 	return p, p.notify
 }
 
-func (p *Postponed) loop(tick time.Duration) {
+func (p *Postponed) Run(ctx context.Context, wg *sync.WaitGroup) {
 	err := p.update()
 	if err != nil {
 		p.log.Errorw("failed to update postponed on ticker",
 			"error", err)
 	}
 
-	ticker := time.NewTicker(tick)
+	ticker := time.NewTicker(p.tick)
 
 	for {
 		select {
@@ -66,23 +66,26 @@ func (p *Postponed) loop(tick time.Duration) {
 				p.log.Errorw("failed to update postponed on notify",
 					"error", err)
 			}
+		case <-ctx.Done():
+			wg.Done()
+			return
 		}
 	}
 }
 
-func (p *Postponed) update() error {
-	p.mu.Lock()
-	defer p.mu.Unlock()
+func (postponed *Postponed) update() error {
+	postponed.mu.Lock()
+	defer postponed.mu.Unlock()
 
-	organization_tags := p.ask.OrganizationHashtags()
+	organization := postponed.c.Ask.OrganizationHashtags()
 
-	roles_dictionary, err := p.ask.RolesDictionary()
+	dictionary, err := postponed.c.Ask.RolesDictionary()
 	if err != nil {
 		return err
 	}
 
 	// pending polls dictionary order by role
-	db_polls, err := p.ask.PendingPolls()
+	db_polls, err := postponed.c.Ask.PendingPolls()
 	if err != nil {
 		return err
 	}
@@ -92,43 +95,40 @@ func (p *Postponed) update() error {
 
 	// update info about vk postponed posts
 
-	vk_postponed, err := p.vk.PostponedPosts(p.group)
+	vk_postponed, err := postponed.c.Vk.PostponedPosts()
 	if err != nil {
 		return err
 	}
-	postponed, err := Parse(roles_dictionary, &organization_tags, vk_postponed)
-	if err != nil {
-		return err
-	}
+	postponed_posts := posts.ParseMany(vk_postponed, dictionary, &organization)
 
-	for _, post := range postponed {
+	for _, post := range postponed_posts {
 		switch post.Kind {
-		case Poll:
+		case posts.Poll:
 			if len(post.Roles) != 1 {
-				p.log.Infow("found invalid poll",
+				postponed.log.Infow("found invalid poll",
 					"poll", post)
 
-				p.vk.DeletePost(p.group, post.Vk.ID)
+				postponed.c.Vk.DeletePost(post.Vk.ID)
 				if err != nil {
 					return err
 				}
 
-				p.log.Infow("deleted invalid poll",
+				postponed.log.Infow("deleted invalid poll",
 					"poll", post)
 				continue
 			}
 
-			ok := p.markPoll(&db_polls, post.Roles[0].Name)
+			ok := postponed.markPoll(&db_polls, post.Roles[0].Name)
 			if !ok {
-				p.log.Infow("found unwanted poll",
+				postponed.log.Infow("found unwanted poll",
 					"poll", post)
 
-				err = p.vk.DeletePost(p.group, post.Vk.ID)
+				err = postponed.c.Vk.DeletePost(post.Vk.ID)
 				if err != nil {
 					return err
 				}
 
-				p.log.Infow("deleted unwanted poll",
+				postponed.log.Infow("deleted unwanted poll",
 					"poll", post)
 			}
 		}
@@ -136,7 +136,7 @@ func (p *Postponed) update() error {
 
 	// create polls which are new
 	for _, poll := range db_polls {
-		err = p.createPoll(&poll, &organization_tags)
+		err = postponed.createPoll(&poll, &organization)
 		if err != nil {
 			return err
 		}
@@ -145,7 +145,7 @@ func (p *Postponed) update() error {
 	return nil
 }
 
-func (p *Postponed) markPoll(polls *[]ask.Poll, role string) bool {
+func (postponed *Postponed) markPoll(polls *[]ask.Poll, role string) bool {
 	index, ok := slices.BinarySearchFunc(*polls, role, func(poll ask.Poll, role string) int {
 		return strings.Compare(poll.Role.Name, role)
 	})
@@ -158,10 +158,10 @@ func (p *Postponed) markPoll(polls *[]ask.Poll, role string) bool {
 	return true
 }
 
-func (p *Postponed) createPoll(poll *ask.Poll, organization_tags *ask.OrganizationHashtags) error {
+func (postponed *Postponed) createPoll(poll *ask.Poll, organization_tags *ask.OrganizationHashtags) error {
 	//  create vk post
 
-	p.log.Infow("creating new poll",
+	postponed.log.Infow("creating new poll",
 		"poll", poll)
 
 	message := fmt.Sprintf("%s %s\nГолосование на %s!", organization_tags.PollHashtag, poll.Hashtag, poll.Role.Name)
@@ -179,7 +179,7 @@ func (p *Postponed) createPoll(poll *ask.Poll, organization_tags *ask.Organizati
 					zap.String("url", image))
 			}
 
-			photos, err := p.vk.UploadPhotoToWall(p.group, file.Body)
+			photos, err := postponed.c.Vk.UploadPhotoToWall(file.Body)
 			if err != nil {
 				return err
 			}
@@ -194,18 +194,18 @@ func (p *Postponed) createPoll(poll *ask.Poll, organization_tags *ask.Organizati
 	post_time := time.Now().Add(3 * time.Hour)
 
 	// add config for poll duration
-	vk_poll, err := p.vk.CreatePoll(p.group, "Берем?", []string{"Конечно!", "Нет."}, true, post_time.Add(24*time.Hour).Unix())
+	vk_poll, err := postponed.c.Vk.CreatePoll("Берем?", []string{"Конечно!", "Нет."}, true, post_time.Add(24*time.Hour).Unix())
 	if err != nil {
 		return err
 	}
 	attachments = append(attachments, fmt.Sprintf("poll%d_%d", vk_poll.OwnerID, vk_poll.ID))
 
-	id, err := p.vk.CreatePost(p.group, message, strings.Join(attachments, ","), false, post_time.Unix())
+	id, err := postponed.c.Vk.CreatePost(message, strings.Join(attachments, ","), false, post_time.Unix())
 	if err != nil {
 		return err
 	}
 
-	p.log.Infow("created new poll",
+	postponed.log.Infow("created new poll",
 		"poll", poll,
 		"id", id)
 

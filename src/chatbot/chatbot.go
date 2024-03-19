@@ -1,75 +1,75 @@
 package chatbot
 
 import (
-	"ask-bot/src/ask"
 	"ask-bot/src/chatbot/states"
-	"ask-bot/src/postponed"
 	"ask-bot/src/storage"
 	"ask-bot/src/vk"
+	"context"
+	"sync"
 	"time"
 
 	"go.uber.org/zap"
 )
 
 type Chatbot struct {
-	cache       *storage.Storage[int, *Chat]
+	storage     *storage.Storage[int, *Chat]
 	reset_state states.State
 
-	timeout time.Duration
-
 	controls *states.Controls
+
+	timeout time.Duration
 
 	log *zap.SugaredLogger
 }
 
-func New(a *ask.Ask,
-	v *vk.VK,
-	p *postponed.Postponed,
+type Controls states.Controls
+
+func New(c *Controls,
 	timeout time.Duration,
-	log *zap.SugaredLogger) *Chatbot {
+	log *zap.SugaredLogger) (*Chatbot, chan *vk.MessageParams) {
+	controls := (*states.Controls)(c)
+
 	bot := &Chatbot{
-		cache:       storage.New[int, *Chat](),
+		storage:     storage.New[int, *Chat](),
 		reset_state: &states.Init{},
 		timeout:     timeout,
-		controls: &states.Controls{
-			Ask:       a,
-			Vk:        v,
-			Notify:    make(chan *vk.MessageParams),
-			Postponed: p,
-		},
-		log: log,
+		controls:    controls,
+		log:         log,
 	}
 
-	go bot.ListenNotification()
-
-	return bot
+	return bot, bot.controls.Notify
 }
 
 func (bot *Chatbot) TakeChat(user_id int, init states.State) (*Chat, bool) {
-	chat, existed := bot.cache.CreateIfNotExistedAndTake(user_id,
+	chat, existed := bot.storage.CreateIfNotExistedAndTake(user_id,
 		NewChat(user_id,
 			init,
 			bot.reset_state,
 			bot.timeout,
-			bot.cache.NotifyExpired,
+			bot.storage.NotifyExpired,
 			bot.controls))
 
-	chat.ResetTimer(bot.timeout, bot.cache.NotifyExpired, bot.controls)
+	chat.ResetTimer(bot.timeout, bot.storage.NotifyExpired, bot.controls)
 	return chat, existed
 }
 
 func (bot *Chatbot) ReturnChat(user_id int) {
-	bot.cache.Return(user_id)
+	bot.storage.Return(user_id)
 }
 
-func (bot *Chatbot) ListenNotification() {
+func (bot *Chatbot) ListenNotification(ctx context.Context, wg *sync.WaitGroup) {
 	for {
-		message := <-bot.controls.Notify
-		err := bot.NotifyChat(message)
-		if err != nil {
-			bot.log.Errorw("error occured while try to notify",
-				"message", message,
-				"error", err)
+		select {
+		case message := <-bot.controls.Notify:
+			err := bot.NotifyChat(message)
+			if err != nil {
+				bot.log.Errorw("error occured while try to notify",
+					"message", message,
+					"error", err)
+			}
+		case <-ctx.Done():
+			wg.Done()
+			return
 		}
 	}
 }

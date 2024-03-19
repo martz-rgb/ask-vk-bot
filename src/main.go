@@ -152,8 +152,9 @@ func main() {
 	undo := zap.ReplaceGlobals(logger)
 	defer undo()
 
-	// make chatbot, postponed loggers
+	// make chatbot's, listener's, postponed's loggers
 	bot_logger := CreateLogger(config.LogDir, "chatbot.log")
+	listener_logger := CreateLogger(config.LogDir, "listener.log")
 	postponed_logger := CreateLogger(config.LogDir, "postponed.log")
 
 	// make ask layer upon db
@@ -185,18 +186,41 @@ func main() {
 			"error", err)
 	}
 
-	postponed, notify := postponed.New(config.GroupID, config.UpdatePostponed, admin, a, postponed_logger.Sugar())
-	chat_bot := chatbot.New(a, group, postponed, config.Timeout, bot_logger.Sugar())
-	listener := listener.New(a, group, admin, postponed, notify)
+	p, update := postponed.New(&postponed.Controls{
+		Vk:  admin,
+		Ask: a,
+	},
+		config.UpdatePostponed,
+		postponed_logger.Sugar())
+
+	c, notify := chatbot.New(&chatbot.Controls{
+		Vk:        group,
+		Ask:       a,
+		Notify:    make(chan *vk.MessageParams),
+		Postponed: p,
+	},
+		config.Timeout,
+		bot_logger.Sugar())
+
+	l := listener.New(&listener.Controls{
+		Ask:             a,
+		Admin:           admin,
+		Group:           group,
+		Postponed:       p,
+		UpdatePostponed: update,
+		NotifyUser:      notify,
+	},
+		listener_logger.Sugar())
 
 	ctx, stop := signal.NotifyContext(context.Background(), os.Interrupt)
 	defer stop()
 
 	wg := &sync.WaitGroup{}
-	wg.Add(2)
+	wg.Add(3)
 
-	go listener.RunLongPoll(ctx, wg)
-	go chat_bot.RunLongPoll(ctx, wg)
+	go p.Run(ctx, wg)
+	go c.Run(ctx, wg)
+	go l.Run(ctx, wg)
 
 	fmt.Println("run", config.GroupID)
 

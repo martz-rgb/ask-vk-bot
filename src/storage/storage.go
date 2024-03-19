@@ -1,6 +1,7 @@
 package storage
 
 import (
+	"context"
 	"sync"
 	"sync/atomic"
 )
@@ -25,8 +26,6 @@ func New[K comparable, T interface{}]() *Storage[K, T] {
 		NotifyExpired: make(chan K),
 		records:       make(map[K]*Record[T]),
 	}
-
-	go storage.ListenExpired()
 
 	return storage
 }
@@ -107,24 +106,28 @@ func (s *Storage[K, T]) CreateIfNotExistedAndTake(key K, value T) (v T, existed 
 	return record.value, true
 }
 
-func (s *Storage[K, T]) ListenExpired() {
+func (s *Storage[K, T]) ListenExpired(ctx context.Context, wg *sync.WaitGroup) {
 	for {
-		key := <-s.NotifyExpired
+		select {
+		case key := <-s.NotifyExpired:
+			s.mu.Lock()
+			record, ok := s.records[key]
+			if !ok {
+				s.mu.Unlock()
+				continue
+			}
 
-		s.mu.Lock()
-		record, ok := s.records[key]
-		if !ok {
+			ok = record.in_use.TryLock()
+			if ok && record.waiting.Load() == 0 {
+				delete(s.records, key)
+				s.mu.Unlock()
+				continue
+			}
+			// if it is busy, there is no point to delete it
 			s.mu.Unlock()
-			continue
+		case <-ctx.Done():
+			wg.Done()
+			return
 		}
-
-		ok = record.in_use.TryLock()
-		if ok && record.waiting.Load() == 0 {
-			delete(s.records, key)
-			s.mu.Unlock()
-			continue
-		}
-		// if it is busy, there is no point to delete it
-		s.mu.Unlock()
 	}
 }

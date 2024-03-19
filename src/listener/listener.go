@@ -3,49 +3,51 @@ package listener
 import (
 	"ask-bot/src/ask"
 	"ask-bot/src/postponed"
+	"ask-bot/src/posts"
 	"ask-bot/src/vk"
 	"context"
 	"sync"
 
 	"github.com/SevereCloud/vksdk/v2/events"
+	"github.com/SevereCloud/vksdk/v2/object"
 	"go.uber.org/zap"
 )
 
+type Controls struct {
+	Ask *ask.Ask
+
+	Group *vk.VK
+	Admin *vk.VK
+
+	Postponed       *postponed.Postponed
+	UpdatePostponed chan bool
+
+	NotifyUser chan *vk.MessageParams
+}
+
 type Listener struct {
-	ask *ask.Ask
-
-	group *vk.VK
-	admin *vk.VK
-
-	postponed *postponed.Postponed
-	notify    chan bool
+	c *Controls
 
 	log *zap.SugaredLogger
 }
 
 func New(
-	ask *ask.Ask,
-	group *vk.VK,
-	admin *vk.VK,
-	p *postponed.Postponed,
-	notify chan bool) *Listener {
+	controls *Controls,
+	log *zap.SugaredLogger) *Listener {
 	return &Listener{
-		ask:       ask,
-		group:     group,
-		admin:     admin,
-		postponed: p,
-		notify:    notify,
+		c:   controls,
+		log: log,
 	}
 }
 
-func (l *Listener) RunLongPoll(ctx context.Context, wg *sync.WaitGroup) {
+func (l *Listener) Run(ctx context.Context, wg *sync.WaitGroup) {
 	defer wg.Done()
 
-	lp, err := l.group.NewLongPoll()
+	lp, err := l.c.Group.NewLongPoll()
 	if err != nil {
-		zap.S().Errorw("failed to run listener longpoll",
+		l.log.Errorw("failed to run listener longpoll",
 			"error", err,
-			"id", l.group.ID())
+			"id", l.c.Group.ID())
 		return
 	}
 
@@ -55,7 +57,53 @@ func (l *Listener) RunLongPoll(ctx context.Context, wg *sync.WaitGroup) {
 }
 
 func (l *Listener) WallPostNew(ctx context.Context, event events.WallPostNewObject) {
-	zap.S().Info(event)
+	l.log.Info(event)
+
+	vk_post := object.WallWallpost(event)
+
+	err := l.NewPost(&vk_post)
+	if err != nil {
+		l.log.Errorw("failed to handle new post",
+			"post id", event.ID,
+			"error", err)
+	}
 
 	//l.admin.WallPostNew(l.group_id, "got: "+event.Text, "", false, time.Now().Add(5*time.Minute).Unix())
+}
+
+func (l *Listener) NewPost(vk_post *object.WallWallpost) error {
+	// i don't care about "copy", "reply" and "postponed"
+	// the last two shouldn't go here anyway
+	if vk_post.PostType != vk.SuggestedPost &&
+		vk_post.PostType != vk.NewPost {
+		return nil
+	}
+
+	dictionary, err := l.c.Ask.RolesDictionary()
+	if err != nil {
+		return err
+	}
+	organization := l.c.Ask.OrganizationHashtags()
+
+	post := posts.Parse(vk_post, dictionary, &organization)
+
+	switch post.Kind {
+	case posts.Poll:
+		if vk_post.PostType == vk.SuggestedPost {
+			// it is wrong
+			// should delete it probably
+			break
+		}
+
+		err := l.c.Ask.AddOngoingPoll(post.Vk.ID, post.Roles[0].Name)
+		if err != nil {
+			return err
+		}
+	case posts.Answer:
+	case posts.FreeAnswer:
+	case posts.Leaving:
+	case posts.Invalid:
+	}
+
+	return nil
 }

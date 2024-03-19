@@ -85,3 +85,18 @@ func (a *Ask) Polls() ([]Poll, error) {
 
 	return polls, nil
 }
+
+func (a *Ask) AddOngoingPoll(post int, role string) error {
+	query := sqlf.InsertInto("ongoing_polls").
+		Set("post", post).
+		Set("role", role)
+
+	_, err := a.db.Exec(query.String(), query.Args()...)
+	if err != nil {
+		return zaperr.Wrap(err, "failed to add ongoing poll",
+			zap.String("query", query.String()),
+			zap.Any("args", query.Args()))
+	}
+
+	return nil
+}
