@@ -137,7 +137,10 @@ WHERE
             reservations_details AS other
         WHERE
             other.role = reservations.role
-            AND other.status != 'Done'
+            AND (
+                other.status != 'Done'
+                AND other.status != 'Poll'
+            )
     )
 GROUP BY
     role
