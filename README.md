@@ -11,10 +11,13 @@ about reservation:
 about back:
 стандартное поведение при кнопке back -- заново запустить entry
 
+about poll:
+только одна роль может быть на одном опросе
+
 TO-DO list:
 
-- [ ] polls
-- [ ] listener time probably
+- [ ] polls checking
+- [ ] listener time probably (в работе)
 - [ ] points (spend)
 - [ ] roles groups + boards\albums
 - [ ] configuration with or without confirmation reservations
@@ -45,3 +48,8 @@ done:
 - [x] система прав (пока достаточно)
 - [x] deadline + member system 
 - [x] notify users without breaking flow (notify only when stack is empty?)
+- [x] postponed posts are handled
+- [x] use context properly
+- [x] db polls
+- [x] create polls
+- [x] listen to new polls
