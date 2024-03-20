@@ -116,3 +116,7 @@ func (db *DB) Exec(query string, args ...interface{}) (sql.Result, error) {
 
 	return db.sql.Exec(query, args...)
 }
+
+func (db *DB) NewTransaction() (*sqlx.Tx, error) {
+	return db.sql.Beginx()
+}
