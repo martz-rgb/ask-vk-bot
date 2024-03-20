@@ -23,11 +23,12 @@ func NewDB(connection string) (*DB, error) {
 	// TO-DO: make Sprintf prettier?..
 	db, err := sqlx.Open("sqlite3", fmt.Sprintf("%s?_fk=true", connection))
 	if err != nil {
-		return nil, err
+		return nil, zaperr.Wrap(err, "failed to open sqlite3 connection",
+			zap.String("connection", connection))
 	}
 
 	if err := db.Ping(); err != nil {
-		return nil, err
+		return nil, zaperr.Wrap(err, "failed to ping database")
 	}
 
 	return &DB{
@@ -60,14 +61,15 @@ func (db *DB) Init(filename string, allow_deletion bool) error {
 func (db *DB) LoadCsv(name string) error {
 	file, err := os.Open(name)
 	if err != nil {
-		return err
+		return zaperr.Wrap(err, "failed to open csv file",
+			zap.String("filename", name))
 	}
 	defer file.Close()
 
 	reader := csv.NewReader(file)
 	content, err := reader.ReadAll()
 	if err != nil {
-		return err
+		return zaperr.Wrap(err, "failed to read all content from csv file")
 	}
 
 	// delete header row
@@ -77,19 +79,21 @@ func (db *DB) LoadCsv(name string) error {
 		(name, tag, shown_name, accusative_name, caption_name)
 		VALUES (?, ?, ?, ?, ?)`)
 	if err != nil {
-		return err
+		return zaperr.Wrap(err, "failed to prepare sql statement for csv")
 	}
 
 	tx, err := db.sql.Begin()
 	if err != nil {
-		return err
+		return zaperr.Wrap(err, "failed to begin sql transaction")
 	}
 
 	for _, record := range content {
 		_, err := tx.Stmt(stmt).Exec(record[0], record[1], record[2], record[3], record[4])
 		if err != nil {
 			tx.Rollback()
-			return err
+			return zaperr.Wrap(err, "failed to execute statement in transaction",
+				zap.Any("stmt", stmt),
+				zap.Any("record", record))
 		}
 	}
 

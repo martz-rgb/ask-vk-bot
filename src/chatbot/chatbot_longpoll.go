@@ -6,8 +6,6 @@ import (
 	"sync"
 
 	"github.com/SevereCloud/vksdk/v2/events"
-	"github.com/hori-ryota/zaperr"
-	"go.uber.org/zap"
 )
 
 func (bot *Chatbot) Run(ctx context.Context, wg *sync.WaitGroup) {
@@ -63,8 +61,7 @@ func (bot *Chatbot) Work(ctx context.Context, user_id int, obj interface{}) erro
 
 	err := chat.Work(bot.controls, obj, existed)
 	if err != nil {
-		return zaperr.Wrap(err, "",
-			zap.String("state", chat.stack.Peek().ID()))
+		return err
 	}
 	return nil
 }

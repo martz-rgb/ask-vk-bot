@@ -7,6 +7,7 @@ import (
 	"time"
 
 	"github.com/SevereCloud/vksdk/v2/events"
+	"github.com/hori-ryota/zaperr"
 	"go.uber.org/zap"
 )
 
@@ -110,7 +111,8 @@ func (c *Chat) work(controls *states.Controls, input interface{}, existed bool) 
 		payload, err := vk.UnmarshalPayload(event.Payload)
 		if err != nil {
 			c.Reset(controls)
-			return err
+			return zaperr.Wrap(err, "failed to unmarshal payload",
+				zap.Any("payload", event.Payload))
 		}
 
 		// skip

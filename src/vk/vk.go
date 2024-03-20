@@ -10,6 +10,8 @@ import (
 	"github.com/SevereCloud/vksdk/v2/api"
 	"github.com/SevereCloud/vksdk/v2/longpoll-bot"
 	"github.com/awnumar/memguard"
+	"github.com/hori-ryota/zaperr"
+	"go.uber.org/zap"
 )
 
 // api.VK is based on http.Client and http.Client is claimed to be concurrency safe
@@ -23,13 +25,14 @@ type VK struct {
 func NewFromFile(name string, id int) (*VK, error) {
 	file, err := os.Open(name)
 	if err != nil {
-		return nil, err
+		return nil, zaperr.Wrap(err, "failed to open file to create new VK",
+			zap.String("filename", name))
 	}
 	defer file.Close()
 
 	token, err := memguard.NewBufferFromEntireReader(file)
 	if err != nil {
-		return nil, err
+		return nil, zaperr.Wrap(err, "failed create new memguard buffer from file")
 	}
 	defer token.Destroy()
 
