@@ -20,7 +20,7 @@ TO-DO list:
 - [ ] listener time probably (в работе)
 - [ ] points (spend)
 - [ ] roles groups + boards\albums
-- [ ] configuration with or without confirmation reservations
+- [ ] some env package to easily parse?
 - [ ] use context in nodes
 - [ ] manage secrets with docker swarm? 
 - [ ] longpoll quit silently if no internet connection
@@ -53,3 +53,4 @@ done:
 - [x] db polls
 - [x] create polls
 - [x] listen to new polls
+- [x] configuration with or without confirmation reservations
