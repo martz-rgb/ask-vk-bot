@@ -76,6 +76,10 @@ func (a *Ask) AddReservation(role string, vk_id int, info int) error {
 		Set("vk_id", vk_id).
 		Set("info", info)
 
+	if a.config.NoConfirmReservation {
+		query.Set("is_confirmed", 1)
+	}
+
 	_, err := a.db.Exec(query.String(), query.Args()...)
 	if err != nil {
 		return zaperr.Wrap(err, "failed to add reservation",
@@ -178,16 +182,43 @@ func (a *Ask) ChangeReservationDeadline(id int, deadline time.Time) error {
 func (a *Ask) ConfirmReservation(id int) (time.Time, error) {
 	deadline := a.CalculateReservationDeadline()
 
-	query := sqlf.Update("reservations").
-		Set("deadline", deadline).
+	confirm_query := sqlf.Update("reservations").
 		Set("is_confirmed", 1).
 		Where("id = ?", id)
+	deadline_query := sqlf.With("updated_role",
+		sqlf.From("reservations").
+			Select("role").
+			Where("id = ?", id)).
+		Update("reservations").
+		Set("deadline", deadline).
+		Where("role IN updated_role")
 
-	_, err := a.db.Exec(query.String(), query.Args()...)
+	tx, err := a.db.NewTransaction()
 	if err != nil {
+		return time.Time{}, zaperr.Wrap(err, "failed to begin new transaction",
+			zap.String("reason", "confirm reservation"))
+	}
+
+	_, err = tx.Exec(confirm_query.String(), confirm_query.Args()...)
+	if err != nil {
+		tx.Rollback()
 		return time.Time{}, zaperr.Wrap(err, "failed to confirm reservation",
-			zap.String("query", query.String()),
-			zap.Any("args", query.Args()))
+			zap.String("query", confirm_query.String()),
+			zap.Any("args", confirm_query.Args()))
+	}
+
+	_, err = tx.Exec(deadline_query.String(), deadline_query.Args()...)
+	if err != nil {
+		tx.Rollback()
+		return time.Time{}, zaperr.Wrap(err, "failed to update reservations' deadline",
+			zap.String("query", deadline_query.String()),
+			zap.Any("args", deadline_query.Args()))
+	}
+
+	err = tx.Commit()
+	if err != nil {
+		return time.Time{}, zaperr.Wrap(err, "failed to commit transaction",
+			zap.String("reason", "confirm reservation"))
 	}
 
 	return deadline, nil

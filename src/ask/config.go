@@ -18,9 +18,10 @@ type OrganizationHashtags struct {
 }
 
 type Config struct {
-	Timezone            int           `json:"ASK_TIMEZONE"`
-	Deadline            time.Duration `json:"ASK_DEADLINE"`
-	ReservationDuration time.Duration `json:"ASK_RESERVATION_DURATION"`
+	Timezone             int           `json:"ASK_TIMEZONE"`
+	Deadline             time.Duration `json:"ASK_DEADLINE"`
+	ReservationDuration  time.Duration `json:"ASK_RESERVATION_DURATION"`
+	NoConfirmReservation bool          `json:"ASK_NO_CONFIRM_RESERVATION"`
 
 	OrganizationHashtags
 }
@@ -42,10 +43,18 @@ func ConfigFromEnv() *Config {
 			"reservation duration", os.Getenv("ASK_RESERVATION_DURATION"))
 	}
 
+	no_confirm_reservation, err := strconv.ParseBool(os.Getenv("ASK_NO_CONFIRM_RESERVATION"))
+	if err != nil {
+		zap.S().Warnw("failed to parse no confirm reservation",
+			"error", err,
+			"reservation duration", os.Getenv("ASK_NO_CONFIRM_RESERVATION"))
+	}
+
 	return &Config{
-		Timezone:            timezone,
-		Deadline:            deadline,
-		ReservationDuration: reservation,
+		Timezone:             timezone,
+		Deadline:             deadline,
+		ReservationDuration:  reservation,
+		NoConfirmReservation: no_confirm_reservation,
 
 		// hashtags
 		OrganizationHashtags: OrganizationHashtags{
@@ -66,6 +75,9 @@ func (c *Config) Validate() error {
 	if c.ReservationDuration == 0 {
 		return errors.New("ask reservation duration is not provided")
 	}
+
+	// no confirm reservation default is false
+
 	if len(c.PollHashtag) == 0 {
 		return errors.New("ask poll hashtag is not provided")
 	}
