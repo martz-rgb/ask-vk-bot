@@ -6,7 +6,6 @@ import (
 	"fmt"
 	"io"
 	"os"
-	"sync"
 
 	"github.com/hori-ryota/zaperr"
 	"github.com/jmoiron/sqlx"
@@ -15,20 +14,25 @@ import (
 )
 
 type DB struct {
-	write sync.Mutex
-	sql   *sqlx.DB
+	sql *sqlx.DB
 }
 
 func NewDB(connection string) (*DB, error) {
-	// TO-DO: make Sprintf prettier?..
-	db, err := sqlx.Open("sqlite3", fmt.Sprintf("%s?_fk=true", connection))
+	// add parameters
+
+	// enable foreign key constaints
+	// enable write ahead log and synchronization to normal
+	// transaction locking to immediate mode
+	conn_with_params := fmt.Sprintf("%s?_foreign_keys=true&_journal_mode=WAL&_synchronous=NORMAL&_txlock=immediate", connection)
+
+	db, err := sqlx.Open("sqlite3", conn_with_params)
 	if err != nil {
-		return nil, zaperr.Wrap(err, "failed to open sqlite3 connection",
+		return nil, zaperr.Wrap(err, "failed to open sqlite3 read",
 			zap.String("connection", connection))
 	}
 
 	if err := db.Ping(); err != nil {
-		return nil, zaperr.Wrap(err, "failed to ping database")
+		return nil, zaperr.Wrap(err, "failed to ping read database")
 	}
 
 	return &DB{
@@ -56,6 +60,22 @@ func (db *DB) Init(filename string, allow_deletion bool) error {
 	}
 
 	return nil
+}
+
+func (db *DB) Select(dest interface{}, query string, args ...interface{}) error {
+	return db.sql.Select(dest, query, args...)
+}
+
+func (db *DB) Get(dest interface{}, query string, args ...interface{}) error {
+	return db.sql.Get(dest, query, args...)
+}
+
+func (db *DB) Exec(query string, args ...interface{}) (sql.Result, error) {
+	return db.sql.Exec(query, args...)
+}
+
+func (db *DB) NewTransaction() (*sqlx.Tx, error) {
+	return db.sql.Beginx()
 }
 
 func (db *DB) LoadCsv(name string) error {
@@ -98,25 +118,4 @@ func (db *DB) LoadCsv(name string) error {
 	}
 
 	return tx.Commit()
-}
-
-// read-only is concurrency safe
-func (db *DB) Select(dest interface{}, query string, args ...interface{}) error {
-	return db.sql.Select(dest, query, args...)
-}
-
-func (db *DB) Get(dest interface{}, query string, args ...interface{}) error {
-	return db.sql.Get(dest, query, args...)
-}
-
-// write is not concurrency safe
-func (db *DB) Exec(query string, args ...interface{}) (sql.Result, error) {
-	db.write.Lock()
-	defer db.write.Unlock()
-
-	return db.sql.Exec(query, args...)
-}
-
-func (db *DB) NewTransaction() (*sqlx.Tx, error) {
-	return db.sql.Beginx()
 }
