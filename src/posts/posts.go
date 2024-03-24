@@ -64,7 +64,7 @@ func (p *Post) complete(dictionary []ask.Role, organization *ask.OrganizationHas
 
 	count := 0
 
-	if slices.Contains[[]string](p.Tags, organization.PollHashtag) {
+	if slices.Contains(p.Tags, organization.PollHashtag) {
 		kind = Poll
 		count++
 
@@ -72,11 +72,11 @@ func (p *Post) complete(dictionary []ask.Role, organization *ask.OrganizationHas
 			kind = Invalid
 		}
 	}
-	if slices.Contains[[]string](p.Tags, organization.FreeAnswerHashtag) {
+	if slices.Contains(p.Tags, organization.FreeAnswerHashtag) {
 		kind = FreeAnswer
 		count++
 	}
-	if slices.Contains[[]string](p.Tags, organization.LeavingHashtag) {
+	if slices.Contains(p.Tags, organization.LeavingHashtag) {
 		kind = Leaving
 		count++
 	}
@@ -92,7 +92,7 @@ func FindRoles(tags []string, dictionary []ask.Role) []ask.Role {
 	var found []ask.Role
 
 	for _, t := range tags {
-		index, ok := slices.BinarySearchFunc[[]ask.Role](
+		index, ok := slices.BinarySearchFunc(
 			dictionary,
 			t,
 			func(r ask.Role, s string) int {
