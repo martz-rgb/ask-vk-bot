@@ -156,19 +156,19 @@ func (db *DB) Migrate(schema string, allow_deletion bool) error {
 	}
 
 	// migrate indices, triggers and views
-	err = db.migrateObjects("index", desired, allow_deletion)
+	err = db.migrateObjects("index", desired)
 	if err != nil {
 		transaction.Rollback()
 		return err
 	}
 
-	err = db.migrateObjects("trigger", desired, allow_deletion)
+	err = db.migrateObjects("trigger", desired)
 	if err != nil {
 		transaction.Rollback()
 		return err
 	}
 
-	err = db.migrateObjects("view", desired, allow_deletion)
+	err = db.migrateObjects("view", desired)
 	if err != nil {
 		transaction.Rollback()
 		return err
@@ -310,7 +310,7 @@ func (db *DB) migrateModified(desired *sqlx.DB, table Object, allow_deletion boo
 	return nil
 }
 
-func (db *DB) migrateObjects(kind string, desired *sqlx.DB, allow_deletion bool) error {
+func (db *DB) migrateObjects(kind string, desired *sqlx.DB) error {
 	actual_objects := []Object{}
 	desired_objects := []Object{}
 
