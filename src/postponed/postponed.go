@@ -2,6 +2,7 @@ package postponed
 
 import (
 	"ask-bot/src/ask"
+	"ask-bot/src/ask/schedule"
 	"ask-bot/src/posts"
 	"ask-bot/src/vk"
 	"context"
@@ -28,6 +29,8 @@ type Postponed struct {
 	c    *Controls
 	tick time.Duration
 
+	cache []posts.Post
+
 	log *zap.SugaredLogger
 }
 
@@ -37,6 +40,7 @@ func New(c *Controls, tick time.Duration, log *zap.SugaredLogger) (*Postponed, c
 		make(chan bool),
 		c,
 		tick,
+		nil,
 		log,
 	}
 	return p, p.notify
@@ -89,17 +93,17 @@ func (postponed *Postponed) update() error {
 	if err != nil {
 		return err
 	}
-	slices.SortFunc[[]ask.Poll](db_polls, func(a, b ask.Poll) int {
+	slices.SortFunc(db_polls, func(a, b ask.Poll) int {
 		return strings.Compare(a.Role.Name, b.Role.Name)
 	})
 
-	// update info about vk postponed posts
-
+	// info about vk postponed posts
 	vk_postponed, err := postponed.c.Vk.PostponedPosts()
 	if err != nil {
 		return err
 	}
 	postponed_posts := posts.ParseMany(vk_postponed, dictionary, &organization)
+	postponed.cache = postponed_posts
 
 	for _, post := range postponed_posts {
 		switch post.Kind {
@@ -108,7 +112,7 @@ func (postponed *Postponed) update() error {
 				postponed.log.Infow("found invalid poll",
 					"poll", post)
 
-				postponed.c.Vk.DeletePost(post.Vk.ID)
+				postponed.c.Vk.DeletePost(post.ID)
 				if err != nil {
 					return err
 				}
@@ -123,7 +127,7 @@ func (postponed *Postponed) update() error {
 				postponed.log.Infow("found unwanted poll",
 					"poll", post)
 
-				err = postponed.c.Vk.DeletePost(post.Vk.ID)
+				err = postponed.c.Vk.DeletePost(post.ID)
 				if err != nil {
 					return err
 				}
@@ -135,11 +139,35 @@ func (postponed *Postponed) update() error {
 	}
 
 	// create polls which are new
-	for _, poll := range db_polls {
-		err = postponed.createPoll(&poll, &organization)
+
+	// find enough slots
+	begin := time.Now()
+	end := begin.AddDate(0, 0, 14)
+
+	slots := []time.Time{}
+	for len(slots) < len(db_polls) {
+		slots, err = postponed.c.Ask.Schedule(ask.TimeslotKinds.Polls, begin, end)
 		if err != nil {
 			return err
 		}
+		slots = schedule.ExcludeSchedule(slots, posts.ToTime(postponed.cache))
+		end = end.AddDate(0, 0, 14)
+	}
+
+	for i, poll := range db_polls {
+		id, err := postponed.createPoll(&poll, slots[i], &organization)
+		if err != nil {
+			return err
+		}
+
+		// add to cache
+		postponed.cache = append(postponed.cache, posts.Post{
+			Tags:  []string{organization.PollHashtag, poll.Hashtag},
+			Kind:  posts.Poll,
+			Roles: []ask.Role{poll.Role},
+			ID:    id,
+			Date:  slots[i],
+		})
 	}
 
 	return nil
@@ -158,13 +186,13 @@ func (postponed *Postponed) markPoll(polls *[]ask.Poll, role string) bool {
 	return true
 }
 
-func (postponed *Postponed) createPoll(poll *ask.Poll, organization_tags *ask.OrganizationHashtags) error {
+func (postponed *Postponed) createPoll(poll *ask.Poll, date time.Time, organization *ask.OrganizationHashtags) (int, error) {
 	//  create vk post
 
 	postponed.log.Infow("creating new poll",
 		"poll", poll)
 
-	message := fmt.Sprintf("%s %s\nГолосование на %s!", organization_tags.PollHashtag, poll.Hashtag, poll.Role.Name)
+	message := fmt.Sprintf("%s %s\nГолосование на %s!", organization.PollHashtag, poll.Hashtag, poll.Role.Name)
 
 	var attachments []string
 
@@ -175,13 +203,13 @@ func (postponed *Postponed) createPoll(poll *ask.Poll, organization_tags *ask.Or
 		for _, image := range images {
 			file, err := http.Get(image)
 			if err != nil {
-				return zaperr.Wrap(err, "failed to download image",
+				return 0, zaperr.Wrap(err, "failed to download image",
 					zap.String("url", image))
 			}
 
 			photos, err := postponed.c.Vk.UploadPhotoToWall(file.Body)
 			if err != nil {
-				return err
+				return 0, err
 			}
 
 			for _, photo := range photos {
@@ -191,23 +219,21 @@ func (postponed *Postponed) createPoll(poll *ask.Poll, organization_tags *ask.Or
 		}
 	}
 
-	post_time := time.Now().Add(3 * time.Hour)
-
 	// add config for poll duration
-	vk_poll, err := postponed.c.Vk.CreatePoll("Берем?", []string{"Конечно!", "Нет."}, true, post_time.Add(24*time.Hour).Unix())
+	vk_poll, err := postponed.c.Vk.CreatePoll("Берем?", []string{"Конечно!", "Нет."}, true, date.Add(24*time.Hour).Unix())
 	if err != nil {
-		return err
+		return 0, err
 	}
 	attachments = append(attachments, fmt.Sprintf("poll%d_%d", vk_poll.OwnerID, vk_poll.ID))
 
-	id, err := postponed.c.Vk.CreatePost(message, strings.Join(attachments, ","), false, post_time.Unix())
+	id, err := postponed.c.Vk.CreatePost(message, strings.Join(attachments, ","), false, date.Unix())
 	if err != nil {
-		return err
+		return 0, err
 	}
 
 	postponed.log.Infow("created new poll",
 		"poll", poll,
 		"id", id)
 
-	return nil
+	return id, nil
 }

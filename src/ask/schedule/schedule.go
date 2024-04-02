@@ -89,12 +89,10 @@ func MergeDatetime(date time.Time, moment time.Time) time.Time {
 }
 
 func compare(a time.Time, b time.Time) int {
-	if a.Before(b) {
-		return -1
-	}
-
 	if a.After(b) {
 		return 1
+	} else if a.Before(b) {
+		return -1
 	}
 
 	return 0
@@ -125,6 +123,30 @@ func MergeSchedules(a []time.Time, b []time.Time) (result []time.Time) {
 
 	if j < len(b) {
 		result = append(result, b[j:]...)
+	}
+
+	return result
+}
+
+func ExcludeSchedule(a []time.Time, b []time.Time) (result []time.Time) {
+	i, j := 0, 0
+
+	for i < len(a) && j < len(b) {
+		if compare(a[i], b[j]) == 0 {
+			i, j = i+1, j+1
+			continue
+		}
+
+		if compare(a[i], b[j]) < 0 {
+			result = append(result, a[i])
+			i = i + 1
+		} else {
+			j = j + 1
+		}
+	}
+
+	if i < len(a) {
+		result = append(result, a[i:]...)
 	}
 
 	return result

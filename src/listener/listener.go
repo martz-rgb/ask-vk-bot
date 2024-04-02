@@ -95,7 +95,7 @@ func (l *Listener) NewPost(vk_post *object.WallWallpost) error {
 			break
 		}
 
-		err := l.c.Ask.AddOngoingPoll(post.Vk.ID, post.Roles[0].Name)
+		err := l.c.Ask.AddOngoingPoll(post.ID, post.Roles[0].Name)
 		if err != nil {
 			return err
 		}

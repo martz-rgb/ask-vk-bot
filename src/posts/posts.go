@@ -5,6 +5,7 @@ import (
 	"regexp"
 	"slices"
 	"strings"
+	"time"
 
 	"github.com/SevereCloud/vksdk/v2/object"
 )
@@ -25,13 +26,18 @@ type Post struct {
 	Kind  Kind
 	Roles []ask.Role
 
-	Vk *object.WallWallpost
+	ID   int
+	Date time.Time
+
+	// Vk *object.WallWallpost
 }
 
 func Parse(vk_post *object.WallWallpost, dictionary []ask.Role, organization *ask.OrganizationHashtags) *Post {
 	post := &Post{
 		Tags: regexp.MustCompile(`#([\w@]+)`).FindAllString(vk_post.Text, -1),
-		Vk:   vk_post,
+		ID:   vk_post.ID,
+		Date: time.Unix(int64(vk_post.Date), 0),
+		//Vk:   vk_post,
 	}
 
 	post.complete(dictionary, organization)
@@ -44,7 +50,9 @@ func ParseMany(vk_posts []object.WallWallpost, dictionary []ask.Role, organizati
 
 	for i, vk_post := range vk_posts {
 		posts[i].Tags = regexp.MustCompile(`#([\w@]+)`).FindAllString(vk_post.Text, -1)
-		posts[i].Vk = &vk_posts[i]
+		posts[i].ID = vk_post.ID
+		posts[i].Date = time.Unix(int64(vk_post.Date), 0)
+		//posts[i].Vk = &vk_posts[i]
 
 		posts[i].complete(dictionary, organization)
 	}
@@ -105,4 +113,23 @@ func FindRoles(tags []string, dictionary []ask.Role) []ask.Role {
 	}
 
 	return found
+}
+
+func ToTime(posts []Post) []time.Time {
+	var result []time.Time
+	for _, p := range posts {
+		result = append(result, p.Date)
+	}
+
+	slices.SortFunc(result, func(a, b time.Time) int {
+		if a.After(b) {
+			return 1
+		} else if a.Before(b) {
+			return -1
+		}
+
+		return 0
+	})
+
+	return result
 }
