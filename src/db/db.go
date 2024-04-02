@@ -21,9 +21,8 @@ func NewDB(connection string) (*DB, error) {
 	// add parameters
 
 	// enable foreign key constaints
-	// enable write ahead log and synchronization to normal
-	// transaction locking to immediate mode
-	conn_with_params := fmt.Sprintf("%s?_foreign_keys=true&_journal_mode=WAL&_synchronous=NORMAL&_txlock=immediate", connection)
+	// enable write ahead log
+	conn_with_params := fmt.Sprintf("%s?_foreign_keys=true", connection)
 
 	db, err := sqlx.Open("sqlite3", conn_with_params)
 	if err != nil {
