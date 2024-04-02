@@ -4,6 +4,7 @@ import (
 	"ask-bot/src/ask/schedule"
 	"database/sql/driver"
 	"errors"
+	"slices"
 	"strings"
 	"time"
 
@@ -83,8 +84,8 @@ func (a *Ask) Schedule(kind TimeslotKind, begin time.Time, end time.Time) ([]tim
 	}
 
 	// format begin\end time
-	begin = begin.In(time.UTC)
-	end = end.In(time.UTC)
+	begin = begin.In(time.UTC).Add(a.timezone)
+	end = end.In(time.UTC).Add(a.timezone)
 
 	// get schedules
 	var schedules []time.Time
@@ -99,8 +100,16 @@ func (a *Ask) Schedule(kind TimeslotKind, begin time.Time, end time.Time) ([]tim
 					zap.String("time point", s))
 			}
 			// time in database in correct timezone, but it is considered in UTC
-			points = append(points, point.Add(-a.timezone))
+			points = append(points, point)
 		}
+		slices.SortFunc(points, func(a, b time.Time) int {
+			if a.After(b) {
+				return 1
+			} else if a.Before(b) {
+				return -1
+			}
+			return 0
+		})
 
 		s, err := schedule.Schedule(timeslot.Query, points, begin, end)
 		if err != nil {
@@ -109,6 +118,11 @@ func (a *Ask) Schedule(kind TimeslotKind, begin time.Time, end time.Time) ([]tim
 				zap.Any("time points", points),
 				zap.Time("begin", begin),
 				zap.Time("end", end))
+		}
+
+		// from "desired time in local zone but in utc" to real time in utc to be equal in desired location
+		for i := range s {
+			s[i] = s[i].Add(-a.timezone)
 		}
 
 		schedules = schedule.MergeSchedules(schedules, s)
