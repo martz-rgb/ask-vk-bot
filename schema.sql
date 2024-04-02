@@ -73,6 +73,22 @@ VALUES
 
 END;
 
+CREATE TABLE IF NOT EXISTS schedule (
+    -- alias to rowid
+    id INTEGER PRIMARY KEY NOT NULL,
+    kind TEXT CHECK (
+        kind IN (
+            'Polls',
+            'Greetings',
+            'Answers',
+            'Free Answers',
+            'Leavings'
+        )
+    ) NOT NULL,
+    query TEXT NOT NULL,
+    time_points TEXT NOT NULL
+);
+
 CREATE TABLE IF NOT EXISTS reservations (
     -- alias to rowid
     id INTEGER PRIMARY KEY NOT NULL,

@@ -6,7 +6,7 @@ import (
 
 type TimeslotError error
 
-func Schedule(timeslot string, times []time.Time, begin time.Time, end time.Time) ([]time.Time, error) {
+func Schedule(timeslot string, time_points []time.Time, begin time.Time, end time.Time) ([]time.Time, error) {
 	lexems, err := toLexemes(timeslot)
 	if err != nil {
 		return nil, err
@@ -69,8 +69,8 @@ func Schedule(timeslot string, times []time.Time, begin time.Time, end time.Time
 
 	var schedule []time.Time
 	for i := range slots {
-		for j := range times {
-			slot := MergeDatetime(slots[i], times[j])
+		for j := range time_points {
+			slot := MergeDatetime(slots[i], time_points[j])
 
 			if compare(slot, begin) >= 0 && compare(slot, end) < 0 {
 				schedule = append(schedule, slot)
@@ -98,4 +98,34 @@ func compare(a time.Time, b time.Time) int {
 	}
 
 	return 0
+}
+
+func MergeSchedules(a []time.Time, b []time.Time) (result []time.Time) {
+	i, j := 0, 0
+
+	for i < len(a) && j < len(b) {
+		if compare(a[i], b[j]) == 0 {
+			result = append(result, a[i])
+			i, j = i+1, j+1
+			continue
+		}
+
+		if compare(a[i], b[j]) < 0 {
+			result = append(result, a[i])
+			i = i + 1
+		} else {
+			result = append(result, b[j])
+			j = j + 1
+		}
+	}
+
+	if i < len(a) {
+		result = append(result, a[i:]...)
+	}
+
+	if j < len(b) {
+		result = append(result, b[j:]...)
+	}
+
+	return result
 }
