@@ -3,7 +3,7 @@ about logging:
 2) if there is an error from this project's parts (like *Ask, *VK and others), it should be taken as it is without wrapping
 
 about timezone:
-даты в базе данных лежат в UTC и не зависят от часового пояса аска. Слой аска же выдает даты в нужном часовом поясе.
+даты в базе данных лежат в UTC формате, но означают время в таймзоне аска. Аск сам пересчитывает даты, чтобы они были правильные в реальном мире
 
 about reservation:
 не больше одной брони на человека?

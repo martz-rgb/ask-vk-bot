@@ -76,9 +76,15 @@ func (a *Ask) Schedule(kind TimeslotKind, begin time.Time, end time.Time) ([]tim
 			zap.Any("args", query.Args()))
 	}
 
+	if len(timeslots) == 0 {
+		err = errors.New("no such kind in schedule")
+		return nil, zaperr.Wrap(err, "",
+			zap.String("kind", string(kind)))
+	}
+
 	// format begin\end time
-	begin = begin.In(time.UTC).Add(a.timezone)
-	end = end.In(time.UTC).Add(a.timezone)
+	begin = begin.In(time.UTC)
+	end = end.In(time.UTC)
 
 	// get schedules
 	var schedules []time.Time
@@ -92,7 +98,8 @@ func (a *Ask) Schedule(kind TimeslotKind, begin time.Time, end time.Time) ([]tim
 				return nil, zaperr.Wrap(err, "failed to parse time point",
 					zap.String("time point", s))
 			}
-			points = append(points, point)
+			// time in database in correct timezone, but it is considered in UTC
+			points = append(points, point.Add(-a.timezone))
 		}
 
 		s, err := schedule.Schedule(timeslot.Query, points, begin, end)
