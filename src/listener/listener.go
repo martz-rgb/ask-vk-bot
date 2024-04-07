@@ -43,6 +43,9 @@ func New(
 func (l *Listener) Run(ctx context.Context, wg *sync.WaitGroup) {
 	defer wg.Done()
 
+	wg.Add(1)
+	go l.RunDB(ctx, wg)
+
 	lp, err := l.c.Group.NewLongPoll()
 	if err != nil {
 		l.log.Errorw("failed to run listener longpoll",

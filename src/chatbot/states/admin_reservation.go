@@ -205,7 +205,7 @@ func (state *AdminReservation) Back(user *User, c *Controls, info *ExitInfo) (*A
 				reservation.AccusativeName,
 				deadline)
 		} else {
-			err := c.Ask.DeleteReservation(reservation.Id)
+			err := c.Ask.DeleteReservationById(reservation.Id)
 			if err != nil {
 				return nil, err
 			}
@@ -234,7 +234,7 @@ func (state *AdminReservation) Back(user *User, c *Controls, info *ExitInfo) (*A
 			return nil, err
 		}
 
-		err = c.Ask.DeleteReservation(reservation.Id)
+		err = c.Ask.DeleteReservationById(reservation.Id)
 		if err != nil {
 			return nil, err
 		}

@@ -184,7 +184,7 @@ func (state *ReservationManage) Back(user *User, c *Controls, info *ExitInfo) (*
 		}
 
 		if answer {
-			err := c.Ask.DeleteReservation(state.details.Id)
+			err := c.Ask.DeleteReservationById(state.details.Id)
 			if err != nil {
 				return nil, err
 			}
