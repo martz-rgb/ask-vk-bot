@@ -7,6 +7,7 @@ import (
 	"time"
 )
 
+// TO-DO: tests for merge and exclude schedules?
 func TestLexemesWeekday(t *testing.T) {
 	query := "first Mondays"
 	expected := []Lexem{

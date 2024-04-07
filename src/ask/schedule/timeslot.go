@@ -17,7 +17,7 @@ type EverydayTimeslot struct{}
 func (m *EverydayTimeslot) Slots(begin time.Time, end time.Time) (dates []time.Time) {
 	date := time.Date(begin.Year(), begin.Month(), begin.Day(), 0, 0, 0, 0, time.UTC)
 
-	for compare(date, end) < 0 {
+	for date.Compare(end) < 0 {
 		dates = append(dates, date)
 		date = date.AddDate(0, 0, 1)
 	}
@@ -37,7 +37,7 @@ func (t *EveryTimeslot) Slots(begin time.Time, end time.Time) (dates []time.Time
 
 	date := begin.AddDate(0, 0, diff)
 
-	for compare(date, end) < 0 {
+	for date.Compare(end) < 0 {
 		dates = append(dates, date)
 		date = date.AddDate(0, 0, 7)
 	}
@@ -63,8 +63,8 @@ func (t *NumberTimeslot) Slots(begin time.Time, end time.Time) (dates []time.Tim
 	year, month, _ := begin.Date()
 	date := t.findDate(year, month)
 
-	for compare(date, end) < 0 {
-		if compare(date, begin) >= 0 {
+	for date.Compare(end) < 0 {
+		if date.Compare(begin) >= 0 {
 			dates = append(dates, date)
 		}
 
@@ -116,7 +116,7 @@ func (t *OrderTimeslot) Slots(begin time.Time, end time.Time) (dates []time.Time
 	for iter.Before(end) {
 		date := t.findDate(iter.Year(), iter.Month())
 		for _, d := range date {
-			if compare(d, begin) >= 0 && compare(d, end) < 0 {
+			if d.Compare(begin) >= 0 && d.Compare(end) < 0 {
 				dates = append(dates, d)
 			}
 		}
@@ -139,7 +139,7 @@ func (t *MultipleWeekdayTimeslot) Slots(begin time.Time, end time.Time) (dates [
 	}
 	date := begin.AddDate(0, 0, diff)
 
-	for compare(date, end) < 0 {
+	for date.Compare(end) < 0 {
 		_, week := date.ISOWeek()
 
 		if slices.Contains(t.Residue, week%t.Module) {
@@ -185,7 +185,7 @@ func (t *MultipleDailyTimeslot) Slots(begin time.Time, end time.Time) (dates []t
 
 	date := time.Date(begin.Year(), begin.Month(), begin.Day(), 0, 0, 0, 0, time.UTC)
 
-	for compare(date, end) < 0 {
+	for date.Compare(end) < 0 {
 		if slices.Contains(t.Residue, index(date)%t.Module) {
 			dates = append(dates, date)
 		}
