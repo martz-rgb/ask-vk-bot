@@ -26,6 +26,7 @@ TO-DO list:
 thoughts and long-term:
 
 - [ ] use context in nodes
+- [ ] print in log unsended 
 - [ ] manage secrets with docker swarm? 
 - [ ] longpoll quit silently if no internet connection
 - [ ] какая-то фигня при смене клавиатуры на пк, если есть прикрепленное сообщение
@@ -60,3 +61,4 @@ done:
 - [x] listen to new polls
 - [x] configuration with or without confirmation reservations
 - [x] polls checking
+- [x] reservation deadlines
