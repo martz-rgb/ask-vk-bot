@@ -16,16 +16,21 @@ about poll:
 
 TO-DO list:
 
-- [ ] polls checking
-- [ ] listener time probably (в работе)
-- [ ] points (spend)
+- [ ] greetings (table + add from listener + create in postponed)
+- [ ] greetings mode (manual or auto)
+- [ ] notifications to admin (about new reservation if should be considerate and greetings if manual)
 - [ ] roles groups + boards\albums
-- [ ] some env package to easily parse?
+- [ ] points (spend)
+
+
+thoughts and long-term:
+
 - [ ] use context in nodes
 - [ ] manage secrets with docker swarm? 
 - [ ] longpoll quit silently if no internet connection
 - [ ] какая-то фигня при смене клавиатуры на пк, если есть прикрепленное сообщение
-- [ ] *maybe some collaborators support
+- [ ] some env package to easily parse?
+- [ ] *maybe some collaborators support (or maybe not)
 
 
 done:
@@ -54,3 +59,4 @@ done:
 - [x] create polls
 - [x] listen to new polls
 - [x] configuration with or without confirmation reservations
+- [x] polls checking
