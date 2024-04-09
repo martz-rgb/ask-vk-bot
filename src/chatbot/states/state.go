@@ -35,54 +35,48 @@ type ExitInfo struct {
 type ActionKind int
 
 const (
-	NoAction ActionKind = 0
-	Next     ActionKind = 1
-	Exit     ActionKind = 2
+	NoAction ActionKind = iota
+	Next
+	Exit
 )
 
 type Action struct {
-	kind ActionKind
-
-	next State
-	exit *ExitInfo
+	value interface{}
 }
 
 func NewActionNext(node State) *Action {
-	if node == nil {
-		return nil
-	}
-
-	return &Action{
-		kind: Next,
-		next: node,
-	}
+	return &Action{node}
 }
 
 func NewActionExit(exit *ExitInfo) *Action {
-	return &Action{
-		kind: Exit,
-		exit: exit,
-	}
+	return &Action{exit}
 }
 
 func (a *Action) Kind() ActionKind {
-	if a == nil {
+	switch a.value.(type) {
+	case State:
+		return Next
+	case *ExitInfo:
+		return Exit
+	default:
 		return NoAction
 	}
-
-	return a.kind
 }
 
 func (a *Action) Next() State {
-	if a == nil {
+	node, ok := a.value.(State)
+	if !ok {
 		return nil
 	}
-	return a.next
+
+	return node
 }
 
 func (a *Action) Exit() *ExitInfo {
-	if a == nil {
+	exit, ok := a.value.(*ExitInfo)
+	if !ok {
 		return nil
 	}
-	return a.exit
+
+	return exit
 }
