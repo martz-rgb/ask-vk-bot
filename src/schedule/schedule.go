@@ -4,9 +4,9 @@ import (
 	"time"
 )
 
-type TimeslotError error
+type Schedule []time.Time
 
-func Schedule(timeslot string, time_points []time.Time, begin time.Time, end time.Time) ([]time.Time, error) {
+func Calculate(timeslot string, time_points []time.Time, begin time.Time, end time.Time) (Schedule, error) {
 	lexems, err := toLexemes(timeslot)
 	if err != nil {
 		return nil, err
@@ -67,7 +67,7 @@ func Schedule(timeslot string, time_points []time.Time, begin time.Time, end tim
 		}
 	}
 
-	var schedule []time.Time
+	var schedule Schedule
 	for i := range slots {
 		for j := range time_points {
 			slot := MergeDatetime(slots[i], time_points[j])
@@ -88,55 +88,55 @@ func MergeDatetime(date time.Time, moment time.Time) time.Time {
 	return time.Date(year, month, day, hour, minute, second, 0, time.UTC)
 }
 
-func MergeSchedules(a []time.Time, b []time.Time) (result []time.Time) {
+func (schedule Schedule) Merge(other Schedule) (result Schedule) {
 	i, j := 0, 0
 
-	for i < len(a) && j < len(b) {
-		if a[i].Compare(b[j]) == 0 {
-			result = append(result, a[i])
+	for i < len(schedule) && j < len(other) {
+		if schedule[i].Compare(other[j]) == 0 {
+			result = append(result, schedule[i])
 			i, j = i+1, j+1
 			continue
 		}
 
-		if a[i].Compare(b[j]) < 0 {
-			result = append(result, a[i])
+		if schedule[i].Compare(other[j]) < 0 {
+			result = append(result, schedule[i])
 			i = i + 1
 		} else {
-			result = append(result, b[j])
+			result = append(result, other[j])
 			j = j + 1
 		}
 	}
 
-	if i < len(a) {
-		result = append(result, a[i:]...)
+	if i < len(schedule) {
+		result = append(result, schedule[i:]...)
 	}
 
-	if j < len(b) {
-		result = append(result, b[j:]...)
+	if j < len(other) {
+		result = append(result, other[j:]...)
 	}
 
 	return result
 }
 
-func ExcludeSchedule(a []time.Time, b []time.Time) (result []time.Time) {
+func (schedule Schedule) Exclude(other []time.Time) (result Schedule) {
 	i, j := 0, 0
 
-	for i < len(a) && j < len(b) {
-		if a[i].Compare(b[j]) == 0 {
+	for i < len(schedule) && j < len(other) {
+		if schedule[i].Compare(other[j]) == 0 {
 			i, j = i+1, j+1
 			continue
 		}
 
-		if a[i].Compare(b[j]) < 0 {
-			result = append(result, a[i])
+		if schedule[i].Compare(other[j]) < 0 {
+			result = append(result, schedule[i])
 			i = i + 1
 		} else {
 			j = j + 1
 		}
 	}
 
-	if i < len(a) {
-		result = append(result, a[i:]...)
+	if i < len(schedule) {
+		result = append(result, schedule[i:]...)
 	}
 
 	return result

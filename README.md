@@ -25,6 +25,7 @@ TO-DO list:
 
 thoughts and long-term:
 
+- [ ] add timeslot test for exclude\merge
 - [ ] use context in nodes
 - [ ] print in log unsended 
 - [ ] manage secrets with docker swarm? 

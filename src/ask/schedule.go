@@ -1,7 +1,7 @@
 package ask
 
 import (
-	"ask-bot/src/ask/schedule"
+	"ask-bot/src/schedule"
 	"database/sql/driver"
 	"errors"
 	"slices"
@@ -63,7 +63,7 @@ type Timeslot struct {
 	TimePoints string       `db:"time_points"`
 }
 
-func (a *Ask) Schedule(kind TimeslotKind, begin time.Time, end time.Time) ([]time.Time, error) {
+func (a *Ask) Schedule(kind TimeslotKind, begin time.Time, end time.Time) (schedule.Schedule, error) {
 	// get timeslots
 	var timeslots []Timeslot
 	query := sqlf.From("schedule").
@@ -88,7 +88,7 @@ func (a *Ask) Schedule(kind TimeslotKind, begin time.Time, end time.Time) ([]tim
 	end = end.In(time.UTC).Add(a.timezone)
 
 	// get schedules
-	var schedules []time.Time
+	var schedules schedule.Schedule
 	for _, timeslot := range timeslots {
 
 		var points []time.Time
@@ -111,7 +111,7 @@ func (a *Ask) Schedule(kind TimeslotKind, begin time.Time, end time.Time) ([]tim
 			return 0
 		})
 
-		s, err := schedule.Schedule(timeslot.Query, points, begin, end)
+		s, err := schedule.Calculate(timeslot.Query, points, begin, end)
 		if err != nil {
 			return nil, zaperr.Wrap(err, "failed to get schedule for timeslot",
 				zap.String("query", timeslot.Query),
@@ -125,7 +125,7 @@ func (a *Ask) Schedule(kind TimeslotKind, begin time.Time, end time.Time) ([]tim
 			s[i] = s[i].Add(-a.timezone)
 		}
 
-		schedules = schedule.MergeSchedules(schedules, s)
+		schedules = schedules.Merge(s)
 	}
 
 	return schedules, nil

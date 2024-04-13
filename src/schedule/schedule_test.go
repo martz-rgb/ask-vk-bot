@@ -862,7 +862,7 @@ func TestScheduleEasy(t *testing.T) {
 		time.Date(2024, 3, 1, 13, 0, 0, 0, time.UTC),
 	}
 
-	schedule, err := Schedule(query, times, begin, end)
+	schedule, err := Calculate(query, times, begin, end)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -891,7 +891,7 @@ func TestScheduleEasyWithBorders(t *testing.T) {
 		time.Date(2024, 3, 2, 13, 0, 0, 0, time.UTC),
 	}
 
-	schedule, err := Schedule(query, times, begin, end)
+	schedule, err := Calculate(query, times, begin, end)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -916,7 +916,7 @@ func TestScheduleExcept(t *testing.T) {
 		time.Date(2024, 3, 5, 12, 0, 0, 0, time.UTC),
 	}
 
-	schedule, err := Schedule(query, times, begin, end)
+	schedule, err := Calculate(query, times, begin, end)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -939,7 +939,7 @@ func TestScheduleMerge(t *testing.T) {
 		time.Date(2024, 3, 4, 12, 0, 0, 0, time.UTC),
 	}
 
-	schedule, err := Schedule(query, times, begin, end)
+	schedule, err := Calculate(query, times, begin, end)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -974,7 +974,7 @@ func TestScheduleComplex(t *testing.T) {
 		time.Date(2024, 3, 30, 12, 0, 0, 0, time.UTC),
 	}
 
-	schedule, err := Schedule(query, times, begin, end)
+	schedule, err := Calculate(query, times, begin, end)
 	if err != nil {
 		t.Fatal(err)
 	}

@@ -2,8 +2,8 @@ package postponed
 
 import (
 	"ask-bot/src/ask"
-	"ask-bot/src/ask/schedule"
 	"ask-bot/src/posts"
+	"ask-bot/src/schedule"
 	"fmt"
 	"net/http"
 	"slices"
@@ -59,7 +59,7 @@ func (polls *CachePolls) AddNew(c *Controls, organization *ask.OrganizationHasht
 	begin := time.Now()
 	end := begin
 
-	slots := []time.Time{}
+	slots := schedule.Schedule{}
 	// 14, 70 are heurustic values
 	for len(slots) < len(polls.new) && end.YearDay()-begin.YearDay() < 70 {
 		end = end.AddDate(0, 0, 14)
@@ -69,12 +69,12 @@ func (polls *CachePolls) AddNew(c *Controls, organization *ask.OrganizationHasht
 			return err
 		}
 
-		slots = schedule.ExcludeSchedule(slots, *busy)
+		slots = slots.Exclude(*busy)
 	}
 
 	// if too few slots, just create some and left others on later
 	for i := 0; i < len(polls.new) && i < len(slots); i++ {
-		post, err := addNewPoll(c, organization, &polls.new[i], slots[i])
+		post, err := addNewPoll(c, organization, &polls.new[i], (slots)[i])
 		if err != nil {
 			return err
 		}
