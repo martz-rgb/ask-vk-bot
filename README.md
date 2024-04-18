@@ -19,7 +19,8 @@ TO-DO list:
 - [ ] greetings (table + add from listener + create in postponed)
 - [ ] greetings mode (manual or auto)
 - [ ] notifications to admin (about new reservation if should be considerate and greetings if manual)
-- [ ] roles groups + boards\albums
+- [ ] roles groups
+- [ ] album\boards order?
 - [ ] points (spend)
 
 
@@ -63,3 +64,4 @@ done:
 - [x] configuration with or without confirmation reservations
 - [x] polls checking
 - [x] reservation deadlines
+- [x] boards\albums
