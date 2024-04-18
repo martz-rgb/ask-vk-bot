@@ -11,13 +11,13 @@ import (
 )
 
 type Role struct {
-	Name           string         `db:"name"`
-	Hashtag        string         `db:"hashtag"`
-	ShownName      string         `db:"shown_name"`
-	AccusativeName string         `db:"accusative_name"`
-	CaptionName    sql.NullString `db:"caption_name"`
-	Album          sql.NullString `db:"album_link"`
-	Board          sql.NullString `db:"board_link"`
+	Name           string        `db:"name"`
+	Hashtag        string        `db:"hashtag"`
+	ShownName      string        `db:"shown_name"`
+	AccusativeName string        `db:"accusative_name"`
+	CaptionName    string        `db:"caption_name"`
+	Album          sql.NullInt32 `db:"album"`
+	Board          sql.NullInt32 `db:"board"`
 }
 
 // TO-DO should roles be sorted alphabetically or by groups
@@ -158,4 +158,60 @@ func (a *Ask) MatchHashtags(hashtags []string) ([]MatchedHashtag, error) {
 	}
 
 	return matched, nil
+}
+
+func (a *Ask) ChangeAlbums(albums map[string]int) error {
+	keys := make([]interface{}, len(albums))
+	values := make([]string, len(albums))
+
+	index := 0
+	for key, value := range albums {
+		keys[index] = key
+		values[index] = fmt.Sprintf("WHEN '%s' THEN %d", key, value)
+
+		index++
+	}
+
+	params := strings.Repeat("?,", len(keys))
+
+	query := sqlf.Update("roles").
+		Clause(fmt.Sprintf("SET album = CASE name %s END", strings.Join(values, " "))).
+		Where(fmt.Sprintf("name IN (%s)", params[:len(params)-1]), keys...)
+
+	_, err := a.db.Exec(query.String(), query.Args()...)
+	if err != nil {
+		return zaperr.Wrap(err, "failed to change albums",
+			zap.String("query", query.String()),
+			zap.Any("args", query.Args()))
+	}
+
+	return nil
+}
+
+func (a *Ask) ChangeBoards(boards map[string]int) error {
+	keys := make([]interface{}, len(boards))
+	values := make([]string, len(boards))
+
+	index := 0
+	for key, value := range boards {
+		keys[index] = key
+		values[index] = fmt.Sprintf("WHEN '%s' THEN %d", key, value)
+
+		index++
+	}
+
+	params := strings.Repeat("?,", len(keys))
+
+	query := sqlf.Update("roles").
+		Clause(fmt.Sprintf("SET board = CASE name %s END", strings.Join(values, " "))).
+		Where(fmt.Sprintf("name IN (%s)", params[:len(params)-1]), keys...)
+
+	_, err := a.db.Exec(query.String(), query.Args()...)
+	if err != nil {
+		return zaperr.Wrap(err, "failed to change boards",
+			zap.String("query", query.String()),
+			zap.Any("args", query.Args()))
+	}
+
+	return nil
 }

@@ -66,7 +66,7 @@ func (state *RolesList) KeyboardEvent(user *User, c *Controls, payload *vk.Callb
 		}
 
 		message := fmt.Sprintf("Идентификатор: %s\nТег: %s\nИмя: %s\nПадеж: %s\nЗаголовок: %s\n",
-			role.Name, role.Hashtag, role.ShownName, role.AccusativeName, role.CaptionName.String)
+			role.Name, role.Hashtag, role.ShownName, role.AccusativeName, role.CaptionName)
 
 		_, err = c.Vk.SendMessage(user.Id, message, "", nil)
 		return nil, err

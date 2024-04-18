@@ -4,10 +4,10 @@ CREATE TABLE IF NOT EXISTS roles (
     name TEXT PRIMARY KEY NOT NULL,
     hashtag TEXT UNIQUE NOT NULL,
     shown_name TEXT NOT NULL,
-    accusative_name TEXT,
-    caption_name TEXT,
-    album_link TEXT,
-    board_link TEXT
+    accusative_name TEXT NOT NULL,
+    caption_name TEXT NOT NULL,
+    album INT,
+    board INT
 );
 
 CREATE TABLE IF NOT EXISTS info (
