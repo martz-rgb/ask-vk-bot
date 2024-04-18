@@ -26,7 +26,7 @@ type Controls states.Controls
 
 func New(c *Controls,
 	timeout time.Duration,
-	log *zap.SugaredLogger) (*Chatbot, chan *vk.MessageParams) {
+	log *zap.SugaredLogger) *Chatbot {
 	controls := (*states.Controls)(c)
 
 	bot := &Chatbot{
@@ -37,7 +37,7 @@ func New(c *Controls,
 		log:         log,
 	}
 
-	return bot, bot.controls.Notify
+	return bot
 }
 
 func (bot *Chatbot) TakeChat(user_id int, init states.State) (*Chat, bool) {

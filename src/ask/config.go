@@ -95,6 +95,6 @@ func (c *Config) Validate() error {
 	return nil
 }
 
-func (a *Ask) OrganizationHashtags() OrganizationHashtags {
-	return a.config.OrganizationHashtags
+func (a *Ask) OrganizationHashtags() *OrganizationHashtags {
+	return &a.config.OrganizationHashtags
 }

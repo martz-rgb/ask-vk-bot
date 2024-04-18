@@ -23,16 +23,9 @@ type Cache struct {
 	busy []time.Time
 }
 
-func NewCache(c *Controls) *Cache {
-	organization := c.Ask.OrganizationHashtags()
-
-	return &Cache{
-		organization: &organization,
-	}
-}
-
 func (cache *Cache) internalUpdate(c *Controls) error {
 	// TO-DO: maybe check if roles do not change somehow
+	cache.organization = c.Ask.OrganizationHashtags()
 	dictionary, err := c.Ask.RolesDictionary()
 	if err != nil {
 		return err

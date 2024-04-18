@@ -2,7 +2,6 @@ package listener
 
 import (
 	"ask-bot/src/ask"
-	"ask-bot/src/postponed"
 	"ask-bot/src/posts"
 	"ask-bot/src/vk"
 	"context"
@@ -18,9 +17,6 @@ type Controls struct {
 
 	Group *vk.VK
 	Admin *vk.VK
-
-	Postponed       *postponed.Postponed
-	UpdatePostponed chan bool
 
 	NotifyUser chan *vk.MessageParams
 }
@@ -42,9 +38,6 @@ func New(
 
 func (l *Listener) Run(ctx context.Context, wg *sync.WaitGroup) {
 	defer wg.Done()
-
-	wg.Add(1)
-	go l.RunDB(ctx, wg)
 
 	lp, err := l.c.Group.NewLongPoll()
 	if err != nil {
@@ -88,7 +81,7 @@ func (l *Listener) NewPost(vk_post *object.WallWallpost) error {
 	}
 	organization := l.c.Ask.OrganizationHashtags()
 
-	post := posts.Parse(vk_post, dictionary, &organization)
+	post := posts.Parse(vk_post, dictionary, organization)
 
 	switch post.Kind {
 	case posts.Poll:

@@ -1,35 +1,14 @@
-package listener
+package watcher
 
 import (
 	"ask-bot/src/vk"
-	"context"
 	"fmt"
-	"sync"
 	"time"
 )
 
-func (l *Listener) RunDB(ctx context.Context, wg *sync.WaitGroup) {
-	defer wg.Done()
+func (c *Controls) CheckReservationsDeadline() error {
 
-	ticker := time.NewTicker(1 * time.Minute)
-
-	for {
-		select {
-		case <-ticker.C:
-			err := l.CheckReservationsDeadline()
-			if err != nil {
-				l.log.Errorw("failed to check reservation deadline",
-					"error", err)
-			}
-		case <-ctx.Done():
-			return
-		}
-	}
-}
-
-func (l *Listener) CheckReservationsDeadline() error {
-	// check reservation deadlines
-	reservations, err := l.c.Ask.InProgressReservationsDetails()
+	reservations, err := c.Ask.InProgressReservationsDetails()
 	if err != nil {
 		return err
 	}
@@ -42,7 +21,7 @@ func (l *Listener) CheckReservationsDeadline() error {
 		}
 	}
 
-	err = l.c.Ask.DeleteReservationByDeadline(now)
+	err = c.Ask.DeleteReservationByDeadline(now)
 	if err != nil {
 		return err
 	}
@@ -53,8 +32,9 @@ func (l *Listener) CheckReservationsDeadline() error {
 			Text: fmt.Sprintf("Ваша бронь на %s, к сожалению, закончилась! Вы можете забронировать роль снова или попробовать позже.",
 				reservations[notifications[i]].AccusativeName),
 		}
-		l.c.NotifyUser <- message
+		c.NotifyUser <- message
 	}
 
 	return nil
+
 }

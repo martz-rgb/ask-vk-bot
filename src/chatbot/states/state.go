@@ -3,8 +3,8 @@ package states
 import (
 	"ask-bot/src/ask"
 	"ask-bot/src/dict"
-	"ask-bot/src/postponed"
 	"ask-bot/src/vk"
+	"ask-bot/src/watcher/postponed"
 )
 
 type State interface {
