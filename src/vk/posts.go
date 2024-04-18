@@ -16,11 +16,11 @@ const (
 	NewPost       = "post"
 )
 
-func (v *VK) CreatePost(message string, attachments string, signed bool, publish_date int64) (int, error) {
+func (v *VK) CreatePost(text string, attachments string, signed bool, publish_date int64) (int, error) {
 	params := api.Params{
 		"owner_id":     v.id,
 		"from_group":   1,
-		"message":      message,
+		"message":      text,
 		"attachments":  attachments,
 		"signed":       signed,
 		"publish_date": publish_date,
