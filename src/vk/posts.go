@@ -1,6 +1,8 @@
 package vk
 
 import (
+	"fmt"
+
 	"github.com/SevereCloud/vksdk/v2/api"
 	"github.com/SevereCloud/vksdk/v2/object"
 	"github.com/hori-ryota/zaperr"
@@ -38,6 +40,31 @@ func (v *VK) CreatePost(text string, attachments string, signed bool, publish_da
 		"response", response)
 
 	return response.PostID, nil
+}
+
+func (v *VK) PostsByIds(ids []int) ([]object.WallWallpost, error) {
+	formatted_ids := make([]string, len(ids))
+
+	for i := range ids {
+		formatted_ids[i] = fmt.Sprintf("%d_%d", v.id, ids[i])
+	}
+
+	params := api.Params{
+		"posts": formatted_ids,
+	}
+
+	response, err := v.api.WallGetByID(params)
+	if err != nil {
+		return nil, zaperr.Wrap(err, "failed to get posts by ids",
+			zap.Any("params", params),
+			zap.Any("response", response))
+	}
+
+	zap.S().Debugw("successfully get posts by ids",
+		"params", params,
+		"response", response)
+
+	return response, nil
 }
 
 func (v *VK) PostponedPosts() ([]object.WallWallpost, error) {
