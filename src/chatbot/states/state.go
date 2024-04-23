@@ -3,6 +3,7 @@ package states
 import (
 	"ask-bot/src/ask"
 	"ask-bot/src/dict"
+	"ask-bot/src/events"
 	"ask-bot/src/vk"
 	"ask-bot/src/watcher/postponed"
 )
@@ -21,10 +22,11 @@ type User struct {
 }
 
 type Controls struct {
-	Ask       *ask.Ask
-	Vk        *vk.VK
-	Notify    chan *vk.MessageParams
-	Postponed *postponed.Postponed
+	Ask         *ask.Ask
+	Vk          *vk.VK
+	Notify      chan *vk.MessageParams
+	Postponed   *postponed.Postponed
+	NotifyEvent chan events.Event
 }
 
 type ExitInfo struct {

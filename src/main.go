@@ -3,6 +3,7 @@ package main
 import (
 	"ask-bot/src/ask"
 	"ask-bot/src/chatbot"
+	"ask-bot/src/events"
 	"ask-bot/src/listener"
 	"ask-bot/src/vk"
 	"ask-bot/src/watcher"
@@ -87,22 +88,25 @@ func main() {
 	// linked parts init
 	notify_user := make(chan *vk.MessageParams)
 	postponed := postponed.New()
+	notify_event := make(chan events.Event)
 
 	w := watcher.New(&watcher.Controls{
-		Ask:        a,
-		Admin:      admin,
-		Group:      group,
-		NotifyUser: notify_user,
+		Ask:         a,
+		Admin:       admin,
+		Group:       group,
+		NotifyUser:  notify_user,
+		NotifyEvent: notify_event,
 	},
 		config.UpdatePostponed,
 		postponed,
 		watcher_logger.Sugar())
 
 	c := chatbot.New(&chatbot.Controls{
-		Vk:        group,
-		Ask:       a,
-		Notify:    notify_user,
-		Postponed: postponed,
+		Vk:          group,
+		Ask:         a,
+		Notify:      notify_user,
+		Postponed:   postponed,
+		NotifyEvent: notify_event,
 	},
 		config.Timeout,
 		bot_logger.Sugar())
