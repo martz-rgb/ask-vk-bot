@@ -53,6 +53,10 @@ func NewActionExit(exit *ExitInfo) *Action {
 }
 
 func (a *Action) Kind() ActionKind {
+	if a == nil {
+		return NoAction
+	}
+
 	switch a.value.(type) {
 	case State:
 		return Next
