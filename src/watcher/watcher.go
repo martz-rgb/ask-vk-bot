@@ -39,9 +39,9 @@ func (w *Watcher) Run(ctx context.Context, wg *sync.WaitGroup) {
 	defer wg.Done()
 
 	go w.run(ctx, wg, w.c.CheckReservationsDeadline)
+	go w.run(ctx, wg, w.c.CheckOngoingPolls)
 	go w.run(ctx, wg, w.c.CheckAlbums)
 	go w.run(ctx, wg, w.c.CheckBoards)
-	go w.run(ctx, wg, w.c.CheckPolls)
 	go w.run(ctx, wg, w.updatePostponed)
 }
 

@@ -2,9 +2,13 @@ package postponed
 
 import (
 	"ask-bot/src/ask"
+	"ask-bot/src/posts"
 	"ask-bot/src/vk"
 	"sync"
+	"time"
 )
+
+type Dictionary map[posts.Kind][]posts.Post
 
 type Controls struct {
 	Ask *ask.Ask
@@ -13,13 +17,15 @@ type Controls struct {
 
 type Postponed struct {
 	mu    *sync.Mutex
-	cache *Cache
+	posts Dictionary
+	busy  []time.Time
 }
 
 func New() *Postponed {
 	return &Postponed{
 		&sync.Mutex{},
-		&Cache{},
+		nil,
+		nil,
 	}
 }
 
@@ -27,20 +33,15 @@ func (p *Postponed) Update(c *Controls) error {
 	p.mu.Lock()
 	defer p.mu.Unlock()
 
-	err := p.cache.internalUpdate(c)
-	if err != nil {
-		return err
-	}
-
 	db, err := NewDBInfo(c)
 	if err != nil {
 		return err
 	}
 
-	vk, err := NewVKInfo(c, p.cache)
+	vk, err := NewVKInfo(c)
 	if err != nil {
 		return err
 	}
 
-	return p.cache.update(c, db, vk)
+	return p.update(c, db, vk)
 }

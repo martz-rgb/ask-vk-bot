@@ -8,7 +8,7 @@ import (
 
 func (c *Controls) CheckReservationsDeadline() error {
 
-	reservations, err := c.Ask.InProgressReservationsDetails()
+	reservations, err := c.Ask.InProgressReservations()
 	if err != nil {
 		return err
 	}
