@@ -84,21 +84,21 @@ func (l *Listener) NewPost(vk_post *object.WallWallpost) error {
 	post := posts.Parse(vk_post, dictionary, organization)
 
 	switch post.Kind {
-	case posts.Poll:
+	case posts.Kinds.Poll:
 		if vk_post.PostType == vk.SuggestedPost {
 			// it is wrong
 			// should delete it probably
 			break
 		}
 
-		err := l.c.Ask.AddOngoingPoll(post.ID, post.Roles[0].Name)
+		err := l.c.Ask.AddOngoingPoll(post.Roles[0].Name, post.ID)
 		if err != nil {
 			return err
 		}
-	case posts.Answer:
-	case posts.FreeAnswer:
-	case posts.Leaving:
-	case posts.Invalid:
+	case posts.Kinds.Answer:
+	case posts.Kinds.FreeAnswer:
+	case posts.Kinds.Leaving:
+	case posts.Kinds.Invalid:
 	}
 
 	return nil

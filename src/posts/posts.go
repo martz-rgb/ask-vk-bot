@@ -12,35 +12,47 @@ import (
 
 type Kind int
 
-const (
-	Unknown    Kind = 0
-	Invalid    Kind = 1
-	Poll       Kind = 2
-	Answer     Kind = 3
-	FreeAnswer Kind = 4
-	Leaving    Kind = 5
-)
+var Kinds = struct {
+	Unknown    Kind
+	Invalid    Kind
+	Poll       Kind
+	Acceptance Kind
+	Answer     Kind
+	FreeAnswer Kind
+	Leaving    Kind
+}{
+	Unknown:    0,
+	Invalid:    1,
+	Poll:       2,
+	Acceptance: 3,
+	Answer:     4,
+	FreeAnswer: 5,
+	Leaving:    6,
+}
+
+type Poll struct {
+	ID      int
+	Closed  bool
+	Answers []object.PollsAnswer
+}
 
 type Post struct {
-	Tags  []string
 	Kind  Kind
 	Roles []ask.Role
 
 	ID   int
 	Date time.Time
 
-	// Vk *object.WallWallpost
+	Poll *Poll
 }
 
 func Parse(vk_post *object.WallWallpost, dictionary []ask.Role, organization *ask.OrganizationHashtags) *Post {
 	post := &Post{
-		Tags: regexp.MustCompile(`#([\w@]+)`).FindAllString(vk_post.Text, -1),
 		ID:   vk_post.ID,
 		Date: time.Unix(int64(vk_post.Date), 0),
-		//Vk:   vk_post,
 	}
 
-	post.complete(dictionary, organization)
+	post.complete(vk_post, dictionary, organization)
 
 	return post
 }
@@ -49,48 +61,71 @@ func ParseMany(vk_posts []object.WallWallpost, dictionary []ask.Role, organizati
 	posts := make([]Post, len(vk_posts))
 
 	for i, vk_post := range vk_posts {
-		posts[i].Tags = regexp.MustCompile(`#([\w@]+)`).FindAllString(vk_post.Text, -1)
 		posts[i].ID = vk_post.ID
 		posts[i].Date = time.Unix(int64(vk_post.Date), 0)
-		//posts[i].Vk = &vk_posts[i]
 
-		posts[i].complete(dictionary, organization)
+		posts[i].complete(&vk_post, dictionary, organization)
 	}
 
 	return posts
 }
 
-func (p *Post) complete(dictionary []ask.Role, organization *ask.OrganizationHashtags) {
-	p.Roles = FindRoles(p.Tags, dictionary)
+func (p *Post) complete(vk_post *object.WallWallpost, dictionary []ask.Role, organization *ask.OrganizationHashtags) {
+	tags := regexp.MustCompile(`#([\w@]+)`).FindAllString(vk_post.Text, -1)
+	p.Roles = FindRoles(tags, dictionary)
 
 	var kind Kind
 	if len(p.Roles) > 0 {
-		kind = Answer
+		kind = Kinds.Answer
 	} else {
-		kind = Unknown
+		kind = Kinds.Unknown
 	}
 
 	count := 0
 
-	if slices.Contains(p.Tags, organization.PollHashtag) {
-		kind = Poll
+	if slices.Contains(tags, organization.PollHashtag) {
+		kind = Kinds.Poll
 		count++
 
 		if len(p.Roles) != 1 {
-			kind = Invalid
+			kind = Kinds.Invalid
+		}
+
+		var poll *Poll
+		for _, attachment := range vk_post.Attachments {
+			if attachment.Type != object.AttachmentTypePoll {
+				continue
+			}
+
+			poll = &Poll{
+				ID:      attachment.Poll.ID,
+				Closed:  bool(attachment.Poll.Closed),
+				Answers: attachment.Poll.Answers,
+			}
+		}
+
+		if poll == nil {
+			kind = Kinds.Invalid
+		} else {
+			p.Poll = poll
 		}
 	}
-	if slices.Contains(p.Tags, organization.FreeAnswerHashtag) {
-		kind = FreeAnswer
+
+	if slices.Contains(tags, organization.AcceptanceHashtag) {
+		kind = Kinds.Acceptance
 		count++
 	}
-	if slices.Contains(p.Tags, organization.LeavingHashtag) {
-		kind = Leaving
+	if slices.Contains(tags, organization.FreeAnswerHashtag) {
+		kind = Kinds.FreeAnswer
+		count++
+	}
+	if slices.Contains(tags, organization.LeavingHashtag) {
+		kind = Kinds.Leaving
 		count++
 	}
 
 	if count > 1 {
-		kind = Invalid
+		kind = Kinds.Invalid
 	}
 
 	p.Kind = kind
