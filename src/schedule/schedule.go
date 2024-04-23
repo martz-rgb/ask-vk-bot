@@ -1,6 +1,7 @@
 package schedule
 
 import (
+	"slices"
 	"time"
 )
 
@@ -21,50 +22,17 @@ func Calculate(timeslot string, time_points []time.Time, begin time.Time, end ti
 	// +1 to move border
 	end_date := time.Date(end.Year(), end.Month(), end.Day()+1, 0, 0, 0, 0, time.UTC)
 
-	slots := []time.Time{}
+	slots := Schedule{}
 	for _, add := range include {
 		dates := add.Slots(begin_date, end_date)
 
-		i, j := 0, 0
-
-		for i < len(dates) && j < len(slots) {
-			if dates[i].Compare(slots[j]) == 0 {
-				i, j = i+1, j+1
-				continue
-			}
-
-			if dates[i].Compare(slots[j]) < 0 {
-				slots = append(slots[:j+1], slots[j:]...)
-				slots[j] = dates[i]
-				i, j = i+1, j+1
-			} else {
-				j = j + 1
-			}
-		}
-
-		if i < len(dates) {
-			slots = append(slots, dates[i:]...)
-		}
+		slots = slots.Merge(dates)
 	}
 
 	for _, del := range exclude {
 		dates := del.Slots(begin_date, end_date)
 
-		i, j := 0, 0
-
-		for i < len(dates) && j < len(slots) {
-			if dates[i].Compare(slots[j]) == 0 {
-				slots = append(slots[:j], slots[j+1:]...)
-				i = i + 1
-				continue
-			}
-
-			if dates[i].Compare(slots[j]) < 0 {
-				i = i + 1
-			} else {
-				j = j + 1
-			}
-		}
+		slots = slots.Exclude(dates)
 	}
 
 	var schedule Schedule
@@ -140,4 +108,23 @@ func (schedule Schedule) Exclude(other []time.Time) (result Schedule) {
 	}
 
 	return result
+}
+
+func (schedule Schedule) Add(date time.Time) Schedule {
+	index, ok := slices.BinarySearchFunc(schedule, date, func(t1, t2 time.Time) int {
+		return t1.Compare(t2)
+	})
+
+	if ok {
+		return schedule
+	}
+
+	if index == len(schedule) {
+		return append(schedule, date)
+	}
+
+	schedule = append(schedule[:index+1], schedule[index:]...)
+	schedule[index] = date
+
+	return schedule
 }
