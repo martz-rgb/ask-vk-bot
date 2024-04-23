@@ -23,7 +23,7 @@
                 "ASK_DEADLINE": "42d",
                 "ASK_RESERVATION_DURATION": "7d",
                 "ASK_POLL_HASHTAG": "#Poll@no_escape",
-                "ASK_GREETING_HASHTAG": "#Greeting@no_escape",
+                "ASK_ACCEPTANCE_HASHTAG": "#Acceptance@no_escape",
                 "ASK_FREE_ANSWER_HASHTAG": "#FreeAnswer@no_escape",
                 "ASK_LEAVING_HASHTAG": "#Leaving@no_escape"
             }

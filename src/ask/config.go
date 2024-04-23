@@ -12,7 +12,7 @@ import (
 
 type OrganizationHashtags struct {
 	PollHashtag       string `json:"ASK_POLL_HASHTAG"`
-	GreetingHashtag   string `json:"ASK_GREETING_HASHTAG"`
+	AcceptanceHashtag string `json:"ASK_ACCEPTANCE_HASHTAG"`
 	FreeAnswerHashtag string `json:"ASK_FREE_ANSWER_HASHTAG"`
 	LeavingHashtag    string `json:"ASK_LEAVING_HASHTAG"`
 }
@@ -59,7 +59,7 @@ func ConfigFromEnv() *Config {
 		// hashtags
 		OrganizationHashtags: OrganizationHashtags{
 			PollHashtag:       os.Getenv("ASK_POLL_HASHTAG"),
-			GreetingHashtag:   os.Getenv("ASK_GREETING_HASHTAG"),
+			AcceptanceHashtag: os.Getenv("ASK_ACCEPTANCE_HASHTAG"),
 			FreeAnswerHashtag: os.Getenv("ASK_FREE_ANSWER_HASHTAG"),
 			LeavingHashtag:    os.Getenv("ASK_LEAVING_HASHTAG"),
 		},
@@ -81,15 +81,15 @@ func (c *Config) Validate() error {
 	if len(c.PollHashtag) == 0 {
 		return errors.New("ask poll hashtag is not provided")
 	}
-	if len(c.GreetingHashtag) == 0 {
-		return errors.New("ask poll hashtag is not provided")
+	if len(c.AcceptanceHashtag) == 0 {
+		return errors.New("ask acceptance hashtag is not provided")
 	}
 	// TO-DO: free answers are additional feature
 	if len(c.FreeAnswerHashtag) == 0 {
-		return errors.New("ask poll hashtag is not provided")
+		return errors.New("ask free answer hashtag is not provided")
 	}
-	if len(c.GreetingHashtag) == 0 {
-		return errors.New("ask poll hashtag is not provided")
+	if len(c.LeavingHashtag) == 0 {
+		return errors.New("ask leaving hashtag is not provided")
 	}
 
 	return nil
