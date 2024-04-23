@@ -17,6 +17,7 @@ about poll:
 TO-DO list:
 
 - [ ] greetings (table + add from listener + create in postponed)
+- [ ] remember polls answers if there is no order guarantee
 - [ ] greetings mode (manual or auto)
 - [ ] notifications to admin (about new reservation if should be considerate and greetings if manual)
 - [ ] roles groups
@@ -65,3 +66,5 @@ done:
 - [x] polls checking
 - [x] reservation deadlines
 - [x] boards\albums
+- [x] polls sync
+- [x] watcher with update on notifications
