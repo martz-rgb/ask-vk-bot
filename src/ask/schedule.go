@@ -94,13 +94,22 @@ func (a *Ask) Schedule(kind TimeslotKind, begin time.Time, end time.Time) (sched
 		var points []time.Time
 		for _, s := range strings.Split(timeslot.TimePoints, ",") {
 			s = strings.TrimSpace(s)
+
 			point, err := time.Parse(time.TimeOnly, s)
-			if err != nil {
-				return nil, zaperr.Wrap(err, "failed to parse time point",
-					zap.String("time point", s))
+			if err == nil {
+				// time in database in correct timezone, but it is considered in UTC
+				points = append(points, point)
+				continue
 			}
-			// time in database in correct timezone, but it is considered in UTC
-			points = append(points, point)
+
+			point, err = time.Parse("15:04", s)
+			if err == nil {
+				points = append(points, point)
+				continue
+			}
+
+			return nil, zaperr.Wrap(err, "failed to parse time point",
+				zap.String("time point", s))
 		}
 		slices.SortFunc(points, func(a, b time.Time) int {
 			if a.After(b) {
