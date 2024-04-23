@@ -17,7 +17,7 @@ import (
 
 type ReservationManage struct {
 	paginator *paginator.Paginator[form.Option]
-	details   *ask.ReservationDetails
+	details   *ask.Reservation
 }
 
 func (state *ReservationManage) ID() string {
@@ -45,7 +45,7 @@ func (state *ReservationManage) options() (options []form.Option) {
 }
 
 func (state *ReservationManage) Entry(user *User, c *Controls) error {
-	details, err := c.Ask.ReservationDetailsByVkID(user.Id)
+	details, err := c.Ask.ReservationByVkID(user.Id)
 	if err != nil {
 		return err
 	}
@@ -77,7 +77,7 @@ func (state *ReservationManage) Entry(user *User, c *Controls) error {
 
 	case ask.ReservationStatuses.Poll:
 		message = fmt.Sprintf("Опрос начался! Посмотреть на него можно здесь: https://vk.com/wall%d_%d",
-			c.Vk.ID(), details.Post.Int32)
+			c.Vk.ID(), details.Poll.Int32)
 	}
 
 	config := &paginator.Config[form.Option]{
@@ -168,7 +168,7 @@ func (state *ReservationManage) Back(user *User, c *Controls, info *ExitInfo) (*
 			return nil, err
 		}
 
-		err = c.Ask.CompleteReservation(state.details.Id, greeting)
+		err = c.Ask.CompleteReservation(state.details.VkID, greeting)
 		if err != nil {
 			return nil, err
 		}
@@ -184,7 +184,7 @@ func (state *ReservationManage) Back(user *User, c *Controls, info *ExitInfo) (*
 		}
 
 		if answer {
-			err := c.Ask.DeleteReservationById(state.details.Id)
+			err := c.Ask.DeleteReservation(state.details.VkID)
 			if err != nil {
 				return nil, err
 			}

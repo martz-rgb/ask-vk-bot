@@ -23,7 +23,7 @@ func (state *Init) ID() string {
 func (state *Init) options(user *User, c *Controls) ([]form.Option, error) {
 	options := []form.Option{}
 
-	reservation, err := c.Ask.ReservationDetailsByVkID(user.Id)
+	reservation, err := c.Ask.ReservationByVkID(user.Id)
 	if err != nil {
 		return nil, err
 	}

@@ -52,29 +52,21 @@ func (s *ReservationStatus) Scan(value interface{}) error {
 }
 
 type Reservation struct {
-	Id          int            `db:"id"`
-	Role        string         `db:"role"`
-	VkID        int            `db:"vk_id"`
-	Deadline    sql.NullTime   `db:"deadline"`
-	IsConfirmed int            `db:"is_confirmed"`
-	Info        int            `db:"info"` // id of vk message contained information
-	Greeting    sql.NullString `db:"greeting"`
-	Timestamp   time.Time      `db:"timestamp"`
-}
+	VkID         int               `db:"vk_id"`
+	Introduction int               `db:"introduction"` // id of vk message contained information
+	Deadline     sql.NullTime      `db:"deadline"`
+	Status       ReservationStatus `db:"status"`
+	Greeting     sql.NullString    `db:"greeting"`
+	Poll         sql.NullInt32     `db:"poll"`
 
-type ReservationDetails struct {
-	Reservation
 	Role
-
-	Status ReservationStatus `db:"status"`
-	Post   sql.NullInt32     `db:"post"`
 }
 
-func (a *Ask) AddReservation(role string, vk_id int, info int) error {
+func (a *Ask) AddReservation(vk_id int, role string, introduction int) error {
 	query := sqlf.InsertInto("reservations").
-		Set("role", role).
 		Set("vk_id", vk_id).
-		Set("info", info)
+		Set("role", role).
+		Set("introduction", introduction)
 
 	if a.config.NoConfirmReservation {
 		query.Set("is_confirmed", 1)
@@ -90,86 +82,86 @@ func (a *Ask) AddReservation(role string, vk_id int, info int) error {
 	return nil
 }
 
-func (a *Ask) ReservationDetailsByVkID(vk_id int) (*ReservationDetails, error) {
-	var reservations_details []ReservationDetails
+func (a *Ask) ReservationByVkID(vk_id int) (*Reservation, error) {
+	var reservations []Reservation
 
 	query := sqlf.From("reservations_details").
-		Bind(&ReservationDetails{}).
+		Bind(&Reservation{}).
 		Where("vk_id = ?", vk_id).
 		Limit(1)
 
-	err := a.db.Select(&reservations_details, query.String(), query.Args()...)
+	err := a.db.Select(&reservations, query.String(), query.Args()...)
 	if err != nil {
-		return nil, zaperr.Wrap(err, "failed to get reservations details by vk id",
+		return nil, zaperr.Wrap(err, "failed to get reservations by vk id",
 			zap.String("query", query.String()),
 			zap.Any("args", query.Args()))
 	}
 
-	if len(reservations_details) == 0 {
+	if len(reservations) == 0 {
 		return nil, nil
 	}
 
-	// right time
-	reservations_details[0].Deadline.Time = reservations_details[0].Deadline.Time.Add(-a.timezone).UTC()
-	return &reservations_details[0], nil
+	// correct time
+	reservations[0].Deadline.Time = reservations[0].Deadline.Time.Add(-a.timezone)
+	return &reservations[0], nil
 }
 
-func (a *Ask) UnderConsiderationReservationsDetails() ([]ReservationDetails, error) {
-	var details []ReservationDetails
+func (a *Ask) UnderConsiderationReservations() ([]Reservation, error) {
+	var reservations []Reservation
 
 	query := sqlf.From("reservations_details").
-		Bind(&ReservationDetails{}).
+		Bind(&Reservation{}).
 		Where("status = ?", ReservationStatuses.UnderConsideration)
 
-	err := a.db.Select(&details, query.String(), query.Args()...)
+	err := a.db.Select(&reservations, query.String(), query.Args()...)
 	if err != nil {
-		return nil, zaperr.Wrap(err, "failed to get reservations details under consideration",
+		return nil, zaperr.Wrap(err, "failed to get reservations under consideration",
 			zap.String("query", query.String()),
 			zap.Any("args", query.Args()))
 	}
 
-	return details, nil
+	return reservations, nil
 }
 
-func (a *Ask) InProgressReservationsDetails() ([]ReservationDetails, error) {
-	var details []ReservationDetails
+func (a *Ask) InProgressReservations() ([]Reservation, error) {
+	var reservations []Reservation
 
 	query := sqlf.From("reservations_details").
-		Bind(&ReservationDetails{}).
+		Bind(&Reservation{}).
 		Where("status = ?", ReservationStatuses.InProgress)
 
-	err := a.db.Select(&details, query.String(), query.Args()...)
+	err := a.db.Select(&reservations, query.String(), query.Args()...)
 	if err != nil {
-		return nil, zaperr.Wrap(err, "failed to get reservations details in progress",
+		return nil, zaperr.Wrap(err, "failed to get reservations in progress",
 			zap.String("query", query.String()),
 			zap.Any("args", query.Args()))
 	}
 
-	for i := range details {
-		details[i].Deadline.Time = details[i].Deadline.Time.Add(-a.timezone).UTC()
+	for i := range reservations {
+		reservations[i].Deadline.Time = reservations[i].Deadline.Time.Add(-a.timezone)
 	}
 
-	return details, nil
+	return reservations, nil
 }
 
-func (a *Ask) ReservationsDetails() ([]ReservationDetails, error) {
-	var details []ReservationDetails
+func (a *Ask) Reservations() ([]Reservation, error) {
+	var reservations []Reservation
 
 	query := sqlf.From("reservations_details").
-		Bind(&ReservationDetails{})
+		Bind(&Reservation{})
 
-	err := a.db.Select(&details, query.String(), query.Args()...)
+	err := a.db.Select(&reservations, query.String(), query.Args()...)
 	if err != nil {
 		return nil, zaperr.Wrap(err, "failed to get reservations details",
 			zap.String("query", query.String()),
 			zap.Any("args", query.Args()))
 	}
 
-	for i := range details {
-		details[i].Deadline.Time = details[i].Deadline.Time.Add(-a.timezone).UTC()
+	for i := range reservations {
+		reservations[i].Deadline.Time = reservations[i].Deadline.Time.Add(-a.timezone)
 	}
 
-	return details, nil
+	return reservations, nil
 }
 
 func (a *Ask) CalculateReservationDeadline() time.Time {
@@ -189,31 +181,47 @@ func (a *Ask) CalculateReservationDeadline() time.Time {
 		Add(a.config.ReservationDuration)
 }
 
-func (a *Ask) ChangeReservationDeadline(id int, deadline time.Time) error {
-	query := sqlf.Update("reservations").
-		Set("deadline", deadline).
-		Where("id = ?", id)
+// func (a *Ask) ChangeReservationDeadline(vk_id int, deadline time.Time) error {
+// 	query := sqlf.Update("reservations").
+// 		Set("deadline", deadline).
+// 		Where("vk_id = ?", vk_id)
 
-	_, err := a.db.Exec(query.String(), query.Args()...)
-	if err != nil {
-		return zaperr.Wrap(err, "failed to change reservation deadline",
-			zap.String("query", query.String()),
-			zap.Any("args", query.Args()))
-	}
+// 	_, err := a.db.Exec(query.String(), query.Args()...)
+// 	if err != nil {
+// 		return zaperr.Wrap(err, "failed to change reservation deadline",
+// 			zap.String("query", query.String()),
+// 			zap.Any("args", query.Args()))
+// 	}
 
-	return nil
-}
+// 	return nil
+// }
 
-func (a *Ask) ConfirmReservation(id int) (time.Time, error) {
+// func (a *Ask) ChangeReservationDeadlineByRole(role string, deadline time.Time) error {
+// 	query := sqlf.Update("reservations").
+// 		Set("deadline", deadline).
+// 		Where("role = ?", role)
+
+// 	_, err := a.db.Exec(query.String(), query.Args()...)
+// 	if err != nil {
+// 		return zaperr.Wrap(err, "failed to change reservation deadline",
+// 			zap.String("query", query.String()),
+// 			zap.Any("args", query.Args()))
+// 	}
+
+// 	return nil
+// }
+
+func (a *Ask) ConfirmReservation(vk_id int) (time.Time, error) {
 	deadline := a.CalculateReservationDeadline()
 
 	confirm_query := sqlf.Update("reservations").
 		Set("is_confirmed", 1).
-		Where("id = ?", id)
+		Where("vk_id = ?", vk_id)
+
 	deadline_query := sqlf.With("updated_role",
 		sqlf.From("reservations").
 			Select("role").
-			Where("id = ?", id)).
+			Where("vk_id = ?", vk_id)).
 		Update("reservations").
 		Set("deadline", deadline).
 		Where("role IN updated_role")
@@ -249,10 +257,10 @@ func (a *Ask) ConfirmReservation(id int) (time.Time, error) {
 	return deadline, nil
 }
 
-func (a *Ask) CompleteReservation(id int, greeting string) error {
+func (a *Ask) CompleteReservation(vk_id int, greeting string) error {
 	query := sqlf.Update("reservations").
 		Set("greeting", greeting).
-		Where("id = ?", id)
+		Where("vk_id = ?", vk_id)
 
 	_, err := a.db.Exec(query.String(), query.Args()...)
 	if err != nil {
@@ -264,9 +272,9 @@ func (a *Ask) CompleteReservation(id int, greeting string) error {
 	return nil
 }
 
-func (a *Ask) DeleteReservationById(id int) error {
+func (a *Ask) DeleteReservation(vk_id int) error {
 	query := sqlf.DeleteFrom("reservations").
-		Where("id = ?", id)
+		Where("vk_id = ?", vk_id)
 
 	_, err := a.db.Exec(query.String(), query.Args()...)
 	if err != nil {
@@ -285,6 +293,20 @@ func (a *Ask) DeleteReservationByDeadline(deadline time.Time) error {
 	_, err := a.db.Exec(query.String(), query.Args()...)
 	if err != nil {
 		return zaperr.Wrap(err, "failed to delete reservation by deadline",
+			zap.String("query", query.String()),
+			zap.Any("args", query.Args()))
+	}
+
+	return nil
+}
+
+func (a *Ask) DeleteReservationByRole(role string) error {
+	query := sqlf.DeleteFrom("reservations").
+		Where("role = ?", role)
+
+	_, err := a.db.Exec(query.String(), query.Args()...)
+	if err != nil {
+		return zaperr.Wrap(err, "failed to delete reservation by role",
 			zap.String("query", query.String()),
 			zap.Any("args", query.Args()))
 	}

@@ -1,6 +1,6 @@
-CREATE TABLE IF NOT EXISTS administration (vk_id INT PRIMARY KEY NOT NULL);
+CREATE TABLE administration (vk_id INT PRIMARY KEY NOT NULL);
 
-CREATE TABLE IF NOT EXISTS roles (
+CREATE TABLE roles (
     name TEXT PRIMARY KEY NOT NULL,
     hashtag TEXT UNIQUE NOT NULL,
     shown_name TEXT NOT NULL,
@@ -10,22 +10,22 @@ CREATE TABLE IF NOT EXISTS roles (
     board INT
 );
 
-CREATE TABLE IF NOT EXISTS info (
+CREATE TABLE info (
     vk_id INT PRIMARY KEY NOT NULL,
     gallery TEXT,
     birthday TEXT
 );
 
-CREATE TABLE IF NOT EXISTS points (
+CREATE TABLE points (
     vk_id INT NOT NULL,
     diff INT NOT NULL DEFAULT 0,
     cause TEXT NOT NULL,
     timestamp DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP
 );
 
-CREATE INDEX IF NOT EXISTS idx_points_vk_id ON points(vk_id);
+CREATE INDEX idx_points_vk_id ON points(vk_id);
 
-CREATE TABLE IF NOT EXISTS members (
+CREATE TABLE members (
     -- integer primary key -> alias to rowid
     id INTEGER PRIMARY KEY NOT NULL,
     vk_id INT,
@@ -34,7 +34,7 @@ CREATE TABLE IF NOT EXISTS members (
     timezone INT NOT NULL DEFAULT 0
 );
 
-CREATE TABLE IF NOT EXISTS deadline (
+CREATE TABLE deadline (
     member INT REFERENCES members(id) NOT NULL,
     -- unix time in seconds!
     diff INT NOT NULL DEFAULT 0,
@@ -52,7 +52,7 @@ CREATE TABLE IF NOT EXISTS deadline (
     timestamp DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP
 );
 
-CREATE TRIGGER IF NOT EXISTS init_member_deadline
+CREATE TRIGGER init_member_deadline
 AFTER
 INSERT
     ON members BEGIN
@@ -73,7 +73,7 @@ VALUES
 
 END;
 
-CREATE TABLE IF NOT EXISTS schedule (
+CREATE TABLE schedule (
     -- alias to rowid
     id INTEGER PRIMARY KEY NOT NULL,
     kind TEXT CHECK (
@@ -89,89 +89,104 @@ CREATE TABLE IF NOT EXISTS schedule (
     time_points TEXT NOT NULL
 );
 
-CREATE TABLE IF NOT EXISTS reservations (
-    -- alias to rowid
-    id INTEGER PRIMARY KEY NOT NULL,
+CREATE TABLE reservations (
+    vk_id INT PRIMARY KEY NOT NULL,
     role TEXT REFERENCES roles(name) NOT NULL,
-    -- only one reservation per user
-    vk_id INT NOT NULL UNIQUE,
-    deadline DATETIME,
-    is_confirmed INT NOT NULL DEFAULT 0,
-    -- id of vk message contained information
-    info INT NOT NULL,
-    -- url for images 
-    greeting TEXT,
-    timestamp DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP
-);
-
-CREATE TABLE IF NOT EXISTS ongoing_polls (
-    post INT PRIMARY KEY NOT NULL,
-    -- one poll per role
-    role TEXT REFERENCES roles(name) UNIQUE NOT NULL,
-    timestamp DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP
-);
-
--- views
-CREATE VIEW IF NOT EXISTS reservations_details AS
-SELECT
-    reservations.*,
-    roles.*,
-    (
+    status TEXT AS (
         CASE
             WHEN is_confirmed = 0 THEN 'Under Consideration'
             ELSE CASE
                 WHEN greeting IS NULL THEN 'In Progress'
-                ELSE CASE
-                    WHEN post IS NULL THEN 'Done'
-                    ELSE 'Poll'
-                END
+                ELSE 'Done'
             END
         END
-    ) AS status,
-    post
-FROM
-    reservations
-    INNER JOIN roles ON reservations.role = roles.name
-    LEFT JOIN ongoing_polls USING (role);
+    ),
+    -- id of vk message contained information
+    introduction INT NOT NULL,
+    is_confirmed INT NOT NULL DEFAULT 0,
+    deadline DATETIME,
+    -- urls for images 
+    greeting TEXT,
+    timestamp DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP
+);
 
-CREATE VIEW IF NOT EXISTS polls AS
+CREATE TABLE polls (
+    role TEXT REFERENCES roles(name) PRIMARY KEY NOT NULL,
+    post INT,
+    timestamp DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP
+);
+
+-- views
+CREATE VIEW reservations_details AS
 SELECT
-    role,
-    roles.*,
-    group_concat(vk_id) AS participants,
-    group_concat(greeting, ';') AS greetings,
-    post
+    reservations.vk_id,
+    reservations.introduction,
+    reservations.deadline,
+    reservations.greeting,
+    CASE
+        WHEN polls.post IS NOT NULL THEN 'Poll'
+        ELSE reservations.status
+    END AS status,
+    polls.post as poll,
+    roles.*
 FROM
     reservations
     INNER JOIN roles ON reservations.role = roles.name
-    LEFT JOIN ongoing_polls USING (role)
+    LEFT JOIN polls USING(role);
+
+CREATE VIEW pending_polls AS
+SELECT
+    reservations.role,
+    count(*) as count,
+    group_concat(vk_id) OVER (
+        ORDER BY
+            vk_id
+    ) AS participants,
+    group_concat(greeting, ';') OVER (
+        ORDER BY
+            vk_id
+    ) AS greetings
+FROM
+    reservations
 WHERE
     NOT EXISTS(
         SELECT
             *
         FROM
-            reservations_details AS other
+            reservations AS other
         WHERE
             other.role = reservations.role
-            AND (
-                other.status != 'Done'
-                AND other.status != 'Poll'
-            )
+            AND other.status != 'Done'
     )
 GROUP BY
-    role
-ORDER BY
     role;
 
-CREATE VIEW IF NOT EXISTS pending_polls AS
+CREATE VIEW pending_polls_details AS
+SELECT
+    count,
+    participants,
+    greetings,
+    roles.*
+FROM
+    pending_polls
+    INNER JOIN roles ON pending_polls.role = roles.name
+WHERE
+    roles.name NOT IN (
+        SELECT
+            role
+        FROM
+            polls
+    );
+
+CREATE VIEW ongoing_polls AS
 SELECT
     *
 FROM
     polls
 WHERE
-    post IS NULL;
+    post IS NOT NULL;
 
-CREATE VIEW IF NOT EXISTS available_roles AS
+CREATE VIEW available_roles AS
 SELECT
     *
 FROM
@@ -181,7 +196,7 @@ WHERE
         SELECT
             role
         FROM
-            polls
+            pending_polls
         UNION
         SELECT
             role

@@ -134,7 +134,7 @@ func (state *ReservationNew) Back(user *User, c *Controls, info *ExitInfo) (*Act
 			return nil, err
 		}
 
-		err = c.Ask.AddReservation(state.role.Name, user.Id, id)
+		err = c.Ask.AddReservation(user.Id, state.role.Name, id)
 		if err != nil {
 			return nil, err
 		}

@@ -45,7 +45,7 @@ func (state *AdminReservation) options(num_reservations int, under_consideration
 
 // To-DO: print all reservations
 func (state *AdminReservation) Entry(user *User, c *Controls) error {
-	reservations, err := c.Ask.ReservationsDetails()
+	reservations, err := c.Ask.Reservations()
 	if err != nil {
 		return err
 	}
@@ -107,7 +107,7 @@ func (state *AdminReservation) KeyboardEvent(user *User, c *Controls, payload *v
 
 		switch option.ID {
 		case "confirm":
-			reservations, err := c.Ask.UnderConsiderationReservationsDetails()
+			reservations, err := c.Ask.UnderConsiderationReservations()
 			if err != nil {
 				return nil, err
 			}
@@ -115,7 +115,7 @@ func (state *AdminReservation) KeyboardEvent(user *User, c *Controls, payload *v
 			var options []form.Option
 			for _, r := range reservations {
 				options = append(options, form.Option{
-					ID:    strconv.Itoa(r.Id),
+					ID:    strconv.Itoa(r.VkID),
 					Label: r.ShownName,
 					Value: &r,
 				})
@@ -135,7 +135,7 @@ func (state *AdminReservation) KeyboardEvent(user *User, c *Controls, payload *v
 			return NewActionNext(NewForm("confirm", nil, field)), nil
 
 		case "delete":
-			reservations, err := c.Ask.ReservationsDetails()
+			reservations, err := c.Ask.Reservations()
 			if err != nil {
 				return nil, err
 			}
@@ -143,7 +143,7 @@ func (state *AdminReservation) KeyboardEvent(user *User, c *Controls, payload *v
 			var options []form.Option
 			for _, r := range reservations {
 				options = append(options, form.Option{
-					ID:    strconv.Itoa(r.Id),
+					ID:    strconv.Itoa(r.VkID),
 					Label: r.ShownName,
 					Value: &r,
 				})
@@ -183,7 +183,7 @@ func (state *AdminReservation) Back(user *User, c *Controls, info *ExitInfo) (*A
 
 	switch info.Payload {
 	case "confirm":
-		reservation, err := dict.ExtractValue[*ask.ReservationDetails](info.Values, "reservation")
+		reservation, err := dict.ExtractValue[*ask.Reservation](info.Values, "reservation")
 		if err != nil {
 			return nil, err
 		}
@@ -194,7 +194,7 @@ func (state *AdminReservation) Back(user *User, c *Controls, info *ExitInfo) (*A
 
 		var message, notification_message string
 		if action == true {
-			deadline, err := c.Ask.ConfirmReservation(reservation.Id)
+			deadline, err := c.Ask.ConfirmReservation(reservation.VkID)
 			if err != nil {
 				return nil, err
 			}
@@ -205,7 +205,7 @@ func (state *AdminReservation) Back(user *User, c *Controls, info *ExitInfo) (*A
 				reservation.AccusativeName,
 				deadline)
 		} else {
-			err := c.Ask.DeleteReservationById(reservation.Id)
+			err := c.Ask.DeleteReservation(reservation.VkID)
 			if err != nil {
 				return nil, err
 			}
@@ -229,12 +229,12 @@ func (state *AdminReservation) Back(user *User, c *Controls, info *ExitInfo) (*A
 		}
 
 	case "delete":
-		reservation, err := dict.ExtractValue[*ask.ReservationDetails](info.Values, "reservation")
+		reservation, err := dict.ExtractValue[*ask.Reservation](info.Values, "reservation")
 		if err != nil {
 			return nil, err
 		}
 
-		err = c.Ask.DeleteReservationById(reservation.Id)
+		err = c.Ask.DeleteReservation(reservation.VkID)
 		if err != nil {
 			return nil, err
 		}

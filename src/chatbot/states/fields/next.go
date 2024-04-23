@@ -25,7 +25,7 @@ var ConfirmReservationOptions = []form.Option{
 }
 
 func ConfirmReservationField(value interface{}) (string, []*form.Field) {
-	reservation, ok := value.(*ask.ReservationDetails)
+	reservation, ok := value.(*ask.Reservation)
 	if !ok {
 		return "", nil
 	}
@@ -36,7 +36,7 @@ func ConfirmReservationField(value interface{}) (string, []*form.Field) {
 
 	forward, err := vk.ForwardParam(
 		reservation.VkID,
-		[]int{reservation.Info})
+		[]int{reservation.Introduction})
 	if err != nil {
 		return "", nil
 	}
