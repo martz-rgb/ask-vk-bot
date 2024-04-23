@@ -49,31 +49,19 @@ func ToAttachments(attachments []object.MessagesMessageAttachment) string {
 
 	for _, a := range attachments {
 		switch a.Type {
-		case "photo":
+		case object.AttachmentTypePhoto:
 			attachment := fmt.Sprintf("photo%d_%d_%s", a.Photo.OwnerID, a.Photo.ID, a.Photo.AccessKey)
 			result = append(result, attachment)
 
 			//result = append(result, a.Photo.ToAttachment())
-		case "video":
+		case object.AttachmentTypeVideo:
 			result = append(result, a.Video.ToAttachment())
-		case "audio":
+		case object.AttachmentTypeAudio:
 			result = append(result, a.Audio.ToAttachment())
-		case "doc":
+		case object.AttachmentTypeDoc:
 			result = append(result, a.Doc.ToAttachment())
-		case "link":
+		case object.AttachmentTypeLink:
 			//result = append(result, a.Link.ToAttachment())
-		case "market":
-			result = append(result, a.Market.ToAttachment())
-		case "market_album":
-			result = append(result, a.MarketMarketAlbum.ToAttachment())
-		case "wall":
-			//result = append(resul)
-		case "wall_reply":
-			//result = append(result, a.WallReply.ToAttachment())
-		case "sticker":
-			//result =append(result, a.Sticker.ToAttachment())
-		case "gift":
-			//result = append(result, a.Gift.ToAttachment())
 		}
 	}
 
