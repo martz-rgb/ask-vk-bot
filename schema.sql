@@ -1,11 +1,18 @@
 CREATE TABLE administration (vk_id INT PRIMARY KEY NOT NULL);
 
+CREATE TABLE roles_groups (
+    name TEXT PRIMARY KEY NOT NULL,
+    shown_name TEXT NOT NULL,
+    "order" INT NOT NULL
+);
+
 CREATE TABLE roles (
     name TEXT PRIMARY KEY NOT NULL,
     hashtag TEXT UNIQUE NOT NULL,
     shown_name TEXT NOT NULL,
     accusative_name TEXT NOT NULL,
     caption_name TEXT NOT NULL,
+    "group" TEXT REFERENCES roles_groups(name),
     album INT,
     board INT
 );

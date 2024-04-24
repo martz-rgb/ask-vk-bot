@@ -6,9 +6,11 @@ import (
 	"fmt"
 	"io"
 	"os"
+	"strings"
 
 	"github.com/hori-ryota/zaperr"
 	"github.com/jmoiron/sqlx"
+	"github.com/jmoiron/sqlx/reflectx"
 	_ "github.com/mattn/go-sqlite3"
 	"go.uber.org/zap"
 )
@@ -29,6 +31,12 @@ func NewDB(connection string) (*DB, error) {
 		return nil, zaperr.Wrap(err, "failed to open sqlite3 read",
 			zap.String("connection", connection))
 	}
+
+	db.Mapper = reflectx.NewMapperTagFunc("db",
+		nil,
+		func(s string) string {
+			return strings.Trim(s, "[]")
+		})
 
 	if err := db.Ping(); err != nil {
 		return nil, zaperr.Wrap(err, "failed to ping read database")

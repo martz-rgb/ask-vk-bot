@@ -11,13 +11,14 @@ import (
 )
 
 type Role struct {
-	Name           string        `db:"name"`
-	Hashtag        string        `db:"hashtag"`
-	ShownName      string        `db:"shown_name"`
-	AccusativeName string        `db:"accusative_name"`
-	CaptionName    string        `db:"caption_name"`
-	Album          sql.NullInt32 `db:"album"`
-	Board          sql.NullInt32 `db:"board"`
+	Name           string         `db:"name"`
+	Hashtag        string         `db:"hashtag"`
+	ShownName      string         `db:"shown_name"`
+	AccusativeName string         `db:"accusative_name"`
+	CaptionName    string         `db:"caption_name"`
+	Group          sql.NullString `db:"[group]"`
+	Album          sql.NullInt32  `db:"album"`
+	Board          sql.NullInt32  `db:"board"`
 }
 
 // TO-DO should roles be sorted alphabetically or by groups
@@ -27,7 +28,7 @@ func (a *Ask) Roles() ([]Role, error) {
 	query := sqlf.From("roles").
 		Bind(&Role{})
 
-	err := a.db.Select(&roles, query.String())
+	err := a.db.Select(&roles, query.String(), query.Args()...)
 	if err != nil {
 		return nil, zaperr.Wrap(err, "failed to get roles",
 			zap.String("query", query.String()),
@@ -111,7 +112,7 @@ func (a *Ask) RolesDictionary() ([]Role, error) {
 		Bind(&Role{}).
 		OrderBy("hashtag")
 
-	err := a.db.Select(&roles, query.String())
+	err := a.db.Select(&roles, query.String(), query.Args()...)
 	if err != nil {
 		return nil, zaperr.Wrap(err, "failed to get roles dictionary",
 			zap.String("query", query.String()),
