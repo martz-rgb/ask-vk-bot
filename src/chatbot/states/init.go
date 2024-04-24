@@ -117,7 +117,7 @@ func (state *Init) Entry(user *User, c *Controls) error {
 }
 
 func (state *Init) NewMessage(user *User, c *Controls, message *vk.Message) (*Action, error) {
-	return nil, nil
+	return nil, state.Entry(user, c)
 }
 
 func (state *Init) KeyboardEvent(user *User, c *Controls, payload *vk.CallbackPayload) (*Action, error) {
