@@ -3,7 +3,7 @@ CREATE TABLE administration (vk_id INT PRIMARY KEY NOT NULL);
 CREATE TABLE roles_groups (
     name TEXT PRIMARY KEY NOT NULL,
     shown_name TEXT NOT NULL,
-    "order" INT NOT NULL
+    [order] INT NOT NULL
 );
 
 CREATE TABLE roles (
@@ -12,7 +12,8 @@ CREATE TABLE roles (
     shown_name TEXT NOT NULL,
     accusative_name TEXT NOT NULL,
     caption_name TEXT NOT NULL,
-    "group" TEXT REFERENCES roles_groups(name),
+    [group] TEXT REFERENCES roles_groups(name),
+    [order] INT,
     album INT,
     board INT
 );

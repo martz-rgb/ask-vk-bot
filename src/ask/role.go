@@ -17,6 +17,7 @@ type Role struct {
 	AccusativeName string         `db:"accusative_name"`
 	CaptionName    string         `db:"caption_name"`
 	Group          sql.NullString `db:"[group]"`
+	Order          sql.NullInt32  `db:"[order]"`
 	Album          sql.NullInt32  `db:"album"`
 	Board          sql.NullInt32  `db:"board"`
 }
