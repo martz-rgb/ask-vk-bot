@@ -13,6 +13,11 @@ import (
 	"go.uber.org/zap"
 )
 
+var keywords = map[string]string{
+	"group": "[group]",
+	"order": "[order]",
+}
+
 type Object struct {
 	Name string `db:"name"`
 	Kind string `db:"type"`
@@ -68,7 +73,7 @@ func (db *DB) Migrate(schema string, allow_deletion bool) error {
 		return zaperr.Wrap(err, "failed to disable foreign_keys")
 	}
 
-	transaction, err := db.sql.Begin()
+	transaction, err := db.sql.Beginx()
 	if err != nil {
 		return zaperr.Wrap(err, "failed to start transaction")
 	}
@@ -79,7 +84,7 @@ func (db *DB) Migrate(schema string, allow_deletion bool) error {
 			"name", table.Name,
 			"statement", table.Sql)
 
-		_, err := db.sql.Exec(table.Sql)
+		_, err := transaction.Exec(table.Sql)
 		if err != nil {
 			transaction.Rollback()
 			return zaperr.Wrap(err, "failed to create new table",
@@ -99,7 +104,7 @@ func (db *DB) Migrate(schema string, allow_deletion bool) error {
 			Where("sql IS NOT NULL").
 			OrderBy("name")
 
-		err := db.Select(&views, query.String(), query.Args()...)
+		err := transaction.Select(&views, query.String(), query.Args()...)
 		if err != nil {
 			return zaperr.Wrap(err, "failed to get views",
 				zap.String("statement", query.String()),
@@ -113,7 +118,7 @@ func (db *DB) Migrate(schema string, allow_deletion bool) error {
 				"name", view.Name,
 				"statement", drop)
 
-			_, err := db.sql.Exec(drop)
+			_, err := transaction.Exec(drop)
 			if err != nil {
 				transaction.Rollback()
 				return zaperr.Wrap(err, "failed to drop view before modifying/deleting tables",
@@ -132,7 +137,7 @@ func (db *DB) Migrate(schema string, allow_deletion bool) error {
 				"name", table.Name,
 				"statement", query)
 
-			_, err := db.sql.Exec(query)
+			_, err := transaction.Exec(query)
 			if err != nil {
 				transaction.Rollback()
 				return zaperr.Wrap(err, "failed to delete old table",
@@ -148,7 +153,7 @@ func (db *DB) Migrate(schema string, allow_deletion bool) error {
 
 	// modify tables
 	for i := range modified_tables {
-		err := db.migrateModified(desired, modified_tables[i], allow_deletion)
+		err := migrateModified(transaction, desired, modified_tables[i], allow_deletion)
 		if err != nil {
 			transaction.Rollback()
 			return err
@@ -156,19 +161,19 @@ func (db *DB) Migrate(schema string, allow_deletion bool) error {
 	}
 
 	// migrate indices, triggers and views
-	err = db.migrateObjects("index", desired)
+	err = migrateObjects("index", transaction, desired)
 	if err != nil {
 		transaction.Rollback()
 		return err
 	}
 
-	err = db.migrateObjects("trigger", desired)
+	err = migrateObjects("trigger", transaction, desired)
 	if err != nil {
 		transaction.Rollback()
 		return err
 	}
 
-	err = db.migrateObjects("view", desired)
+	err = migrateObjects("view", transaction, desired)
 	if err != nil {
 		transaction.Rollback()
 		return err
@@ -188,7 +193,7 @@ func (db *DB) Migrate(schema string, allow_deletion bool) error {
 }
 
 // procedure: https://www.sqlite.org/lang_altertable.html#otheralter
-func (db *DB) migrateModified(desired *sqlx.DB, table Object, allow_deletion bool) error {
+func migrateModified(transaction *sqlx.Tx, desired *sqlx.DB, table Object, allow_deletion bool) error {
 	// check if no removing is meant
 	actual_cols := []Column{}
 	desired_cols := []Column{}
@@ -197,7 +202,7 @@ func (db *DB) migrateModified(desired *sqlx.DB, table Object, allow_deletion boo
 		Bind(&Column{}).
 		OrderBy("name")
 
-	err := db.Select(&actual_cols, query.String())
+	err := transaction.Select(&actual_cols, query.String())
 	if err != nil {
 		return zaperr.Wrap(err, "failed to get actual table info",
 			zap.String("name", table.Name),
@@ -245,7 +250,7 @@ func (db *DB) migrateModified(desired *sqlx.DB, table Object, allow_deletion boo
 		"new_name", new_name,
 		"statement", create_rename)
 
-	_, err = db.sql.Exec(create_rename)
+	_, err = transaction.Exec(create_rename)
 	if err != nil {
 		return zaperr.Wrap(err, "failed to create renamed table",
 			zap.String("name", table.Name),
@@ -256,6 +261,9 @@ func (db *DB) migrateModified(desired *sqlx.DB, table Object, allow_deletion boo
 	// migrate data
 	cols := []string{}
 	for _, col := range left_cols {
+		if keyword, ok := keywords[strings.ToLower(col.Name)]; ok {
+			col.Name = keyword
+		}
 		cols = append(cols, col.Name)
 	}
 	list := strings.Join(cols, ",")
@@ -267,7 +275,7 @@ func (db *DB) migrateModified(desired *sqlx.DB, table Object, allow_deletion boo
 		"new_name", new_name,
 		"statement", insert)
 
-	_, err = db.sql.Exec(insert)
+	_, err = transaction.Exec(insert)
 	if err != nil {
 		return zaperr.Wrap(err, "failed to migrate data from old table to new one",
 			zap.String("name", table.Name),
@@ -284,7 +292,7 @@ func (db *DB) migrateModified(desired *sqlx.DB, table Object, allow_deletion boo
 		"name", table.Name,
 		"statement", drop)
 
-	_, err = db.sql.Exec(drop)
+	_, err = transaction.Exec(drop)
 	if err != nil {
 		return zaperr.Wrap(err, "failed to drop old table",
 			zap.String("name", table.Name),
@@ -299,7 +307,7 @@ func (db *DB) migrateModified(desired *sqlx.DB, table Object, allow_deletion boo
 		"old_name", new_name,
 		"statement", alter)
 
-	_, err = db.sql.Exec(alter)
+	_, err = transaction.Exec(alter)
 	if err != nil {
 		return zaperr.Wrap(err, "failed to rename table",
 			zap.String("name", table.Name),
@@ -310,7 +318,7 @@ func (db *DB) migrateModified(desired *sqlx.DB, table Object, allow_deletion boo
 	return nil
 }
 
-func (db *DB) migrateObjects(kind string, desired *sqlx.DB) error {
+func migrateObjects(kind string, transaction *sqlx.Tx, desired *sqlx.DB) error {
 	actual_objects := []Object{}
 	desired_objects := []Object{}
 
@@ -320,7 +328,7 @@ func (db *DB) migrateObjects(kind string, desired *sqlx.DB) error {
 		Where("sql IS NOT NULL").
 		OrderBy("name")
 
-	err := db.Select(&actual_objects, query.String(), query.Args()...)
+	err := transaction.Select(&actual_objects, query.String(), query.Args()...)
 	if err != nil {
 		return zaperr.Wrap(err, "failed to get actual objects",
 			zap.String("kind", kind),
@@ -348,7 +356,7 @@ func (db *DB) migrateObjects(kind string, desired *sqlx.DB) error {
 			"name", object.Name,
 			"statement", object.Sql)
 
-		_, err = db.sql.Exec(object.Sql)
+		_, err = transaction.Exec(object.Sql)
 		if err != nil {
 			return zaperr.Wrap(err, "failed to create new object",
 				zap.String("kind", kind),
@@ -368,7 +376,7 @@ func (db *DB) migrateObjects(kind string, desired *sqlx.DB) error {
 			"statement", object.Sql,
 			"query", query)
 
-		_, err = db.sql.Exec(query)
+		_, err = transaction.Exec(query)
 		if err != nil {
 			return zaperr.Wrap(err, "failed to delete old object",
 				zap.String("kind", kind),
@@ -392,7 +400,7 @@ func (db *DB) migrateObjects(kind string, desired *sqlx.DB) error {
 			"statement", object.Sql,
 			"query", query)
 
-		_, err = db.sql.Exec(query)
+		_, err = transaction.Exec(query)
 		if err != nil {
 			return zaperr.Wrap(err, "failed to delete old modified object",
 				zap.String("kind", kind),
@@ -400,7 +408,7 @@ func (db *DB) migrateObjects(kind string, desired *sqlx.DB) error {
 				zap.String("statement", query))
 		}
 
-		_, err = db.sql.Exec(object.Sql)
+		_, err = transaction.Exec(object.Sql)
 
 		zap.S().Infow("create new modified object",
 			"kind", kind,
