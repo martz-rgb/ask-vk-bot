@@ -5,6 +5,7 @@ import (
 	"ask-bot/src/chatbot"
 	"ask-bot/src/events"
 	"ask-bot/src/listener"
+	"ask-bot/src/templates"
 	"ask-bot/src/vk"
 	"ask-bot/src/watcher"
 	"ask-bot/src/watcher/postponed"
@@ -55,6 +56,13 @@ func main() {
 	bot_logger := CreateLogger(config.LogDir, "chatbot.log")
 	listener_logger := CreateLogger(config.LogDir, "listener.log")
 	watcher_logger := CreateLogger(config.LogDir, "watcher.log")
+
+	// make templates
+	err = templates.NewFromFile(config.Templates)
+	if err != nil {
+		zap.S().Fatalw("failed to initialize templates",
+			"error", err)
+	}
 
 	// make ask layer upon db
 	ask_config := ask.ConfigFromEnv()

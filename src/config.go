@@ -18,6 +18,7 @@ type Config struct {
 	DB               string        `json:"DB"`
 	AllowDeletion    bool          `json:"ALLOW_DELETION"`
 	Schema           string        `json:"SCHEMA"`
+	Templates        string        `json:"TEMPLATES"`
 	Timeout          time.Duration `json:"TIMEOUT"`
 	LogDir           string        `json:"LOG_DIR"`
 	UpdatePostponed  time.Duration `json:"UPDATE_POSTPONED"`
@@ -50,6 +51,7 @@ func ConfigFromEnv() *Config {
 		SecretAdminToken: os.Getenv("SECRET_ADMIN_TOKEN"),
 		DB:               os.Getenv("DB"),
 		AllowDeletion:    allow_deletion,
+		Templates:        os.Getenv("TEMPLATES"),
 		Schema:           os.Getenv("SCHEMA"),
 		LogDir:           os.Getenv("LOG_DIR"),
 		Timeout:          timeout,
@@ -92,6 +94,9 @@ func (c *Config) Validate() error {
 		return errors.New("database url is not provided")
 	}
 	// no need to check allow deletion, default is false
+	if len(c.Templates) == 0 {
+		return errors.New("templates file is not provided")
+	}
 	if len(c.Schema) == 0 {
 		return errors.New("database schema is not provided")
 	}

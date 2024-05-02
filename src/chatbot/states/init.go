@@ -3,6 +3,7 @@ package states
 import (
 	"ask-bot/src/form"
 	"ask-bot/src/paginator"
+	"ask-bot/src/templates"
 	"ask-bot/src/vk"
 	"errors"
 
@@ -109,8 +110,15 @@ func (state *Init) Entry(user *User, c *Controls) error {
 			vk.CreateKeyboard(state.ID(), state.paginator.Buttons()))
 	}
 
+	text, err := templates.ParseTemplate(
+		templates.MessageGreeting,
+		templates.MessageGreetingData{})
+	if err != nil {
+		return err
+	}
+
 	_, err = c.Vk.SendMessage(user.Id,
-		"Здравствуйте!",
+		text,
 		vk.CreateKeyboard(state.ID(), state.paginator.Buttons()),
 		nil)
 	return err
