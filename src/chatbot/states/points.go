@@ -3,6 +3,7 @@ package states
 import (
 	"ask-bot/src/ask"
 	"ask-bot/src/russian"
+	"ask-bot/src/templates"
 	"ask-bot/src/vk"
 	"bytes"
 	"errors"
@@ -51,7 +52,15 @@ func (state *Points) Entry(user *User, c *Controls) error {
 		},
 	}
 
-	message := fmt.Sprintf("Ваше текущее количество баллов: %d", points)
+	message, err := templates.ParseTemplate(
+		templates.MessagePoints,
+		templates.MessagePointsData{
+			Points: points,
+		},
+	)
+	if err != nil {
+		return err
+	}
 
 	_, err = c.Vk.SendMessage(user.Id, message, vk.CreateKeyboard(state.ID(), buttons), nil)
 	return err
@@ -93,43 +102,47 @@ func (state *Points) Back(user *User, c *Controls, info *ExitInfo) (*Action, err
 
 func (state *Points) PrepareHistory(user_id int, c *Controls, history []ask.Points) (message string, attachment string, err error) {
 	if len(history) == 0 {
-		return "Вы еще не получали баллы в нашем сообществе.", "", nil
+		message, err := templates.ParseTemplate(
+			templates.MessagePointsNoHistory,
+			templates.MessagePointsNoHistoryData{},
+		)
+		return message, "", err
 	}
 
-	points_noun := russian.PluralNoun("балл", "балла", "баллов")
-
-	events := []string{}
-	for _, event := range history {
-		sign := "+"
-		sign_word := "получили"
-		if event.Diff < 0 {
-			sign = "−"
-			sign_word = "потеряли"
-			event.Diff = -event.Diff
+	events := make([]string, len(history))
+	for i, event := range history {
+		e, err := templates.ParseTemplate(
+			templates.MessagePointsEvent,
+			templates.MessagePointsEventData{
+				Diff: event.Diff,
+				Date: fmt.Sprintf("%d %s %d",
+					event.Timestamp.Day(),
+					russian.MonthGenitive(event.Timestamp.Month()),
+					event.Timestamp.Year()),
+				Cause: event.Cause,
+			},
+		)
+		if err != nil {
+			return "", "", err
 		}
 
-		events = append(events, fmt.Sprintf(
-			"%s Вы %s %d %s %d %s %d в %s.\n   Причина: \"%s\".\n",
-			sign,
-			sign_word,
-			event.Diff,
-			points_noun(event.Diff),
-			event.Timestamp.Day(),
-			russian.MonthGenitive(event.Timestamp.Month()),
-			event.Timestamp.Year(),
-			event.Timestamp.Format(time.TimeOnly),
-			event.Cause))
+		events[i] = e
 	}
 
 	if len(history) <= MaxLengthHistory {
 		return strings.Join(events, "\n"), "", nil
 	}
-	record_noun := russian.PluralNoun("запись", "записи", "записей")
 
-	message = strings.Join(events[:MaxLengthHistory], "\n")
-	message += fmt.Sprintf("\n... и еще %d %s. Смотрите полную историю в прикрепленном файле.",
-		len(history)-MaxLengthHistory,
-		record_noun(len(history)-MaxLengthHistory))
+	message, err = templates.ParseTemplate(
+		templates.MessagePointsShortHistory,
+		templates.MessagePointsShortHistoryData{
+			Events: strings.Join(events[:MaxLengthHistory], "\n"),
+			Count:  len(history) - MaxLengthHistory,
+		},
+	)
+	if err != nil {
+		return "", "", nil
+	}
 
 	name := fmt.Sprintf("full_history_%d_%s.txt", user_id, time.Now().Format(time.DateOnly))
 	full_history := strings.Join(events, "\n")

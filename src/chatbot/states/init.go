@@ -125,6 +125,8 @@ func (state *Init) Entry(user *User, c *Controls) error {
 }
 
 func (state *Init) NewMessage(user *User, c *Controls, message *vk.Message) (*Action, error) {
+	state.Silent = true
+
 	return nil, state.Entry(user, c)
 }
 

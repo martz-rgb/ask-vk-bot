@@ -7,6 +7,7 @@ import (
 	"ask-bot/src/dict"
 	"ask-bot/src/form"
 	"ask-bot/src/paginator"
+	"ask-bot/src/templates"
 	"ask-bot/src/vk"
 	"errors"
 	"fmt"
@@ -62,22 +63,42 @@ func (state *ReservationManage) Entry(user *User, c *Controls) error {
 
 	switch state.details.Status {
 	case ask.ReservationStatuses.UnderConsideration:
-		message = fmt.Sprintf("У вас есть бронь на %s на рассмотрении. Когда ее рассмотрят, вам придет сообщение.",
-			state.details.AccusativeName)
+		message, err = templates.ParseTemplate(
+			templates.MessageReservationUnderConsideration,
+			templates.MessageReservationUnderConsiderationData{
+				Reservation: *state.details,
+			},
+		)
 
 	case ask.ReservationStatuses.InProgress:
-		message = fmt.Sprintf("У вас есть бронь на %s до %s.",
-			state.details.AccusativeName,
-			state.details.Deadline.Time)
+		message, err = templates.ParseTemplate(
+			templates.MessageReservationInProgress,
+			templates.MessageReservationInProgressData{
+				Reservation: *state.details,
+			},
+		)
 
 	case ask.ReservationStatuses.Done:
 		// TO-DO: try to get info about postponed poll from postponed
-		message = fmt.Sprintf("Мы получили ваше приветствие на %s! Скоро будет создан опрос.",
-			state.details.AccusativeName)
+		message, err = templates.ParseTemplate(
+			templates.MessageReservationDone,
+			templates.MessageReservationDoneData{
+				Reservation: *state.details,
+			},
+		)
 
 	case ask.ReservationStatuses.Poll:
-		message = fmt.Sprintf("Опрос начался! Посмотреть на него можно здесь: https://vk.com/wall%d_%d",
-			c.Vk.ID(), details.Poll.Int32)
+		message, err = templates.ParseTemplate(
+			templates.MessageReservationPoll,
+			templates.MessageReservationPollData{
+				Reservation: *state.details,
+				Link:        c.Vk.PostLink(int(details.Poll.Int32)),
+			},
+		)
+	}
+
+	if err != nil {
+		return err
 	}
 
 	config := &paginator.Config[form.Option]{
@@ -88,7 +109,7 @@ func (state *ReservationManage) Entry(user *User, c *Controls) error {
 		ToValue: form.OptionToValue,
 	}
 
-	state.paginator = paginator.New[form.Option](
+	state.paginator = paginator.New(
 		state.options(),
 		config.MustBuild())
 

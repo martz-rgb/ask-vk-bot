@@ -18,6 +18,10 @@ const (
 	NewPost       = "post"
 )
 
+func (v *VK) PostLink(post int) string {
+	return fmt.Sprintf("https://vk.com/wall%d_%d", v.id, post)
+}
+
 func (v *VK) CreatePost(text string, attachments string, signed bool, publish_date int64) (int, error) {
 	params := api.Params{
 		"owner_id":     v.id,
