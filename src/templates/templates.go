@@ -12,6 +12,7 @@ import (
 	"time"
 
 	"github.com/hori-ryota/zaperr"
+	"github.com/rb-go/plural-ru"
 	"go.uber.org/zap"
 )
 
@@ -59,7 +60,17 @@ func NewFromFile(filename string) error {
 		templates := make([]*template.Template, len(texts))
 
 		for i, text := range texts {
-			temp, err := template.New(string(id)).Parse(text)
+			temp, err := template.New(string(id)).
+				Funcs(template.FuncMap{
+					"plural": plural.Noun[int],
+					"abs": func(num int) int {
+						if num < 0 {
+							return -num
+						}
+						return num
+					},
+				}).
+				Parse(text)
 			if err != nil {
 				return zaperr.Wrap(err, "failed to parse template",
 					zap.String("template", text))
@@ -68,6 +79,7 @@ func NewFromFile(filename string) error {
 		}
 
 		t.Templates = templates
+		Templates[id] = t
 	}
 
 	r = rand.New(rand.NewSource(time.Now().Unix()))
@@ -84,7 +96,14 @@ func ParseTemplate(id TemplateID, data interface{}) (string, error) {
 	}
 
 	// check data
-	if reflect.TypeOf(data) != ts.Type {
+	target_type := reflect.TypeOf(ts.Type)
+	actual_type := reflect.TypeOf(data)
+
+	if actual_type.Kind() != reflect.Pointer {
+		actual_type = reflect.PointerTo(actual_type)
+	}
+
+	if target_type != actual_type {
 		err := errors.New("invalid type of data for template")
 		return "", zaperr.Wrap(err, "",
 			zap.Any("expected type", ts.Type),
