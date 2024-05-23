@@ -7,10 +7,9 @@ import (
 	"ask-bot/src/dict"
 	"ask-bot/src/form"
 	"ask-bot/src/paginator"
-	"ask-bot/src/templates"
+	ts "ask-bot/src/templates"
 	"ask-bot/src/vk"
 	"errors"
-	"fmt"
 
 	"github.com/hori-ryota/zaperr"
 	"go.uber.org/zap"
@@ -63,34 +62,34 @@ func (state *ReservationManage) Entry(user *User, c *Controls) error {
 
 	switch state.details.Status {
 	case ask.ReservationStatuses.UnderConsideration:
-		message, err = templates.ParseTemplate(
-			templates.MessageReservationUnderConsideration,
-			templates.MessageReservationUnderConsiderationData{
+		message, err = ts.ParseTemplate(
+			ts.MsgReservationUnderConsideration,
+			ts.MsgReservationUnderConsiderationData{
 				Reservation: *state.details,
 			},
 		)
 
 	case ask.ReservationStatuses.InProgress:
-		message, err = templates.ParseTemplate(
-			templates.MessageReservationInProgress,
-			templates.MessageReservationInProgressData{
+		message, err = ts.ParseTemplate(
+			ts.MsgReservationInProgress,
+			ts.MsgReservationInProgressData{
 				Reservation: *state.details,
 			},
 		)
 
 	case ask.ReservationStatuses.Done:
 		// TO-DO: try to get info about postponed poll from postponed
-		message, err = templates.ParseTemplate(
-			templates.MessageReservationDone,
-			templates.MessageReservationDoneData{
+		message, err = ts.ParseTemplate(
+			ts.MsgReservationDone,
+			ts.MsgReservationDoneData{
 				Reservation: *state.details,
 			},
 		)
 
 	case ask.ReservationStatuses.Poll:
-		message, err = templates.ParseTemplate(
-			templates.MessageReservationPoll,
-			templates.MessageReservationPollData{
+		message, err = ts.ParseTemplate(
+			ts.MsgReservationPoll,
+			ts.MsgReservationPollData{
 				Reservation: *state.details,
 				Link:        c.Vk.PostLink(int(details.Poll.Int32)),
 			},
@@ -135,14 +134,18 @@ func (state *ReservationManage) KeyboardEvent(user *User, c *Controls, payload *
 
 		switch option.ID {
 		case "greeting":
-			request := &vk.MessageParams{
-				Text:   "Пришлите свое приветствие.",
-				Params: nil,
+			request, err := ts.ParseTemplate(
+				ts.MsgReservationGreetingRequest,
+				ts.MsgReservationGreetingRequestData{})
+			if err != nil {
+				return nil, err
 			}
 
 			field := form.NewField(
 				"greeting",
-				request,
+				&vk.MessageParams{
+					Text: request,
+				},
 				nil,
 				extract.Images,
 				validate.NotEmpty,
@@ -152,11 +155,14 @@ func (state *ReservationManage) KeyboardEvent(user *User, c *Controls, payload *
 			return NewActionNext(NewForm("greeting", nil, field)), nil
 
 		case "cancel":
-			message := &vk.MessageParams{
-				Text: fmt.Sprintf("Вы уверены, что хотите отменить бронь на %s?",
-					state.details.AccusativeName),
+			message, err := ts.ParseTemplate(
+				ts.MsgReservationCancel,
+				ts.MsgReservationCancelData{})
+			if err != nil {
+				return nil, err
 			}
-			return NewActionNext(NewConfirmation("cancel", message)), nil
+
+			return NewActionNext(NewConfirmation("cancel", &vk.MessageParams{Text: message})), nil
 		}
 	case "paginator":
 		back := state.paginator.Control(payload.Value)
@@ -210,7 +216,15 @@ func (state *ReservationManage) Back(user *User, c *Controls, info *ExitInfo) (*
 				return nil, err
 			}
 
-			_, err = c.Vk.SendMessage(user.Id, "Ваша бронь была успешно отменена.", "", nil)
+			message, err := ts.ParseTemplate(
+				ts.MsgReservationCancelSuccess,
+				ts.MsgReservationCancelSuccessData{},
+			)
+			if err != nil {
+				return nil, err
+			}
+
+			_, err = c.Vk.SendMessage(user.Id, message, "", nil)
 			return NewActionExit(nil), err
 		}
 	}

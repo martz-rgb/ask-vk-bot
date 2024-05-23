@@ -7,9 +7,9 @@ import (
 	"ask-bot/src/dict"
 	"ask-bot/src/form"
 	"ask-bot/src/paginator"
+	ts "ask-bot/src/templates"
 	"ask-bot/src/vk"
 	"errors"
-	"fmt"
 
 	"github.com/SevereCloud/vksdk/v2/api"
 )
@@ -45,8 +45,13 @@ func (state *ReservationNew) Entry(user *User, c *Controls) error {
 		roles,
 		config.MustBuild())
 
-	message := `Выберите нужную роль с помощи клавиатуры или начните вводить и отправьте часть, с которой начинается имя роли.
-				Отправьте специальный символ '%' для того, чтобы вернуться к полному списку ролей.`
+	message, err := ts.ParseTemplate(
+		ts.MsgReservationNew,
+		ts.MsgReservationNewData{},
+	)
+	if err != nil {
+		return err
+	}
 
 	_, err = c.Vk.SendMessage(user.Id,
 		message,
@@ -75,12 +80,20 @@ func (state *ReservationNew) KeyboardEvent(user *User, c *Controls, payload *vk.
 		}
 		state.role = role
 
-		message := &vk.MessageParams{
-			Text: fmt.Sprintf("Вы хотите забронировать роль %s?",
-				role.AccusativeName),
+		message, err := ts.ParseTemplate(
+			ts.MsgReservationNewConfirmation,
+			ts.MsgReservationNewConfirmationData{
+				Role: *role,
+			})
+		if err != nil {
+			return nil, err
 		}
 
-		return NewActionNext(NewConfirmation("confirmation", message)), nil
+		return NewActionNext(NewConfirmation(
+			"confirmation",
+			&vk.MessageParams{
+				Text: message,
+			})), nil
 
 	case "paginator":
 		back := state.paginator.Control(payload.Value)
@@ -109,13 +122,19 @@ func (state *ReservationNew) Back(user *User, c *Controls, info *ExitInfo) (*Act
 		}
 
 		if answer {
-			request := &vk.MessageParams{
-				Text: "Расскажите про себя в одном сообщении.",
+			request, err := ts.ParseTemplate(
+				ts.MsgReservationNewIntro,
+				ts.MsgReservationNewConfirmationData{},
+			)
+			if err != nil {
+				return nil, err
 			}
 
 			field := form.NewField(
 				"about",
-				request,
+				&vk.MessageParams{
+					Text: request,
+				},
 				nil,
 				extract.ID,
 				validate.InfoAbout,
@@ -139,8 +158,14 @@ func (state *ReservationNew) Back(user *User, c *Controls, info *ExitInfo) (*Act
 			return nil, err
 		}
 
-		message := fmt.Sprintf("Отлично! Ваша заявка на бронь %s будет рассмотрена в ближайшее время. Вам придет сообщение.",
-			state.role.AccusativeName)
+		message, err := ts.ParseTemplate(
+			ts.MsgReservationNewSuccess,
+			ts.MsgReservationNewSuccessData{
+				Role: *state.role,
+			})
+		if err != nil {
+			return nil, err
+		}
 		forward, err := vk.ForwardParam(user.Id, []int{id})
 		if err != nil {
 			return nil, err

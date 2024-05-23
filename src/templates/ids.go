@@ -4,7 +4,7 @@ import (
 	"text/template"
 )
 
-//go:generate enumutil -const=TemplateID -dict=Template -name=Templates -output=dict.go -suffix=Data ids.go
+//go:generate enumutil -const=TemplateID -dict=Template -name=Templates -output=dict.go -suffix=Data -json=C:\\Users\\noise\\Documents\\ask-vk-bot\\templates.json ids.go
 
 type TemplateID string
 
@@ -14,15 +14,24 @@ type Template struct {
 }
 
 const (
-	MessageGreeting TemplateID = "msg_greeting"
+	MsgGreeting TemplateID = "msg_greeting"
 
-	MessagePoints             TemplateID = "msg_points"
-	MessagePointsNoHistory    TemplateID = "msg_points_no_history"
-	MessagePointsEvent        TemplateID = "msg_points_event"
-	MessagePointsShortHistory TemplateID = "msg_points_short_history"
+	MsgPoints             TemplateID = "msg_points"
+	MsgPointsNoHistory    TemplateID = "msg_points_no_history"
+	MsgPointsEvent        TemplateID = "msg_points_event"
+	MsgPointsShortHistory TemplateID = "msg_points_short_history"
 
-	MessageReservationUnderConsideration TemplateID = "msg_reservation_under_consideration"
-	MessageReservationInProgress         TemplateID = "msg_reservation_in_progress"
-	MessageReservationDone               TemplateID = "msg_reservation_done"
-	MessageReservationPoll               TemplateID = "msg_reservation_poll"
+	MsgReservationNew             TemplateID = "msg_reservation_new"
+	MsgReservationNewConfirmation TemplateID = "msg_reservation_new_confirmation"
+	MsgReservationNewIntro        TemplateID = "msg_reservation_new_intro"
+	MsgReservationNewSuccess      TemplateID = "msg_reservation_new_success"
+
+	MsgReservationCancel          TemplateID = "msg_reservation_cancel"
+	MsgReservationCancelSuccess   TemplateID = "msg_reservation_cancel_success"
+	MsgReservationGreetingRequest TemplateID = "msg_reservation_greeting_request"
+
+	MsgReservationUnderConsideration TemplateID = "msg_reservation_under_consideration"
+	MsgReservationInProgress         TemplateID = "msg_reservation_in_progress"
+	MsgReservationDone               TemplateID = "msg_reservation_done"
+	MsgReservationPoll               TemplateID = "msg_reservation_poll"
 )

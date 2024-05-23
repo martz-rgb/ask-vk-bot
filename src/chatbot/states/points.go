@@ -3,7 +3,7 @@ package states
 import (
 	"ask-bot/src/ask"
 	"ask-bot/src/russian"
-	"ask-bot/src/templates"
+	ts "ask-bot/src/templates"
 	"ask-bot/src/vk"
 	"bytes"
 	"errors"
@@ -52,9 +52,9 @@ func (state *Points) Entry(user *User, c *Controls) error {
 		},
 	}
 
-	message, err := templates.ParseTemplate(
-		templates.MessagePoints,
-		templates.MessagePointsData{
+	message, err := ts.ParseTemplate(
+		ts.MsgPoints,
+		ts.MsgPointsData{
 			Points: points,
 		},
 	)
@@ -102,18 +102,18 @@ func (state *Points) Back(user *User, c *Controls, info *ExitInfo) (*Action, err
 
 func (state *Points) PrepareHistory(user_id int, c *Controls, history []ask.Points) (message string, attachment string, err error) {
 	if len(history) == 0 {
-		message, err := templates.ParseTemplate(
-			templates.MessagePointsNoHistory,
-			templates.MessagePointsNoHistoryData{},
+		message, err := ts.ParseTemplate(
+			ts.MsgPointsNoHistory,
+			ts.MsgPointsNoHistoryData{},
 		)
 		return message, "", err
 	}
 
 	events := make([]string, len(history))
 	for i, event := range history {
-		e, err := templates.ParseTemplate(
-			templates.MessagePointsEvent,
-			templates.MessagePointsEventData{
+		e, err := ts.ParseTemplate(
+			ts.MsgPointsEvent,
+			ts.MsgPointsEventData{
 				Diff: event.Diff,
 				Date: fmt.Sprintf("%d %s %d",
 					event.Timestamp.Day(),
@@ -133,9 +133,9 @@ func (state *Points) PrepareHistory(user_id int, c *Controls, history []ask.Poin
 		return strings.Join(events, "\n"), "", nil
 	}
 
-	message, err = templates.ParseTemplate(
-		templates.MessagePointsShortHistory,
-		templates.MessagePointsShortHistoryData{
+	message, err = ts.ParseTemplate(
+		ts.MsgPointsShortHistory,
+		ts.MsgPointsShortHistoryData{
 			Events: strings.Join(events[:MaxLengthHistory], "\n"),
 			Count:  len(history) - MaxLengthHistory,
 		},

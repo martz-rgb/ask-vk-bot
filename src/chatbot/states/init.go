@@ -3,7 +3,7 @@ package states
 import (
 	"ask-bot/src/form"
 	"ask-bot/src/paginator"
-	"ask-bot/src/templates"
+	ts "ask-bot/src/templates"
 	"ask-bot/src/vk"
 	"errors"
 
@@ -88,7 +88,7 @@ func (state *Init) updatePaginator(user *User, c *Controls) error {
 			ToValue: form.OptionToValue,
 		}
 
-		state.paginator = paginator.New[form.Option](
+		state.paginator = paginator.New(
 			options,
 			config.MustBuild())
 		return nil
@@ -110,9 +110,9 @@ func (state *Init) Entry(user *User, c *Controls) error {
 			vk.CreateKeyboard(state.ID(), state.paginator.Buttons()))
 	}
 
-	text, err := templates.ParseTemplate(
-		templates.MessageGreeting,
-		templates.MessageGreetingData{})
+	text, err := ts.ParseTemplate(
+		ts.MsgGreeting,
+		ts.MsgGreetingData{})
 	if err != nil {
 		return err
 	}

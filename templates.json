@@ -15,6 +15,27 @@
     "msg_points_short_history": [
         "{{.Events}} ... и еще {{.Count}} {{call plural .Count \"запись\" \"записи\" \"записей\"}}. Смотрите полную историю в прикрепленном файле."
     ],
+    "msg_reservation_new": [
+        "Выберите нужную роль с помощи клавиатуры или начните вводить и отправьте часть, с которой начинается имя роли.\nОтправьте специальный символ '%' для того, чтобы вернуться к полному списку ролей."
+    ],
+    "msg_reservation_new_confirmation": [
+        "Вы хотите забронировать {{.AccusativeName}}?"
+    ],
+    "msg_reservation_new_intro": [
+        "Расскажите про себя в одном сообщении."
+    ],
+    "msg_reservation_new_success": [
+        "Отлично! Ваша заявка на бронирование {{.AccusativeName}} будет рассмотрена в ближайшее время. Вам придет сообщение."
+    ],
+    "msg_reservation_cancel": [
+        "Вы уверены, что хотите отменить бронь на {{.AccusativeName}}?"
+    ],
+    "msg_reservation_cancel_success": [
+        "Ваша бронь была отменена."
+    ],
+    "msg_reservation_greeting_request": [
+        "Пришлите свое приветствие."
+    ],
     "msg_reservation_under_consideration": [
         "У вас есть бронь на {{.AccusativeName}} на рассмотрении. Когда ее рассмотрят, вам придет сообщение."
     ],
