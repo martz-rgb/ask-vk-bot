@@ -34,4 +34,13 @@ const (
 	MsgReservationInProgress         TemplateID = "msg_reservation_in_progress"
 	MsgReservationDone               TemplateID = "msg_reservation_done"
 	MsgReservationPoll               TemplateID = "msg_reservation_poll"
+
+	MsgMemberDeadline TemplateID = "msg_member_deadline"
+
+	MsgAdminRoles                         TemplateID = "msg_admin_roles"
+	MsgAdminRolesItem                     TemplateID = "msg_admin_roles_item"
+	MsgAdminReservations                  TemplateID = "msg_admin_reservations"
+	MsgAdminReservationConsiderated       TemplateID = "msg_admin_reservation_considerated"
+	MsgAdminReservationConsideratedNotify TemplateID = "msg_admin_reservation_considerated_notify"
+	MsgAdminReservationDeleted            TemplateID = "msg_admin_reservation_deleted"
 )

@@ -3,8 +3,8 @@ package states
 import (
 	"ask-bot/src/ask"
 	"ask-bot/src/paginator"
+	ts "ask-bot/src/templates"
 	"ask-bot/src/vk"
-	"fmt"
 )
 
 type RolesList struct {
@@ -36,8 +36,13 @@ func (state *RolesList) Entry(user *User, c *Controls) error {
 		roles,
 		config.MustBuild())
 
-	message := `Выберите нужную роль с помощи клавиатуры или начните вводить и отправьте часть, с которой начинается имя роли.
-				Отправьте специальный символ '%' для того, чтобы вернуться к полному списку ролей.`
+	message, err := ts.ParseTemplate(
+		ts.MsgAdminRoles,
+		ts.MsgAdminRolesData{},
+	)
+	if err != nil {
+		return err
+	}
 
 	_, err = c.Vk.SendMessage(user.Id,
 		message,
@@ -65,8 +70,14 @@ func (state *RolesList) KeyboardEvent(user *User, c *Controls, payload *vk.Callb
 			return nil, err
 		}
 
-		message := fmt.Sprintf("Идентификатор: %s\nТег: %s\nИмя: %s\nПадеж: %s\nЗаголовок: %s\nГруппа: %s\nНомер: %d\n",
-			role.Name, role.Hashtag, role.ShownName, role.AccusativeName, role.CaptionName, role.Group.String, role.Order.Int32)
+		message, err := ts.ParseTemplate(
+			ts.MsgAdminRolesItem,
+			ts.MsgAdminRolesItemData{
+				Role: *role,
+			})
+		if err != nil {
+			return nil, err
+		}
 
 		_, err = c.Vk.SendMessage(user.Id, message, "", nil)
 		return nil, err

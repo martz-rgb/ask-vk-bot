@@ -7,10 +7,10 @@ import (
 	"ask-bot/src/dict"
 	"ask-bot/src/form"
 	"ask-bot/src/paginator"
+	ts "ask-bot/src/templates"
 	"ask-bot/src/vk"
-	"fmt"
+	"slices"
 	"strconv"
-	"strings"
 )
 
 type AdminReservation struct {
@@ -28,8 +28,8 @@ func (state *AdminReservation) options(num_reservations int, under_consideration
 
 	if under_consideration {
 		options = append(options, form.Option{
-			ID:    "confirm",
-			Label: "Подтвердить",
+			ID:    "considerate",
+			Label: "Рассмотреть",
 			Color: vk.PrimaryColor,
 		})
 	}
@@ -50,29 +50,19 @@ func (state *AdminReservation) Entry(user *User, c *Controls) error {
 		return err
 	}
 
-	var details []string
-	var under_consideration bool
-	for i, r := range reservations {
-		message := fmt.Sprintf("%d. %s\n user: @id%d\n status: %s\n deadline: %s",
-			i+1,
-			r.Hashtag,
-			r.VkID,
-			r.Status,
-			r.Deadline.Time)
-		details = append(details, message)
-
-		if r.Status == ask.ReservationStatuses.UnderConsideration {
-			under_consideration = true
-		}
+	message, err := ts.ParseTemplate(
+		ts.MsgAdminReservations,
+		ts.MsgAdminReservationsData{
+			Reservations: reservations,
+		},
+	)
+	if err != nil {
+		return err
 	}
 
-	var message string
-
-	if len(details) > 0 {
-		message = strings.Join(details, "\n")
-	} else {
-		message = "Сейчас нет броней."
-	}
+	under_consideration := slices.ContainsFunc(reservations, func(r ask.Reservation) bool {
+		return r.Status == ask.ReservationStatuses.UnderConsideration
+	})
 
 	config := &paginator.Config[form.Option]{
 		Command: "options",
@@ -82,7 +72,7 @@ func (state *AdminReservation) Entry(user *User, c *Controls) error {
 		ToValue: form.OptionToValue,
 	}
 
-	state.paginator = paginator.New[form.Option](state.options(len(reservations), under_consideration),
+	state.paginator = paginator.New(state.options(len(reservations), under_consideration),
 		config.MustBuild())
 
 	_, err = c.Vk.SendMessage(user.Id,
@@ -106,7 +96,7 @@ func (state *AdminReservation) KeyboardEvent(user *User, c *Controls, payload *v
 		}
 
 		switch option.ID {
-		case "confirm":
+		case "considerate":
 			reservations, err := c.Ask.UnderConsiderationReservations()
 			if err != nil {
 				return nil, err
@@ -132,7 +122,7 @@ func (state *AdminReservation) KeyboardEvent(user *User, c *Controls, payload *v
 				fields.ConfirmReservationField,
 			)
 
-			return NewActionNext(NewForm("confirm", nil, field)), nil
+			return NewActionNext(NewForm("considerate", nil, field)), nil
 
 		case "delete":
 			reservations, err := c.Ask.Reservations()
@@ -182,46 +172,50 @@ func (state *AdminReservation) Back(user *User, c *Controls, info *ExitInfo) (*A
 	}
 
 	switch info.Payload {
-	case "confirm":
+	case "considerate":
 		reservation, err := dict.ExtractValue[*ask.Reservation](info.Values, "reservation")
 		if err != nil {
 			return nil, err
 		}
-		action, err := dict.ExtractValue[bool](info.Values, "details", "action")
+		decision, err := dict.ExtractValue[bool](info.Values, "details", "decision")
 		if err != nil {
 			return nil, err
 		}
 
-		var message, notification_message string
-		if action == true {
+		if decision {
 			deadline, err := c.Ask.ConfirmReservation(reservation.VkID)
 			if err != nil {
 				return nil, err
 			}
 
-			message = fmt.Sprintf("Бронь на %s была успешно подтверждена.",
-				reservation.AccusativeName)
-			notification_message = fmt.Sprintf("Ваша бронь на %s успешно подтверждена! Вам нужно отрисовать приветствие до %s.",
-				reservation.AccusativeName,
-				deadline)
+			reservation.Deadline.Time = deadline
 		} else {
 			err := c.Ask.DeleteReservation(reservation.VkID)
 			if err != nil {
 				return nil, err
 			}
-
-			message = fmt.Sprintf("Бронь на %s была успешно удалена.",
-				reservation.AccusativeName)
-			notification_message = fmt.Sprintf("Ваша бронь на %s, к сожалению, отклонена. Попробуйте еще раз позже!",
-				reservation.AccusativeName)
 		}
+
+		message, err := ts.ParseTemplate(
+			ts.MsgAdminReservationConsiderated,
+			ts.MsgAdminReservationConsideratedData{
+				Decision:    decision,
+				Reservation: *reservation,
+			},
+		)
+		notification, err := ts.ParseTemplate(
+			ts.MsgAdminReservationConsideratedNotify,
+			ts.MsgAdminReservationConsideratedNotifyData{
+				Decision:    decision,
+				Reservation: *reservation,
+			},
+		)
 
 		// notify user
-		notification := &vk.MessageParams{
+		c.Notify <- &vk.MessageParams{
 			Id:   reservation.VkID,
-			Text: notification_message,
+			Text: notification,
 		}
-		c.Notify <- notification
 
 		_, err = c.Vk.SendMessage(user.Id, message, "", nil)
 		if err != nil {
@@ -239,9 +233,16 @@ func (state *AdminReservation) Back(user *User, c *Controls, info *ExitInfo) (*A
 			return nil, err
 		}
 
-		message := fmt.Sprintf("Бронь на %s от @id%d была успешно удалена.",
-			reservation.AccusativeName,
-			reservation.VkID)
+		message, err := ts.ParseTemplate(
+			ts.MsgAdminReservationDeleted,
+			ts.MsgAdminReservationDeletedData{
+				Reservation: *reservation,
+			},
+		)
+		if err != nil {
+			return nil, err
+		}
+
 		_, err = c.Vk.SendMessage(user.Id, message, "", nil)
 		if err != nil {
 			return nil, err

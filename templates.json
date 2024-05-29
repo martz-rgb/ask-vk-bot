@@ -10,10 +10,10 @@
         "Вы еще не получали баллы в нашем сообществе."
     ],
     "msg_points_event": [
-        " Вы {{if .Diff le 0}} получили {{.Diff}} {{else}} потеряли {{call abs .Diff}} {{end}} {{call plural .Diff \"балл\" \"балла\" \"баллов\"}} {{.Date}}.\nПричина: \"{{.Cause}}\"."
+        " Вы {{if .Diff le 0}} получили {{.Diff}} {{else}} потеряли {{abs .Diff}} {{end}} {{plural .Diff \"балл\" \"балла\" \"баллов\"}} {{.Date}}.\nПричина: \"{{.Cause}}\"."
     ],
     "msg_points_short_history": [
-        "{{.Events}} ... и еще {{.Count}} {{call plural .Count \"запись\" \"записи\" \"записей\"}}. Смотрите полную историю в прикрепленном файле."
+        "{{.Events}} ... и еще {{.Count}} {{plural .Count \"запись\" \"записи\" \"записей\"}}. Смотрите полную историю в прикрепленном файле."
     ],
     "msg_reservation_new": [
         "Выберите нужную роль с помощи клавиатуры или начните вводить и отправьте часть, с которой начинается имя роли.\nОтправьте специальный символ '%' для того, чтобы вернуться к полному списку ролей."
@@ -40,12 +40,33 @@
         "У вас есть бронь на {{.AccusativeName}} на рассмотрении. Когда ее рассмотрят, вам придет сообщение."
     ],
     "msg_reservation_in_progress": [
-        "У вас есть бронь на {{.AccusativeName}} до {{.Deadline.Time}}."
+        "У вас есть бронь на {{.AccusativeName}} до {{rudate .Deadline.Time}}."
     ],
     "msg_reservation_done": [
         "Мы получили ваше приветствие на {{.AccusativeName}}! Скоро будет создан опрос."
     ],
     "msg_reservation_poll": [
         "Опрос начался! Посмотреть на него можно здесь: {{.Link}}"
+    ],
+    "msg_member_deadline": [
+        "{{if eq len .Members 1}}{{with $m := index .Members 0 }} Ваш дедлайн за {{$m.AccusativeName}} -- {{rudate $m.Deadline}}{{end}}{{else}} Ваши дедлайны:\n{{range .}} {{.ShownName}} -- {{rudate .Deadline}}{{end}}{{end}}"
+    ],
+    "msg_admin_roles": [
+        "Выберите нужную роль с помощи клавиатуры или начните вводить и отправьте часть, с которой начинается имя роли.\nОтправьте специальный символ '%' для того, чтобы вернуться к полному списку ролей."
+    ],
+    "msg_admin_roles_item": [
+        "Идентификатор: {{.Name}}\nТег: {{.Hashtag}}\nИмя: {{.ShownName}}\nПадеж: {{.AccusativeName}}\nЗаголовок: {{.CaptionName}}\nГруппа: {{.Group.String}}\nНомер: {{.Order.Int32}}\n"
+    ],
+    "msg_admin_reservations": [
+        "{{with $l := len .Reservations}}{{if eq $l 0}}Броней нет.{{else}}{{range $i, $elem := $.Reservations}}{{add $i 1}}. Роль: {{$elem.ShownName}}\nПользователь: {{vkid $elem.VkID}}\nСтатус: {{$elem.Status}}\nДедлайн: {{rudate $elem.Deadline.Time}}{{end}}{{end}}{{end}}"
+    ],
+    "msg_admin_reservation_considerated": [
+        "{{if .Decision}}Бронь на {{.Reservation.AccusativeName}} была успешно подтверждена.{{else}}Бронь на {{.Reservation.AccusativeName}} была отклонена.{{end}}"
+    ],
+    "msg_admin_reservation_considerated_notify": [
+        "{{if .Decision}}Ваша бронь на {{.Reservation.AccusativeName}} успешно подтверждена! Вам нужно отрисовать приветствие до {{rudate .Reservation.Deadline.Time}}.{{else}}Ваша бронь на {{.Reservation.AccusativeName}}, к сожалению, отклонена. Попробуйте еще раз позже!{{end}}"
+    ],
+    "msg_admin_reservation_deleted": [
+        "Бронь на {{.AccusativeName}} от {{vkid .VkID}} была успешно удалена."
     ]
 }

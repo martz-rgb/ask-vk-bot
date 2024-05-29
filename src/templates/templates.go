@@ -1,9 +1,11 @@
 package templates
 
 import (
+	"ask-bot/src/russian"
 	"bytes"
 	"encoding/json"
 	"errors"
+	"fmt"
 	"io"
 	"math/rand"
 	"os"
@@ -62,12 +64,21 @@ func NewFromFile(filename string) error {
 		for i, text := range texts {
 			temp, err := template.New(string(id)).
 				Funcs(template.FuncMap{
+					"add": func(num1 int, num2 int) int {
+						return num1 + num2
+					},
 					"plural": plural.Noun[int],
 					"abs": func(num int) int {
 						if num < 0 {
 							return -num
 						}
 						return num
+					},
+					"rudate": func(t time.Time) string {
+						return fmt.Sprintf("%d %s %d", t.Day(), russian.MonthGenitive(t.Month()), t.Year())
+					},
+					"vkid": func(id int) string {
+						return fmt.Sprintf("@id%d", id)
 					},
 				}).
 				Parse(text)
