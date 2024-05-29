@@ -16,8 +16,10 @@ about poll:
 
 TO-DO list:
 
+- [ ] remember polls answers
 - [ ] greetings (table + add from listener + create in postponed)
-- [ ] remember polls answers if there is no order guarantee
+- [ ] rewrite forms (make it more simple but save as mush power as can)
+- [ ] members & deadlines
 - [ ] greetings mode (manual or auto)
 - [ ] notifications to admin (about new reservation if should be considerate and greetings if manual)
 - [ ] roles groups
