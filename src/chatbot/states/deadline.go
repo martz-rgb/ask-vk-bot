@@ -3,6 +3,7 @@ package states
 import (
 	"ask-bot/src/ask"
 	"ask-bot/src/russian"
+	ts "ask-bot/src/templates"
 	"ask-bot/src/vk"
 	"bytes"
 	"errors"
@@ -25,19 +26,14 @@ func (state *Deadline) Entry(user *User, c *Controls) error {
 		return err
 	}
 
-	deadlines := []string{}
-
-	for i := range members {
-		deadline, err := c.Ask.Deadline(members[i].Id)
-		if err != nil {
-			return err
-		}
-
-		message := fmt.Sprintf("Ваш дедлайн за роль: %d %s %d",
-			deadline.Day(),
-			russian.MonthGenitive(deadline.Month()),
-			deadline.Year())
-		deadlines = append(deadlines, message)
+	message, err := ts.ParseTemplate(
+		ts.MsgMemberDeadline,
+		ts.MsgMemberDeadlineData{
+			Members: members,
+		},
+	)
+	if err != nil {
+		return err
 	}
 
 	buttons := [][]vk.Button{
@@ -58,7 +54,7 @@ func (state *Deadline) Entry(user *User, c *Controls) error {
 	}
 
 	_, err = c.Vk.SendMessage(user.Id,
-		strings.Join(deadlines, "\n"),
+		message,
 		vk.CreateKeyboard(state.ID(), buttons),
 		nil)
 	return err
