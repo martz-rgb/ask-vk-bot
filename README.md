@@ -23,6 +23,7 @@ TO-DO list:
 - [ ] roles groups
 - [ ] album\boards order?
 - [ ] points (spend)
+- [ ] faq (либо один текст, либо параметризация списка, либо просто выпилить нафиг)
 
 
 thoughts and long-term:
