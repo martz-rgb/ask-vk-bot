@@ -38,8 +38,7 @@ CREATE TABLE members (
     id INTEGER PRIMARY KEY NOT NULL,
     vk_id INT,
     role TEXT REFERENCES roles(name) NOT NULL,
-    status TEXT CHECK(status IN ('Active', 'Freeze')) NOT NULL DEFAULT 'Active',
-    timezone INT NOT NULL DEFAULT 0
+    status TEXT CHECK(status IN ('Active', 'Freeze')) NOT NULL DEFAULT 'Active'
 );
 
 CREATE TABLE deadline (
@@ -211,3 +210,23 @@ WHERE
         FROM
             members
     );
+
+CREATE VIEW deadlines AS
+SELECT
+    SUM(diff) as deadline
+FROM
+    deadline
+GROUP BY
+    member;
+
+CREATE VIEW members_details AS
+SELECT
+    members.id,
+    members.vk_id,
+    members.status,
+    deadlines.deadline,
+    roles.*
+FROM
+    members
+    INNER JOIN roles ON pending_polls.role = roles.name
+    LEFT JOIN deadlines ON members.id = deadline.member;

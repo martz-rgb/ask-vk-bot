@@ -3,6 +3,7 @@ package ask
 import (
 	"database/sql/driver"
 	"errors"
+	"time"
 
 	"github.com/hori-ryota/zaperr"
 	"github.com/leporo/sqlf"
@@ -43,16 +44,18 @@ func (s *MemberStatus) Scan(value interface{}) error {
 type Member struct {
 	Id       int          `db:"id"`
 	VkID     int          `db:"vk_id"`
-	Role     string       `db:"role"`
 	Status   MemberStatus `db:"status"`
-	Timezone int          `db:"timezone"`
+	Deadline time.Time    `db:"deadline"`
+	//Timezone int          `db:"timezone"`
+
+	Role
 }
 
 // TO-DO possible no member
 func (a *Ask) MemberByRole(role string) (Member, error) {
 	var member Member
 
-	query := sqlf.From("members").
+	query := sqlf.From("members_details").
 		Bind(&Member{}).
 		Where("role = ?", role)
 
@@ -69,7 +72,7 @@ func (a *Ask) MemberByRole(role string) (Member, error) {
 func (a *Ask) MembersByVkID(vk_id int) ([]Member, error) {
 	var members []Member
 
-	query := sqlf.From("members").
+	query := sqlf.From("members_details").
 		Bind(&Member{}).
 		Where("vk_id = ?", vk_id)
 
