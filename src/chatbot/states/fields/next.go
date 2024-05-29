@@ -19,7 +19,7 @@ var ConfirmReservationOptions = []form.Option{
 	},
 	{
 		ID:    "delete",
-		Label: "Удалить",
+		Label: "Отклонить",
 		Value: false,
 	},
 }
@@ -49,7 +49,7 @@ func ConfirmReservationField(value interface{}) (string, []*form.Field) {
 	}
 
 	field := form.NewField(
-		"action",
+		"decision",
 		request,
 		ConfirmReservationOptions,
 		nil,
