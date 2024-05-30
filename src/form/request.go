@@ -20,25 +20,25 @@ func AlwaysRequest(message *vk.MessageParams, options []Option) func(dict.Dictio
 }
 
 // TO-DO: yes and no words from templates
-func AlwaysConfirm(message_builder func(dict.Dictionary) *vk.MessageParams) func(dict.Dictionary) (*Request, bool, error) {
+func AlwaysConfirm(message *vk.MessageParams) func(dict.Dictionary) (*Request, bool, error) {
 	options := []Option{
 		{
 			ID:    "true",
 			Label: "Да",
-			Color: vk.PositiveColor,
+			Color: vk.PrimaryColor,
 			Value: true,
 		},
 		{
 			ID:    "false",
 			Label: "Нет",
-			Color: vk.NegativeColor,
+			Color: vk.SecondaryColor,
 			Value: false,
 		},
 	}
 
 	return func(d dict.Dictionary) (*Request, bool, error) {
 		return &Request{
-			Message: message_builder(d),
+			Message: message,
 			Options: options,
 		}, false, nil
 	}
