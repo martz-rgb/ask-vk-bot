@@ -2,10 +2,9 @@ package states
 
 import (
 	"ask-bot/src/ask"
-	"ask-bot/src/chatbot/states/fields"
-	"ask-bot/src/chatbot/states/validate"
 	"ask-bot/src/dict"
 	"ask-bot/src/form"
+	"ask-bot/src/form/check"
 	"ask-bot/src/paginator"
 	ts "ask-bot/src/templates"
 	"ask-bot/src/vk"
@@ -111,18 +110,65 @@ func (state *AdminReservation) KeyboardEvent(user *User, c *Controls, payload *v
 				})
 			}
 
-			field := form.NewField(
-				"reservation",
-				&vk.MessageParams{
-					Text: "Выберить бронь для рассмотрения.",
-				},
-				options,
-				nil,
-				validate.NotEmpty,
-				fields.ConfirmReservationField,
-			)
+			reservation := form.Field{
+				Name:           "reservation",
+				BuildRequest:   form.AlwaysRequest(&vk.MessageParams{Text: "Выберить бронь для рассмотрения."}, options),
+				ExtrudeMessage: nil,
+				Check:          check.NotEmpty,
+			}
 
-			return NewActionNext(NewForm("considerate", nil, field)), nil
+			decision := form.Field{
+				Name: "decision",
+				BuildRequest: func(d dict.Dictionary) (*form.Request, bool, error) {
+					r, err := dict.ExtractValue[*ask.Reservation](d, "reservation")
+					if err != nil {
+						return nil, false, err
+					}
+
+					message, err := ts.ParseTemplate(
+						ts.MsgAdminReservationConsiderate,
+						ts.MsgAdminReservationConsiderateData{
+							Reservation: *r,
+						},
+					)
+					if err != nil {
+						return nil, false, err
+					}
+
+					forward, err := vk.ForwardParam(
+						r.VkID,
+						[]int{r.Introduction})
+					if err != nil {
+						return nil, false, err
+					}
+
+					return &form.Request{
+						Message: &vk.MessageParams{
+							Text:   message,
+							Params: forward,
+						},
+						Options: []form.Option{
+							{
+								ID:    "confirm",
+								Color: vk.PrimaryColor,
+								Label: "Подтвердить",
+								Value: true,
+							},
+							{
+								ID:    "decline",
+								Color: vk.SecondaryColor,
+								Label: "Отклонить",
+								Value: false,
+							},
+						},
+					}, false, nil
+				},
+				ExtrudeMessage: nil,
+				Check:          check.NotEmptyBool,
+			}
+
+			form, err := NewForm("considerate", reservation, decision)
+			return NewActionNext(form), err
 
 		case "delete":
 			reservations, err := c.Ask.Reservations()
@@ -139,18 +185,17 @@ func (state *AdminReservation) KeyboardEvent(user *User, c *Controls, payload *v
 				})
 			}
 
-			field := form.NewField(
-				"reservation",
-				&vk.MessageParams{
-					Text: "Выберить бронь для удаления.",
-				},
-				options,
-				nil,
-				validate.NotEmpty,
-				nil,
-			)
+			field := form.Field{
+				Name: "reservation",
+				BuildRequest: form.AlwaysRequest(
+					&vk.MessageParams{Text: "Выберить бронь для удаления."},
+					options),
+				ExtrudeMessage: nil,
+				Check:          check.NotEmpty,
+			}
 
-			return NewActionNext(NewForm("delete", fields.ConfirmReservationDeletion, field)), nil
+			form, err := NewForm("delete", field)
+			return NewActionNext(form), err
 		}
 	case "paginator":
 		back := state.paginator.Control(payload.Value)
@@ -177,7 +222,7 @@ func (state *AdminReservation) Back(user *User, c *Controls, info *ExitInfo) (*A
 		if err != nil {
 			return nil, err
 		}
-		decision, err := dict.ExtractValue[bool](info.Values, "details", "decision")
+		decision, err := dict.ExtractValue[bool](info.Values, "decision")
 		if err != nil {
 			return nil, err
 		}

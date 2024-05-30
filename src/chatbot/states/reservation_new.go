@@ -2,16 +2,14 @@ package states
 
 import (
 	"ask-bot/src/ask"
-	"ask-bot/src/chatbot/states/extract"
-	"ask-bot/src/chatbot/states/validate"
 	"ask-bot/src/dict"
 	"ask-bot/src/form"
+	"ask-bot/src/form/check"
+	"ask-bot/src/form/extrude"
 	"ask-bot/src/paginator"
 	ts "ask-bot/src/templates"
 	"ask-bot/src/vk"
 	"errors"
-
-	"github.com/SevereCloud/vksdk/v2/api"
 )
 
 type ReservationNew struct {
@@ -122,25 +120,23 @@ func (state *ReservationNew) Back(user *User, c *Controls, info *ExitInfo) (*Act
 		}
 
 		if answer {
-			request, err := ts.ParseTemplate(
+			message, err := ts.ParseTemplate(
 				ts.MsgReservationNewIntro,
-				ts.MsgReservationNewConfirmationData{},
+				ts.MsgReservationNewIntroData{},
 			)
 			if err != nil {
 				return nil, err
 			}
 
-			field := form.NewField(
-				"about",
-				&vk.MessageParams{
-					Text: request,
-				},
-				nil,
-				extract.ID,
-				validate.InfoAbout,
-				nil)
+			field := form.Field{
+				Name:           "about",
+				BuildRequest:   form.AlwaysRequest(&vk.MessageParams{Text: message}, nil),
+				ExtrudeMessage: extrude.ID,
+				Check:          check.NotEmptyPositiveInt,
+			}
 
-			return NewActionNext(NewForm("about", nil, field)), nil
+			form, err := NewForm("about", field)
+			return NewActionNext(form), err
 		}
 
 	case "about":
@@ -171,9 +167,7 @@ func (state *ReservationNew) Back(user *User, c *Controls, info *ExitInfo) (*Act
 			return nil, err
 		}
 
-		_, err = c.Vk.SendMessage(user.Id, message, "", api.Params{
-			"forward": forward,
-		})
+		_, err = c.Vk.SendMessage(user.Id, message, "", forward)
 		return NewActionExit(nil), err
 	}
 

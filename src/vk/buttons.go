@@ -3,6 +3,7 @@ package vk
 import (
 	"encoding/json"
 
+	"github.com/SevereCloud/vksdk/v2/api"
 	"github.com/SevereCloud/vksdk/v2/object"
 	"github.com/hori-ryota/zaperr"
 	"go.uber.org/zap"
@@ -65,16 +66,18 @@ type ForwardMessage struct {
 	MessagesIds []int `json:"message_ids"`
 }
 
-func ForwardParam(vk_id int, messages []int) (string, error) {
+func ForwardParam(vk_id int, messages []int) (api.Params, error) {
 	forward, err := json.Marshal(ForwardMessage{
 		vk_id,
 		messages,
 	})
 	if err != nil {
-		return "", zaperr.Wrap(err, "failed to marshal forward message param",
+		return nil, zaperr.Wrap(err, "failed to marshal forward message param",
 			zap.Int("vk_id", vk_id),
 			zap.Any("messages", messages))
 	}
 
-	return string(forward), nil
+	return api.Params{
+		"forward": string(forward),
+	}, nil
 }

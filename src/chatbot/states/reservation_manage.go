@@ -2,10 +2,10 @@ package states
 
 import (
 	"ask-bot/src/ask"
-	"ask-bot/src/chatbot/states/extract"
-	"ask-bot/src/chatbot/states/validate"
 	"ask-bot/src/dict"
 	"ask-bot/src/form"
+	"ask-bot/src/form/check"
+	"ask-bot/src/form/extrude"
 	"ask-bot/src/paginator"
 	ts "ask-bot/src/templates"
 	"ask-bot/src/vk"
@@ -16,8 +16,8 @@ import (
 )
 
 type ReservationManage struct {
-	paginator *paginator.Paginator[form.Option]
-	details   *ask.Reservation
+	paginator   *paginator.Paginator[form.Option]
+	reservation ask.Reservation
 }
 
 func (state *ReservationManage) ID() string {
@@ -25,7 +25,7 @@ func (state *ReservationManage) ID() string {
 }
 
 func (state *ReservationManage) options() (options []form.Option) {
-	if state.details.Status == ask.ReservationStatuses.InProgress {
+	if state.reservation.Status == ask.ReservationStatuses.InProgress {
 		options = append(options, form.Option{
 			ID:    "greeting",
 			Label: "Приветствие",
@@ -33,7 +33,7 @@ func (state *ReservationManage) options() (options []form.Option) {
 		})
 	}
 
-	if state.details.Status != ask.ReservationStatuses.Poll {
+	if state.reservation.Status != ask.ReservationStatuses.Poll {
 		options = append(options, form.Option{
 			ID:    "cancel",
 			Label: "Отменить",
@@ -45,27 +45,27 @@ func (state *ReservationManage) options() (options []form.Option) {
 }
 
 func (state *ReservationManage) Entry(user *User, c *Controls) error {
-	details, err := c.Ask.ReservationByVkID(user.Id)
+	reservation, err := c.Ask.ReservationByVkID(user.Id)
 	if err != nil {
 		return err
 	}
 
-	if details == nil {
+	if reservation == nil {
 		err = errors.New("there is no reservations")
 		return zaperr.Wrap(err, "",
 			zap.Int("user", user.Id))
 	}
 
-	state.details = details
+	state.reservation = *reservation
 
 	var message string
 
-	switch state.details.Status {
+	switch state.reservation.Status {
 	case ask.ReservationStatuses.UnderConsideration:
 		message, err = ts.ParseTemplate(
 			ts.MsgReservationUnderConsideration,
 			ts.MsgReservationUnderConsiderationData{
-				Reservation: *state.details,
+				Reservation: state.reservation,
 			},
 		)
 
@@ -73,7 +73,7 @@ func (state *ReservationManage) Entry(user *User, c *Controls) error {
 		message, err = ts.ParseTemplate(
 			ts.MsgReservationInProgress,
 			ts.MsgReservationInProgressData{
-				Reservation: *state.details,
+				Reservation: state.reservation,
 			},
 		)
 
@@ -82,7 +82,7 @@ func (state *ReservationManage) Entry(user *User, c *Controls) error {
 		message, err = ts.ParseTemplate(
 			ts.MsgReservationDone,
 			ts.MsgReservationDoneData{
-				Reservation: *state.details,
+				Reservation: state.reservation,
 			},
 		)
 
@@ -90,8 +90,8 @@ func (state *ReservationManage) Entry(user *User, c *Controls) error {
 		message, err = ts.ParseTemplate(
 			ts.MsgReservationPoll,
 			ts.MsgReservationPollData{
-				Reservation: *state.details,
-				Link:        c.Vk.PostLink(int(details.Poll.Int32)),
+				Reservation: state.reservation,
+				Link:        c.Vk.PostLink(int(reservation.Poll.Int32)),
 			},
 		)
 	}
@@ -134,30 +134,29 @@ func (state *ReservationManage) KeyboardEvent(user *User, c *Controls, payload *
 
 		switch option.ID {
 		case "greeting":
-			request, err := ts.ParseTemplate(
+			message, err := ts.ParseTemplate(
 				ts.MsgReservationGreetingRequest,
 				ts.MsgReservationGreetingRequestData{})
 			if err != nil {
 				return nil, err
 			}
 
-			field := form.NewField(
-				"greeting",
-				&vk.MessageParams{
-					Text: request,
-				},
-				nil,
-				extract.Images,
-				validate.NotEmpty,
-				nil,
-			)
+			field := form.Field{
+				Name:           "greeting",
+				BuildRequest:   form.AlwaysRequest(&vk.MessageParams{Text: message}, nil),
+				ExtrudeMessage: extrude.Images,
+				Check:          check.NotEmpty,
+			}
 
-			return NewActionNext(NewForm("greeting", nil, field)), nil
+			form, err := NewForm("greeting", field)
+			return NewActionNext(form), err
 
 		case "cancel":
 			message, err := ts.ParseTemplate(
 				ts.MsgReservationCancel,
-				ts.MsgReservationCancelData{})
+				ts.MsgReservationCancelData{
+					Reservation: state.reservation,
+				})
 			if err != nil {
 				return nil, err
 			}
@@ -186,24 +185,18 @@ func (state *ReservationManage) Back(user *User, c *Controls, info *ExitInfo) (*
 
 	switch info.Payload {
 	case "greeting":
-		if state.details == nil {
-			return nil, errors.New("no details in state")
-		}
 
 		greeting, err := dict.ExtractValue[string](info.Values, "greeting")
 		if err != nil {
 			return nil, err
 		}
 
-		err = c.Ask.CompleteReservation(state.details.VkID, greeting)
+		err = c.Ask.CompleteReservation(state.reservation.VkID, greeting)
 		if err != nil {
 			return nil, err
 		}
 
 	case "cancel":
-		if state.details == nil {
-			return nil, errors.New("no details in state")
-		}
 
 		answer, err := dict.ExtractValue[bool](info.Values, "confirmation")
 		if err != nil {
@@ -211,7 +204,7 @@ func (state *ReservationManage) Back(user *User, c *Controls, info *ExitInfo) (*
 		}
 
 		if answer {
-			err := c.Ask.DeleteReservation(state.details.VkID)
+			err := c.Ask.DeleteReservation(state.reservation.VkID)
 			if err != nil {
 				return nil, err
 			}

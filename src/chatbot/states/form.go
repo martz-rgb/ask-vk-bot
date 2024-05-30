@@ -1,8 +1,8 @@
 package states
 
 import (
-	"ask-bot/src/dict"
 	"ask-bot/src/form"
+	"ask-bot/src/form/check"
 	"ask-bot/src/vk"
 	"errors"
 
@@ -10,21 +10,21 @@ import (
 )
 
 type Form struct {
-	f *form.Form
-
-	payload      string
-	confirmation func(values dict.Dictionary) (*vk.MessageParams, error)
+	f       *form.Form
+	payload string
 }
 
 func NewForm(payload string,
-	confirmation func(values dict.Dictionary) (*vk.MessageParams, error),
-	fields ...*form.Field) *Form {
-	return &Form{
-		f:            form.NewForm(fields...),
-		confirmation: confirmation,
-
-		payload: payload,
+	fields ...form.Field) (*Form, error) {
+	f, err := form.NewForm(fields...)
+	if err != nil {
+		return nil, err
 	}
+
+	return &Form{
+		f:       f,
+		payload: payload,
+	}, nil
 }
 
 func (state *Form) ID() string {
@@ -47,7 +47,7 @@ func (state *Form) NewMessage(user *User, c *Controls, message *vk.Message) (*Ac
 	}
 
 	if end {
-		return state.endAction()
+		return NewActionExit(state.exitInfo()), nil
 	}
 
 	return nil, nil
@@ -62,7 +62,7 @@ func (state *Form) KeyboardEvent(user *User, c *Controls, payload *vk.CallbackPa
 		}
 
 		if end {
-			return state.endAction()
+			return NewActionExit(state.exitInfo()), nil
 		}
 
 	case "paginator":
@@ -80,24 +80,6 @@ func (state *Form) KeyboardEvent(user *User, c *Controls, payload *vk.CallbackPa
 }
 
 func (state *Form) Back(user *User, c *Controls, info *ExitInfo) (*Action, error) {
-	if info == nil {
-		return nil, state.Entry(user, c)
-	}
-
-	switch info.Payload {
-	case "confirm":
-		answer, err := dict.ExtractValue[bool](info.Values, "confirmation")
-		if err != nil {
-			return nil, err
-		}
-
-		if answer {
-			return NewActionExit(state.exitInfo()), nil
-		} else {
-			return NewActionExit(nil), nil
-		}
-	}
-
 	return nil, state.Entry(user, c)
 }
 
@@ -106,13 +88,13 @@ func (state *Form) sendRequest(user *User, c *Controls) error {
 
 	_, err := c.Vk.SendMessageParams(
 		user.Id,
-		request,
+		request.Message,
 		vk.CreateKeyboard(state.ID(), state.f.Buttons()))
 	return err
 }
 
 func (state *Form) set(user *User, c *Controls, input interface{}) (end bool, err error) {
-	var info *vk.MessageParams
+	var info *check.Result
 
 	switch value := input.(type) {
 	case *vk.Message:
@@ -125,12 +107,16 @@ func (state *Form) set(user *User, c *Controls, input interface{}) (end bool, er
 		return false, err
 	}
 
-	if info != nil {
-		_, err = c.Vk.SendMessage(user.Id, info.Text, "", info.Params)
+	if !info.Ok() {
+		_, err = c.Vk.SendMessageParams(user.Id, info.ErrorToMessageParams(), "")
 		return false, err
 	}
 
-	end = state.f.Next()
+	end, err = state.f.Next()
+	if err != nil {
+		return false, err
+	}
+
 	if !end {
 		return false, state.sendRequest(user, c)
 	}
@@ -142,19 +128,4 @@ func (state *Form) exitInfo() *ExitInfo {
 		Values:  state.f.Values(),
 		Payload: state.payload,
 	}
-}
-
-func (state *Form) endAction() (*Action, error) {
-	if state.confirmation == nil {
-		return NewActionExit(state.exitInfo()), nil
-	}
-
-	message, err := state.confirmation(state.f.Values())
-	if err != nil {
-		return nil, err
-	}
-
-	return NewActionNext(
-		NewConfirmation("confirm", message),
-	), nil
 }
