@@ -117,6 +117,7 @@ func ParseTemplate(id TemplateID, data interface{}) (string, error) {
 	if target_type != actual_type {
 		err := errors.New("invalid type of data for template")
 		return "", zaperr.Wrap(err, "",
+			zap.String("id", string(id)),
 			zap.Any("expected type", ts.Type),
 			zap.Any("data", data))
 	}
@@ -128,6 +129,7 @@ func ParseTemplate(id TemplateID, data interface{}) (string, error) {
 	err := t.Execute(wr, data)
 	if err != nil {
 		return "", zaperr.Wrap(err, "failed to execute template",
+			zap.String("id", string(id)),
 			zap.Any("template", t),
 			zap.Any("data", data))
 	}
