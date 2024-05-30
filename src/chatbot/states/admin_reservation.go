@@ -106,7 +106,7 @@ func (state *AdminReservation) KeyboardEvent(user *User, c *Controls, payload *v
 				options = append(options, form.Option{
 					ID:    strconv.Itoa(r.VkID),
 					Label: r.ShownName,
-					Value: &r,
+					Value: r,
 				})
 			}
 
@@ -120,7 +120,9 @@ func (state *AdminReservation) KeyboardEvent(user *User, c *Controls, payload *v
 			decision := form.Field{
 				Name: "decision",
 				BuildRequest: func(d dict.Dictionary) (*form.Request, bool, error) {
-					r, err := dict.ExtractValue[*ask.Reservation](d, "reservation")
+					r, err := dict.ExtractStruct[struct {
+						Reservation ask.Reservation
+					}](d)
 					if err != nil {
 						return nil, false, err
 					}
@@ -128,7 +130,7 @@ func (state *AdminReservation) KeyboardEvent(user *User, c *Controls, payload *v
 					message, err := ts.ParseTemplate(
 						ts.MsgAdminReservationConsiderate,
 						ts.MsgAdminReservationConsiderateData{
-							Reservation: *r,
+							Reservation: r.Reservation,
 						},
 					)
 					if err != nil {
@@ -136,8 +138,8 @@ func (state *AdminReservation) KeyboardEvent(user *User, c *Controls, payload *v
 					}
 
 					forward, err := vk.ForwardParam(
-						r.VkID,
-						[]int{r.Introduction})
+						r.Reservation.VkID,
+						[]int{r.Reservation.Introduction})
 					if err != nil {
 						return nil, false, err
 					}
@@ -218,24 +220,23 @@ func (state *AdminReservation) Back(user *User, c *Controls, info *ExitInfo) (*A
 
 	switch info.Payload {
 	case "considerate":
-		reservation, err := dict.ExtractValue[*ask.Reservation](info.Values, "reservation")
-		if err != nil {
-			return nil, err
-		}
-		decision, err := dict.ExtractValue[bool](info.Values, "decision")
+		data, err := dict.ExtractStruct[struct {
+			Reservation ask.Reservation
+			Decision    bool
+		}](info.Values)
 		if err != nil {
 			return nil, err
 		}
 
-		if decision {
-			deadline, err := c.Ask.ConfirmReservation(reservation.VkID)
+		if data.Decision {
+			deadline, err := c.Ask.ConfirmReservation(data.Reservation.VkID)
 			if err != nil {
 				return nil, err
 			}
 
-			reservation.Deadline.Time = deadline
+			data.Reservation.Deadline.Time = deadline
 		} else {
-			err := c.Ask.DeleteReservation(reservation.VkID)
+			err := c.Ask.DeleteReservation(data.Reservation.VkID)
 			if err != nil {
 				return nil, err
 			}
@@ -243,22 +244,22 @@ func (state *AdminReservation) Back(user *User, c *Controls, info *ExitInfo) (*A
 
 		message, err := ts.ParseTemplate(
 			ts.MsgAdminReservationConsiderated,
-			ts.MsgAdminReservationConsideratedData{
-				Decision:    decision,
-				Reservation: *reservation,
-			},
+			ts.MsgAdminReservationConsideratedData(data),
 		)
+		if err != nil {
+			return nil, err
+		}
 		notification, err := ts.ParseTemplate(
 			ts.MsgAdminReservationConsideratedNotify,
-			ts.MsgAdminReservationConsideratedNotifyData{
-				Decision:    decision,
-				Reservation: *reservation,
-			},
+			ts.MsgAdminReservationConsideratedNotifyData(data),
 		)
+		if err != nil {
+			return nil, err
+		}
 
 		// notify user
 		c.Notify <- &vk.MessageParams{
-			Id:   reservation.VkID,
+			Id:   data.Reservation.VkID,
 			Text: notification,
 		}
 
@@ -268,12 +269,14 @@ func (state *AdminReservation) Back(user *User, c *Controls, info *ExitInfo) (*A
 		}
 
 	case "delete":
-		reservation, err := dict.ExtractValue[*ask.Reservation](info.Values, "reservation")
+		data, err := dict.ExtractStruct[struct {
+			Reservation ask.Reservation
+		}](info.Values)
 		if err != nil {
 			return nil, err
 		}
 
-		err = c.Ask.DeleteReservation(reservation.VkID)
+		err = c.Ask.DeleteReservation(data.Reservation.VkID)
 		if err != nil {
 			return nil, err
 		}
@@ -281,7 +284,7 @@ func (state *AdminReservation) Back(user *User, c *Controls, info *ExitInfo) (*A
 		message, err := ts.ParseTemplate(
 			ts.MsgAdminReservationDeleted,
 			ts.MsgAdminReservationDeletedData{
-				Reservation: *reservation,
+				Reservation: data.Reservation,
 			},
 		)
 		if err != nil {

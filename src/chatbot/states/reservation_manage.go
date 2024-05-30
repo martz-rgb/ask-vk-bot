@@ -141,14 +141,14 @@ func (state *ReservationManage) KeyboardEvent(user *User, c *Controls, payload *
 				return nil, err
 			}
 
-			field := form.Field{
-				Name:           "greeting",
+			image := form.Field{
+				Name:           "image",
 				BuildRequest:   form.AlwaysRequest(&vk.MessageParams{Text: message}, nil),
 				ExtrudeMessage: extrude.Images,
 				Check:          check.NotEmpty,
 			}
 
-			form, err := NewForm("greeting", field)
+			form, err := NewForm("greeting", image)
 			return NewActionNext(form), err
 
 		case "cancel":
@@ -161,7 +161,15 @@ func (state *ReservationManage) KeyboardEvent(user *User, c *Controls, payload *
 				return nil, err
 			}
 
-			return NewActionNext(NewConfirmation("cancel", &vk.MessageParams{Text: message})), nil
+			confirmation := form.Field{
+				Name:           "confirmation",
+				BuildRequest:   form.AlwaysConfirm(&vk.MessageParams{Text: message}),
+				ExtrudeMessage: nil,
+				Check:          check.NotEmptyBool,
+			}
+
+			form, err := NewForm("cancel", confirmation)
+			return NewActionNext(form), err
 		}
 	case "paginator":
 		back := state.paginator.Control(payload.Value)
@@ -185,41 +193,45 @@ func (state *ReservationManage) Back(user *User, c *Controls, info *ExitInfo) (*
 
 	switch info.Payload {
 	case "greeting":
-
-		greeting, err := dict.ExtractValue[string](info.Values, "greeting")
+		greeting, err := dict.ExtractStruct[struct {
+			Image string
+		}](info.Values)
 		if err != nil {
 			return nil, err
 		}
 
-		err = c.Ask.CompleteReservation(state.reservation.VkID, greeting)
+		err = c.Ask.CompleteReservation(state.reservation.VkID, greeting.Image)
 		if err != nil {
 			return nil, err
 		}
 
 	case "cancel":
-
-		answer, err := dict.ExtractValue[bool](info.Values, "confirmation")
+		data, err := dict.ExtractStruct[struct {
+			Confirmation bool
+		}](info.Values)
 		if err != nil {
 			return nil, err
 		}
 
-		if answer {
-			err := c.Ask.DeleteReservation(state.reservation.VkID)
-			if err != nil {
-				return nil, err
-			}
-
-			message, err := ts.ParseTemplate(
-				ts.MsgReservationCancelSuccess,
-				ts.MsgReservationCancelSuccessData{},
-			)
-			if err != nil {
-				return nil, err
-			}
-
-			_, err = c.Vk.SendMessage(user.Id, message, "", nil)
-			return NewActionExit(nil), err
+		if !data.Confirmation {
+			return nil, state.Entry(user, c)
 		}
+
+		err = c.Ask.DeleteReservation(state.reservation.VkID)
+		if err != nil {
+			return nil, err
+		}
+
+		message, err := ts.ParseTemplate(
+			ts.MsgReservationCancelSuccess,
+			ts.MsgReservationCancelSuccessData{},
+		)
+		if err != nil {
+			return nil, err
+		}
+
+		_, err = c.Vk.SendMessage(user.Id, message, "", nil)
+		return NewActionExit(nil), err
 	}
 
 	return nil, state.Entry(user, c)

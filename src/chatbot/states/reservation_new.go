@@ -9,7 +9,6 @@ import (
 	"ask-bot/src/paginator"
 	ts "ask-bot/src/templates"
 	"ask-bot/src/vk"
-	"errors"
 )
 
 type ReservationNew struct {
@@ -78,7 +77,7 @@ func (state *ReservationNew) KeyboardEvent(user *User, c *Controls, payload *vk.
 		}
 		state.role = role
 
-		message, err := ts.ParseTemplate(
+		confirm_msg, err := ts.ParseTemplate(
 			ts.MsgReservationNewConfirmation,
 			ts.MsgReservationNewConfirmationData{
 				Role: *role,
@@ -87,11 +86,47 @@ func (state *ReservationNew) KeyboardEvent(user *User, c *Controls, payload *vk.
 			return nil, err
 		}
 
-		return NewActionNext(NewConfirmation(
-			"confirmation",
-			&vk.MessageParams{
-				Text: message,
-			})), nil
+		introduction_msg, err := ts.ParseTemplate(
+			ts.MsgReservationNewIntro,
+			ts.MsgReservationNewIntroData{},
+		)
+		if err != nil {
+			return nil, err
+		}
+
+		confirm := form.Field{
+			Name:           "confirmation",
+			BuildRequest:   form.AlwaysConfirm(&vk.MessageParams{Text: confirm_msg}),
+			ExtrudeMessage: nil,
+			Check:          check.NotEmptyBool,
+		}
+
+		introduction := form.Field{
+			Name: "introduction",
+			BuildRequest: func(d dict.Dictionary) (*form.Request, bool, error) {
+				data, err := dict.ExtractStruct[struct {
+					Confirmation bool
+				}](d)
+				if err != nil {
+					return nil, false, err
+				}
+
+				if !data.Confirmation {
+					return nil, true, nil
+				}
+
+				return &form.Request{
+					Message: &vk.MessageParams{
+						Text: introduction_msg,
+					},
+				}, false, nil
+			},
+			ExtrudeMessage: extrude.ID,
+			Check:          check.NotEmptyPositiveInt,
+		}
+
+		form, err := NewForm("introduction", confirm, introduction)
+		return NewActionNext(form), err
 
 	case "paginator":
 		back := state.paginator.Control(payload.Value)
@@ -113,43 +148,20 @@ func (state *ReservationNew) Back(user *User, c *Controls, info *ExitInfo) (*Act
 	}
 
 	switch info.Payload {
-	case "confirmation":
-		answer, err := dict.ExtractValue[bool](info.Values, "confirmation")
+	case "introduction":
+		data, err := dict.ExtractStruct[struct {
+			Confirmation bool
+			Introduction int
+		}](info.Values)
 		if err != nil {
 			return nil, err
 		}
 
-		if answer {
-			message, err := ts.ParseTemplate(
-				ts.MsgReservationNewIntro,
-				ts.MsgReservationNewIntroData{},
-			)
-			if err != nil {
-				return nil, err
-			}
-
-			field := form.Field{
-				Name:           "about",
-				BuildRequest:   form.AlwaysRequest(&vk.MessageParams{Text: message}, nil),
-				ExtrudeMessage: extrude.ID,
-				Check:          check.NotEmptyPositiveInt,
-			}
-
-			form, err := NewForm("about", field)
-			return NewActionNext(form), err
+		if !data.Confirmation {
+			return nil, state.Entry(user, c)
 		}
 
-	case "about":
-		if state.role == nil {
-			return nil, errors.New("no role in state")
-		}
-
-		id, err := dict.ExtractValue[int](info.Values, "about")
-		if err != nil {
-			return nil, err
-		}
-
-		err = c.Ask.AddReservation(user.Id, state.role.Name, id)
+		err = c.Ask.AddReservation(user.Id, state.role.Name, data.Introduction)
 		if err != nil {
 			return nil, err
 		}
@@ -162,7 +174,8 @@ func (state *ReservationNew) Back(user *User, c *Controls, info *ExitInfo) (*Act
 		if err != nil {
 			return nil, err
 		}
-		forward, err := vk.ForwardParam(user.Id, []int{id})
+
+		forward, err := vk.ForwardParam(user.Id, []int{data.Introduction})
 		if err != nil {
 			return nil, err
 		}
