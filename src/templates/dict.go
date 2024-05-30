@@ -1,7 +1,7 @@
 package templates
 
 import (
-    "ask-bot/src/ask"
+	"ask-bot/src/ask"
 )
 
 type MsgAdminReservationConfirmChoiceData struct{}
@@ -9,13 +9,13 @@ type MsgGreetingData struct{}
 type MsgPointsData struct{ Points int }
 type MsgPointsNoHistoryData struct{}
 type MsgPointsEventData struct {
-    Diff  int
-    Date  string
-    Cause string
+	Diff  int
+	Date  string
+	Cause string
 }
 type MsgPointsShortHistoryData struct {
-    Events string
-    Count  int
+	Events string
+	Count  int
 }
 type MsgReservationNewData struct{}
 type MsgReservationNewConfirmationData struct{ ask.Role }
@@ -28,8 +28,8 @@ type MsgReservationUnderConsiderationData struct{ ask.Reservation }
 type MsgReservationInProgressData struct{ ask.Reservation }
 type MsgReservationDoneData struct{ ask.Reservation }
 type MsgReservationPollData struct {
-    ask.Reservation
-    Link string
+	ask.Reservation
+	Link string
 }
 type MsgMemberDeadlineData struct{ Members []ask.Member }
 type MsgAdminRolesData struct{}
@@ -37,8 +37,8 @@ type MsgAdminRolesItemData struct{ ask.Role }
 type MsgAdminReservationsData struct{ Reservations []ask.Reservation }
 type MsgAdminReservationConsiderateData struct{ ask.Reservation }
 type MsgAdminReservationConsideratedData struct {
-    Decision    bool
-    Reservation ask.Reservation
+	Reservation ask.Reservation
+	Decision    bool
 }
 type MsgAdminReservationConsideratedNotifyData MsgAdminReservationConsideratedData
 type MsgAdminReservationDeletedData struct{ ask.Reservation }
