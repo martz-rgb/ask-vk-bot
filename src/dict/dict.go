@@ -7,6 +7,8 @@ import (
 	"go.uber.org/zap"
 )
 
+// TO-DO: extract from map to struct
+
 type Dictionary map[string]interface{}
 
 func ExtractValue[T any](dict Dictionary, keys ...string) (T, error) {

@@ -1,4 +1,4 @@
-package extract
+package extrude
 
 import (
 	"ask-bot/src/vk"

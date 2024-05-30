@@ -2,82 +2,103 @@ package form
 
 import (
 	"ask-bot/src/dict"
+	"ask-bot/src/form/check"
 	"ask-bot/src/paginator"
-	"ask-bot/src/stack"
 	"ask-bot/src/vk"
+	"errors"
 )
 
 // TO-DO: implement undo action
 type Form struct {
-	layers *stack.Stack[*Layer]
-	values dict.Dictionary
+	fields []Field
+	index  int
 
 	paginator *paginator.Paginator[Option]
 }
 
-func NewForm(fields ...*Field) *Form {
-	f := &Form{
-		layers: stack.New[*Layer](NewLayer("", fields)),
+func (form *Form) current() *Field {
+	return &form.fields[form.index]
+}
+
+func NewForm(fields ...Field) (*Form, error) {
+
+	form := &Form{
+		fields: fields,
+		index:  -1,
 	}
 
-	f.update()
-
-	return f
-}
-
-func (f *Form) Request() *vk.MessageParams {
-	return f.layers.Peek().Current().Request()
-}
-
-func (f *Form) SetFromMessage(m *vk.Message) (*vk.MessageParams, error) {
-	return f.layers.Peek().SetFromMessage(m)
-}
-
-func (f *Form) SetFromOption(id string) (*vk.MessageParams, error) {
-	return f.layers.Peek().SetFromOption(id)
-}
-
-func (f *Form) Next() (end bool) {
-	name, fields := f.layers.Peek().Next()
-	if fields != nil {
-		f.layers.Push(NewLayer(name, fields))
-		f.update()
-		return
+	end, err := form.Next()
+	if err != nil {
+		return nil, err
 	}
 
-	for f.layers.Len() > 0 && f.layers.Peek().IsEnd() {
-		layer := f.layers.Pop()
+	if end {
+		err = errors.New("form is empty")
+		return nil, err
+	}
 
-		if f.layers.Len() > 0 {
-			f.layers.Peek().AddValue(layer.Name(), layer.Values())
-		} else {
-			f.values = layer.Values()
-			return true
+	return form, nil
+}
+
+func (form *Form) Request() *Request {
+	return form.current().Request()
+}
+
+func (form *Form) SetFromMessage(m *vk.Message) (*check.Result, error) {
+	form.current().SetFromMessage(m)
+	return form.current().Validate()
+}
+
+func (form *Form) SetFromOption(id string) (*check.Result, error) {
+	form.current().SetFromOption(id)
+	return form.current().Validate()
+}
+
+func (form *Form) Next() (end bool, err error) {
+	form.index++
+	if form.index >= len(form.fields) {
+		return true, nil
+	}
+
+	skip, err := form.current().Entry(form.Values())
+	if err != nil {
+		return false, err
+	}
+
+	for skip && form.index < len(form.fields)-1 {
+		form.index++
+		skip, err = form.current().Entry(form.Values())
+		if err != nil {
+			return false, err
 		}
 	}
 
-	f.update()
-	return false
+	form.update()
+
+	return skip, nil
 }
 
-func (f *Form) Buttons() [][]vk.Button {
-	return f.paginator.Buttons()
+func (form *Form) Buttons() [][]vk.Button {
+	return form.paginator.Buttons()
 }
 
-func (f *Form) Control(command string) (back bool) {
-	return f.paginator.Control(command)
+func (form *Form) Control(command string) (back bool) {
+	return form.paginator.Control(command)
 }
 
-func (f *Form) Values() dict.Dictionary {
-	return f.values
-}
+func (form *Form) Values() dict.Dictionary {
+	d := dict.Dictionary{}
 
-func (f *Form) update() {
-	if f.layers.Len() == 0 {
-		return
+	for i := 0; i < form.index; i++ {
+		field := form.fields[i]
+		d[field.Name] = field.Value
 	}
 
-	if f.paginator == nil {
+	return d
+}
+
+func (form *Form) update() {
+	if form.paginator == nil {
 		config := &paginator.Config[Option]{
 			Command: "form",
 			ToLabel: OptionToLabel,
@@ -85,11 +106,11 @@ func (f *Form) update() {
 			ToValue: OptionToValue,
 		}
 
-		f.paginator = paginator.New[Option](
-			f.layers.Peek().Current().Options(),
+		form.paginator = paginator.New[Option](
+			form.Request().Options,
 			config.MustBuild())
 		return
 	}
 
-	f.paginator.ChangeObjects(f.layers.Peek().Current().Options())
+	form.paginator.ChangeObjects(form.Request().Options)
 }

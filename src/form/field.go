@@ -1,85 +1,60 @@
 package form
 
-import "ask-bot/src/vk"
+import (
+	"ask-bot/src/dict"
+	"ask-bot/src/form/check"
+	"ask-bot/src/vk"
+)
 
 type Field struct {
-	name string
+	Name string
 
-	request *vk.MessageParams
-	options []Option
+	BuildRequest   func(dict.Dictionary) (*Request, bool, error)
+	ExtrudeMessage func(*vk.Message) interface{}
+	Check          func(interface{}) (*check.Result, error)
 
-	extract  func(*vk.Message) interface{}
-	validate func(interface{}) (*vk.MessageParams, error)
-	next     func(interface{}) (string, []*Field)
+	Value interface{}
 
-	value interface{}
+	request *Request
 }
 
-func NewField(name string,
-	request *vk.MessageParams,
-	options []Option,
-	extract func(*vk.Message) interface{},
-	validate func(interface{}) (*vk.MessageParams, error),
-	next func(interface{}) (string, []*Field)) *Field {
-
-	return &Field{
-		name:     name,
-		request:  request,
-		options:  options,
-		extract:  extract,
-		validate: validate,
-		next:     next,
-
-		value: nil,
+func (f *Field) Entry(d dict.Dictionary) (bool, error) {
+	request, skip, err := f.BuildRequest(d)
+	if err != nil {
+		return false, err
 	}
+
+	f.request = request
+	return skip, nil
 }
 
-func (f *Field) Name() string {
-	return f.name
-}
-
-func (f *Field) Request() *vk.MessageParams {
+func (f *Field) Request() *Request {
 	return f.request
 }
 
-func (f *Field) Options() []Option {
-	return f.options
-}
-
-func (f *Field) Next() (string, []*Field) {
-	if f.next == nil {
-		return "", nil
-	}
-	return f.next(f.value)
-}
-
-func (f *Field) Value() interface{} {
-	return f.value
-}
-
 func (f *Field) SetFromMessage(message *vk.Message) {
-	if f.extract == nil {
-		f.value = nil
+	if f.ExtrudeMessage == nil {
+		f.Value = nil
 		return
 	}
-	f.value = f.extract(message)
+	f.Value = f.ExtrudeMessage(message)
 }
 
 func (f *Field) SetFromOption(id string) {
-	f.value = nil
+	f.Value = nil
 
-	for _, option := range f.options {
+	for _, option := range f.request.Options {
 		if option.ID == id {
-			f.value = option.Value
+			f.Value = option.Value
 			return
 		}
 	}
 }
 
-func (f *Field) Validate() (*vk.MessageParams, error) {
-	if f.validate == nil {
-		// no validation is required
+func (f *Field) Validate() (*check.Result, error) {
+	if f.Check == nil {
 		return nil, nil
 	}
-	return f.validate(f.value)
+
+	return f.Check(f.Value)
 }
