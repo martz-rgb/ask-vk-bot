@@ -16,7 +16,10 @@ require (
 	github.com/xhit/go-str2duration/v2 v2.1.0
 )
 
-require github.com/pkg/errors v0.9.1 // indirect
+require (
+	github.com/mitchellh/mapstructure v1.5.0 // indirect
+	github.com/pkg/errors v0.9.1 // indirect
+)
 
 require (
 	github.com/awnumar/memcall v0.2.0 // indirect

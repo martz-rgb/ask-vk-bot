@@ -4,12 +4,24 @@ import (
 	"errors"
 
 	"github.com/hori-ryota/zaperr"
+	"github.com/mitchellh/mapstructure"
 	"go.uber.org/zap"
 )
 
 // TO-DO: extract from map to struct
 
 type Dictionary map[string]interface{}
+
+// any, but it should be struct
+func ExtractStruct[T any](d Dictionary) (T, error) {
+	var t T
+	err := mapstructure.Decode(d, &t)
+	if err != nil {
+		return *new(T), err
+	}
+
+	return t, nil
+}
 
 func ExtractValue[T any](dict Dictionary, keys ...string) (T, error) {
 	var err error
