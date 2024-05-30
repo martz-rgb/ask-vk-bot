@@ -40,6 +40,7 @@ const (
 	MsgAdminRoles                         TemplateID = "msg_admin_roles"
 	MsgAdminRolesItem                     TemplateID = "msg_admin_roles_item"
 	MsgAdminReservations                  TemplateID = "msg_admin_reservations"
+	MsgAdminReservationConsiderate        TemplateID = "msg_admin_reservation_considerate"
 	MsgAdminReservationConsiderated       TemplateID = "msg_admin_reservation_considerated"
 	MsgAdminReservationConsideratedNotify TemplateID = "msg_admin_reservation_considerated_notify"
 	MsgAdminReservationDeleted            TemplateID = "msg_admin_reservation_deleted"

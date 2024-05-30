@@ -58,7 +58,10 @@
         "Идентификатор: {{.Name}}\nТег: {{.Hashtag}}\nИмя: {{.ShownName}}\nПадеж: {{.AccusativeName}}\nЗаголовок: {{.CaptionName}}\nГруппа: {{.Group.String}}\nНомер: {{.Order.Int32}}\n"
     ],
     "msg_admin_reservations": [
-        "{{with $l := len .Reservations}}{{if eq $l 0}}Броней нет.{{else}}{{range $i, $elem := $.Reservations}}{{add $i 1}}. Роль: {{$elem.ShownName}}\nПользователь: {{vkid $elem.VkID}}\nСтатус: {{$elem.Status}}\nДедлайн: {{rudate $elem.Deadline.Time}}{{end}}{{end}}{{end}}"
+        "{{if not .Reservations}}Броней нет.{{else}}{{range $i, $elem := $.Reservations}}{{add $i 1}}. Роль: {{$elem.ShownName}}\nПользователь: {{vkid $elem.VkID}}\nСтатус: {{$elem.Status}}\nДедлайн: {{rudate $elem.Deadline.Time}}{{end}}{{end}}"
+    ],
+    "msg_admin_reservation_considerate": [
+        "Роль: {{.ShownName}}\nСтраница: {{vkid .VkID}}\n"
     ],
     "msg_admin_reservation_considerated": [
         "{{if .Decision}}Бронь на {{.Reservation.AccusativeName}} была успешно подтверждена.{{else}}Бронь на {{.Reservation.AccusativeName}} была отклонена.{{end}}"
