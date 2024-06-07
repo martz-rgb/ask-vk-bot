@@ -18,11 +18,11 @@ func exclude(actual *VKInfo, desired *DBInfo) (new *DBInfo, invalid []posts.Post
 	}, invalid
 }
 
-func exclude_polls(actual []posts.Post, desired []ask.PendingPoll) (new []ask.PendingPoll, invalid []posts.Post) {
+func exclude_polls(actual []posts.Post, desired []ask.Poll) (new []ask.Poll, invalid []posts.Post) {
 	// assumption that desired is sorted by role?
 
 	for i := range actual {
-		index, ok := slices.BinarySearchFunc(desired, actual[i], func(pp ask.PendingPoll, p posts.Post) int {
+		index, ok := slices.BinarySearchFunc(desired, actual[i], func(pp ask.Poll, p posts.Post) int {
 			return strings.Compare(pp.Name, p.Roles[0].Name)
 		})
 

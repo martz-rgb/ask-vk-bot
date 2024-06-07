@@ -20,7 +20,7 @@ func (c *Controls) CheckOngoingPolls() error {
 	// get vk posts
 	ids := make([]int, len(polls))
 	for i := range polls {
-		ids[i] = int(polls[i].Post.Int32)
+		ids[i] = int(polls[i].Post)
 	}
 
 	posts, err := c.Admin.PostsByIds(ids)

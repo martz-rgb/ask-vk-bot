@@ -25,7 +25,7 @@ func (c *Controls) createNew(objects *DBInfo, busy *schedule.Schedule) (new Dict
 	return new, nil
 }
 
-func (c *Controls) createNewPolls(polls []ask.PendingPoll, busy *schedule.Schedule) (new []posts.Post, err error) {
+func (c *Controls) createNewPolls(polls []ask.Poll, busy *schedule.Schedule) (new []posts.Post, err error) {
 	if len(polls) == 0 {
 		return nil, nil
 	}
@@ -63,7 +63,24 @@ func (c *Controls) createNewPolls(polls []ask.PendingPoll, busy *schedule.Schedu
 	return new, nil
 }
 
-func (c *Controls) addNewPoll(poll ask.PendingPoll, date time.Time) (*posts.Post, error) {
+type PollDecision struct {
+	Label    string
+	Decision int
+}
+
+type PollDecisions []PollDecision
+
+func (ds PollDecisions) ToLabels() []string {
+	labels := make([]string, len(ds))
+
+	for i := range ds {
+		labels[i] = ds[i].Label
+	}
+
+	return labels
+}
+
+func (c *Controls) addNewPoll(poll ask.Poll, date time.Time) (*posts.Post, error) {
 	organization := c.Ask.OrganizationHashtags()
 
 	message := fmt.Sprintf("%s %s\nГолосование на %s!",
@@ -95,9 +112,18 @@ func (c *Controls) addNewPoll(poll ask.PendingPoll, date time.Time) (*posts.Post
 		}
 	}
 
+	// TO-DO: write normal
+
+	labels := []string{"Конечно", "Нет"}
+	decisions := make([]int, len(poll.Participants)+1)
+	for i := range poll.Participants {
+		decisions[i] = poll.Participants[i]
+	}
+	decisions[len(decisions)-1] = ask.PollAnswerNone
+
 	// add config for poll duration
 	vk_poll, err := c.Vk.CreatePoll("Берем?",
-		[]string{"Конечно!", "Нет."},
+		labels,
 		true,
 		date.Add(24*time.Hour).Unix())
 	if err != nil {
@@ -107,6 +133,12 @@ func (c *Controls) addNewPoll(poll ask.PendingPoll, date time.Time) (*posts.Post
 		fmt.Sprintf("poll%d_%d", vk_poll.OwnerID, vk_poll.ID))
 
 	id, err := c.Vk.CreatePost(message, strings.Join(attachments, ","), false, date.Unix())
+	if err != nil {
+		return nil, err
+	}
+
+	// save cache
+	err = c.Ask.AddPoll(poll.Role.Name, ask.ConvertAnswers(labels, decisions, vk_poll))
 	if err != nil {
 		return nil, err
 	}

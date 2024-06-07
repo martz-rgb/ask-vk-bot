@@ -3,7 +3,7 @@ package postponed
 import "ask-bot/src/ask"
 
 type DBInfo struct {
-	polls []ask.PendingPoll
+	polls []ask.Poll
 	// greetings
 	// leavings
 }

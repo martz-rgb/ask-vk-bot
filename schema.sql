@@ -117,10 +117,17 @@ CREATE TABLE reservations (
     timestamp DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP
 );
 
-CREATE TABLE polls (
+CREATE TABLE ongoing_polls (
     role TEXT REFERENCES roles(name) PRIMARY KEY NOT NULL,
-    post INT,
+    post INT NOT NULL,
     timestamp DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP
+);
+
+CREATE TABLE poll_answers_cache (
+    poll_id INT,
+    answer_id INT,
+    decision INT,
+    PRIMARY KEY (poll_id, answer_id) ON CONFLICT REPLACE
 );
 
 -- views
@@ -141,7 +148,7 @@ FROM
     INNER JOIN roles ON reservations.role = roles.name
     LEFT JOIN polls USING(role);
 
-CREATE VIEW pending_polls AS
+CREATE VIEW polls AS
 SELECT
     reservations.role,
     count(*) as count,
@@ -168,30 +175,25 @@ WHERE
 GROUP BY
     role;
 
-CREATE VIEW pending_polls_details AS
+CREATE VIEW polls_details AS
 SELECT
     count,
     participants,
     greetings,
+    ongoing_polls.post,
     roles.*
 FROM
-    pending_polls
-    INNER JOIN roles ON pending_polls.role = roles.name
-WHERE
-    roles.name NOT IN (
-        SELECT
-            role
-        FROM
-            polls
-    );
+    polls
+    INNER JOIN roles ON polls.role = roles.name
+    LEFT JOIN ongoing_polls USING(role);
 
-CREATE VIEW ongoing_polls AS
+CREATE VIEW pending_polls AS
 SELECT
     *
 FROM
-    polls
+    polls_details
 WHERE
-    post IS NOT NULL;
+    polls_details.post IS NULL;
 
 CREATE VIEW available_roles AS
 SELECT
@@ -203,7 +205,7 @@ WHERE
         SELECT
             role
         FROM
-            pending_polls
+            polls
         UNION
         SELECT
             role
