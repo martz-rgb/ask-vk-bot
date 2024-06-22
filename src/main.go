@@ -3,11 +3,11 @@ package main
 import (
 	"ask-bot/src/ask"
 	"ask-bot/src/chatbot"
-	"ask-bot/src/events"
 	"ask-bot/src/listener"
 	"ask-bot/src/templates"
 	"ask-bot/src/vk"
 	"ask-bot/src/watcher"
+	"ask-bot/src/watcher/events"
 	"ask-bot/src/watcher/postponed"
 	"context"
 	"fmt"

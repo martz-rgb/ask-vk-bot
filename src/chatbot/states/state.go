@@ -2,9 +2,9 @@ package states
 
 import (
 	"ask-bot/src/ask"
-	"ask-bot/src/dict"
-	"ask-bot/src/events"
+	"ask-bot/src/datatypes/dict"
 	"ask-bot/src/vk"
+	"ask-bot/src/watcher/events"
 	"ask-bot/src/watcher/postponed"
 )
 

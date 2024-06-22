@@ -2,8 +2,8 @@ package states
 
 import (
 	"ask-bot/src/ask"
-	"ask-bot/src/russian"
 	ts "ask-bot/src/templates"
+	"ask-bot/src/templates/russian"
 	"ask-bot/src/vk"
 	"bytes"
 	"errors"

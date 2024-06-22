@@ -1,8 +1,8 @@
 package states
 
 import (
-	"ask-bot/src/form"
-	"ask-bot/src/paginator"
+	"ask-bot/src/datatypes/form"
+	"ask-bot/src/datatypes/paginator"
 	"ask-bot/src/vk"
 	"errors"
 

@@ -2,7 +2,7 @@ package listener
 
 import (
 	"ask-bot/src/ask"
-	"ask-bot/src/posts"
+	"ask-bot/src/datatypes/posts"
 	"ask-bot/src/vk"
 	"context"
 	"sync"

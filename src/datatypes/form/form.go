@@ -1,9 +1,9 @@
 package form
 
 import (
-	"ask-bot/src/dict"
-	"ask-bot/src/form/check"
-	"ask-bot/src/paginator"
+	"ask-bot/src/datatypes/dict"
+	"ask-bot/src/datatypes/form/check"
+	"ask-bot/src/datatypes/paginator"
 	"ask-bot/src/vk"
 	"errors"
 )

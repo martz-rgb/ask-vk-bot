@@ -1,8 +1,8 @@
 package postponed
 
 import (
-	"ask-bot/src/posts"
-	"ask-bot/src/schedule"
+	"ask-bot/src/datatypes/posts"
+	"ask-bot/src/datatypes/schedule"
 	"slices"
 	"time"
 )

@@ -2,11 +2,11 @@ package states
 
 import (
 	"ask-bot/src/ask"
-	"ask-bot/src/dict"
-	"ask-bot/src/form"
-	"ask-bot/src/form/check"
-	"ask-bot/src/form/extrude"
-	"ask-bot/src/paginator"
+	"ask-bot/src/datatypes/dict"
+	"ask-bot/src/datatypes/form"
+	"ask-bot/src/datatypes/form/check"
+	"ask-bot/src/datatypes/form/extrude"
+	"ask-bot/src/datatypes/paginator"
 	ts "ask-bot/src/templates"
 	"ask-bot/src/vk"
 )

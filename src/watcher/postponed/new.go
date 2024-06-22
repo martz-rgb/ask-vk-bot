@@ -2,8 +2,8 @@ package postponed
 
 import (
 	"ask-bot/src/ask"
-	"ask-bot/src/posts"
-	"ask-bot/src/schedule"
+	"ask-bot/src/datatypes/posts"
+	"ask-bot/src/datatypes/schedule"
 	"fmt"
 	"net/http"
 	"strings"

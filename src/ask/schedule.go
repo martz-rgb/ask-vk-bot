@@ -1,7 +1,7 @@
 package ask
 
 import (
-	"ask-bot/src/schedule"
+	"ask-bot/src/datatypes/schedule"
 	"database/sql/driver"
 	"errors"
 	"slices"

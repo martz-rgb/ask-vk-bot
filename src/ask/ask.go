@@ -1,7 +1,7 @@
 package ask
 
 import (
-	"ask-bot/src/db"
+	"ask-bot/src/ask/db"
 	"time"
 
 	"github.com/hori-ryota/zaperr"

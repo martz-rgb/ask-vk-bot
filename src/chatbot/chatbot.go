@@ -2,7 +2,7 @@ package chatbot
 
 import (
 	"ask-bot/src/chatbot/states"
-	"ask-bot/src/storage"
+	"ask-bot/src/datatypes/storage"
 	"ask-bot/src/vk"
 	"context"
 	"sync"

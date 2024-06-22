@@ -1,7 +1,7 @@
 package watcher
 
 import (
-	"ask-bot/src/events"
+	"ask-bot/src/watcher/events"
 	"context"
 	"sync"
 )

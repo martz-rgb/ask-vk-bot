@@ -2,7 +2,7 @@ package chatbot
 
 import (
 	"ask-bot/src/chatbot/states"
-	"ask-bot/src/stack"
+	"ask-bot/src/datatypes/stack"
 	"ask-bot/src/vk"
 	"time"
 

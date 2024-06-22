@@ -1,7 +1,7 @@
 package templates
 
 import (
-	"ask-bot/src/russian"
+	"ask-bot/src/templates/russian"
 	"bytes"
 	"encoding/json"
 	"errors"

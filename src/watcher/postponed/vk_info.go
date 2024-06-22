@@ -1,7 +1,7 @@
 package postponed
 
 import (
-	"ask-bot/src/posts"
+	"ask-bot/src/datatypes/posts"
 )
 
 type VKInfo struct {

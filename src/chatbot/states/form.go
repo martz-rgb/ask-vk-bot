@@ -1,8 +1,8 @@
 package states
 
 import (
-	"ask-bot/src/form"
-	"ask-bot/src/form/check"
+	"ask-bot/src/datatypes/form"
+	"ask-bot/src/datatypes/form/check"
 	"ask-bot/src/vk"
 	"errors"
 
