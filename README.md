@@ -32,6 +32,8 @@ thoughts and long-term:
 - [ ] add timeslot test for exclude\merge
 - [ ] use context in nodes
 - [ ] print in log unsended 
+- [ ] add prefix to bot messages
+- [ ] flashmobs (create, submit, retrieve all, close)
 - [ ] manage secrets with docker swarm? 
 - [ ] longpoll quit silently if no internet connection
 - [ ] какая-то фигня при смене клавиатуры на пк, если есть прикрепленное сообщение
