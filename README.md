@@ -16,7 +16,7 @@ about poll:
 
 TO-DO list:
 
-- [ ] remember polls answers
+- [ ]  add cleaning of poll answer cache
 - [ ] greetings (table + add from listener + create in postponed)
 - [ ] members & deadlines
 - [ ] greetings mode (manual or auto)
@@ -29,6 +29,9 @@ TO-DO list:
 
 thoughts and long-term:
 
+- [ ] maybe remove error from ask.Schedule & create init method to check 
+- [ ] postponed method more optimized? 
+- [ ] some error resistent like not to stop all things but only affected by error (watcher)
 - [ ] add timeslot test for exclude\merge
 - [ ] use context in nodes
 - [ ] print in log unsended 
@@ -73,3 +76,4 @@ done:
 - [x] polls sync
 - [x] watcher with update on notifications
 - [x] rewrite forms (make it more simple but save as mush power as can)
+- [x] remember polls answers
