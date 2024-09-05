@@ -95,18 +95,18 @@ func main() {
 
 	// linked parts init
 	notify_user := make(chan *vk.MessageParams)
-	postponed := postponed.New()
+	postponed := postponed.New(admin)
 	notify_event := make(chan events.Event)
 
 	w := watcher.New(&watcher.Controls{
 		Ask:         a,
 		Admin:       admin,
 		Group:       group,
+		Postponed:   postponed,
 		NotifyUser:  notify_user,
 		NotifyEvent: notify_event,
 	},
 		config.UpdatePostponed,
-		postponed,
 		watcher_logger.Sugar())
 
 	c := chatbot.New(&chatbot.Controls{

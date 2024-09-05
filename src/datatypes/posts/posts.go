@@ -2,6 +2,8 @@ package posts
 
 import (
 	"ask-bot/src/ask"
+	"ask-bot/src/datatypes/schedule"
+	"ask-bot/src/vk"
 	"regexp"
 	"slices"
 	"strings"
@@ -10,6 +12,7 @@ import (
 	"github.com/SevereCloud/vksdk/v2/object"
 )
 
+// binary mask
 type Kind int
 
 var Kinds = struct {
@@ -21,13 +24,30 @@ var Kinds = struct {
 	FreeAnswer Kind
 	Leaving    Kind
 }{
-	Unknown:    0,
-	Invalid:    1,
-	Poll:       2,
-	Acceptance: 3,
-	Answer:     4,
-	FreeAnswer: 5,
-	Leaving:    6,
+	Unknown:    0b1,
+	Invalid:    0b10,
+	Poll:       0b100,
+	Acceptance: 0b1000,
+	Answer:     0b10000,
+	FreeAnswer: 0b100000,
+	Leaving:    0b1000000,
+}
+
+func ParseKinds(mask Kind) []Kind {
+	var kinds []Kind
+
+	// ATTENTION
+	index := 0b1000000
+
+	for index > 0 {
+		if int(mask)&index == 1 {
+			kinds = append(kinds, Kind(index))
+		}
+
+		index >>= 1
+	}
+
+	return kinds
 }
 
 type Poll struct {
@@ -43,7 +63,7 @@ type Post struct {
 	ID   int
 	Date time.Time
 
-	Poll *Poll
+	//Poll *Poll
 }
 
 func Parse(vk_post *object.WallWallpost, dictionary []ask.Role, organization *ask.OrganizationHashtags) *Post {
@@ -52,26 +72,30 @@ func Parse(vk_post *object.WallWallpost, dictionary []ask.Role, organization *as
 		Date: time.Unix(int64(vk_post.Date), 0),
 	}
 
-	post.complete(vk_post, dictionary, organization)
+	post.complete(vk_post.Text, dictionary, organization)
 
 	return post
 }
 
-func ParseMany(vk_posts []object.WallWallpost, dictionary []ask.Role, organization *ask.OrganizationHashtags) []Post {
-	posts := make([]Post, len(vk_posts))
+func ParseFromParams(id int, params vk.PostParams, dictionary []ask.Role, organization *ask.OrganizationHashtags) *Post {
+	post := &Post{
+		Kind:  Kinds.Unknown,
+		Roles: nil,
 
-	for i, vk_post := range vk_posts {
-		posts[i].ID = vk_post.ID
-		posts[i].Date = time.Unix(int64(vk_post.Date), 0)
+		ID:   id,
+		Date: params.PublishDate,
 
-		posts[i].complete(&vk_post, dictionary, organization)
+		//Poll: nil,
 	}
 
-	return posts
+	// find kind & roles
+	post.complete(params.Text, dictionary, organization)
+
+	return post
 }
 
-func (p *Post) complete(vk_post *object.WallWallpost, dictionary []ask.Role, organization *ask.OrganizationHashtags) {
-	tags := regexp.MustCompile(`#([\w@]+)`).FindAllString(vk_post.Text, -1)
+func (p *Post) complete(text string, dictionary []ask.Role, organization *ask.OrganizationHashtags) {
+	tags := regexp.MustCompile(`#([\w@]+)`).FindAllString(text, -1)
 	p.Roles = FindRoles(tags, dictionary)
 
 	var kind Kind
@@ -91,24 +115,24 @@ func (p *Post) complete(vk_post *object.WallWallpost, dictionary []ask.Role, org
 			kind = Kinds.Invalid
 		}
 
-		var poll *Poll
-		for _, attachment := range vk_post.Attachments {
-			if attachment.Type != object.AttachmentTypePoll {
-				continue
-			}
+		// var poll *Poll
+		// for _, attachment := range vk_post.Attachments {
+		// 	if attachment.Type != object.AttachmentTypePoll {
+		// 		continue
+		// 	}
 
-			poll = &Poll{
-				ID:      attachment.Poll.ID,
-				Closed:  bool(attachment.Poll.Closed),
-				Answers: attachment.Poll.Answers,
-			}
-		}
+		// 	poll = &Poll{
+		// 		ID:      attachment.Poll.ID,
+		// 		Closed:  bool(attachment.Poll.Closed),
+		// 		Answers: attachment.Poll.Answers,
+		// 	}
+		// }
 
-		if poll == nil {
-			kind = Kinds.Invalid
-		} else {
-			p.Poll = poll
-		}
+		// if poll == nil {
+		// 	kind = Kinds.Invalid
+		// } else {
+		// 	p.Poll = poll
+		// }
 	}
 
 	if slices.Contains(tags, organization.AcceptanceHashtag) {
@@ -150,13 +174,29 @@ func FindRoles(tags []string, dictionary []ask.Role) []ask.Role {
 	return found
 }
 
-func ToTime(posts []Post) []time.Time {
-	var result []time.Time
-	for _, p := range posts {
-		result = append(result, p.Date)
+type Posts map[Kind][]Post
+
+func ParseMany(vk_posts []object.WallWallpost, dictionary []ask.Role, organization *ask.OrganizationHashtags) Posts {
+	posts := make(Posts, len(vk_posts))
+
+	for i := range vk_posts {
+		post := Parse(&vk_posts[i], dictionary, organization)
+
+		posts[post.Kind] = append(posts[post.Kind], *post)
 	}
 
-	slices.SortFunc(result, func(a, b time.Time) int {
+	return posts
+}
+
+func (posts Posts) Schedule() schedule.Schedule {
+	s := make(schedule.Schedule, len(posts))
+	for _, kind := range posts {
+		for i := range kind {
+			s = append(s, kind[i].Date)
+		}
+	}
+
+	slices.SortFunc(s, func(a, b time.Time) int {
 		if a.After(b) {
 			return 1
 		} else if a.Before(b) {
@@ -166,5 +206,5 @@ func ToTime(posts []Post) []time.Time {
 		return 0
 	})
 
-	return result
+	return s
 }

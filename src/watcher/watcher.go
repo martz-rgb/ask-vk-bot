@@ -12,14 +12,24 @@ import (
 	"go.uber.org/zap"
 )
 
+// TO-DO how to divide group/admin vk api & postponed
 type Controls struct {
 	Ask *ask.Ask
 
 	Group *vk.VK
 	Admin *vk.VK
 
+	Postponed *postponed.Postponed
+
 	NotifyUser  chan *vk.MessageParams
 	NotifyEvent chan events.Event
+}
+
+func (c *Controls) PostponedControls() *postponed.Controls {
+	return &postponed.Controls{
+		Vk:  c.Admin,
+		Ask: c.Ask,
+	}
 }
 
 var buf = 1
@@ -34,15 +44,13 @@ var notifications = struct {
 
 type Watcher struct {
 	c *Controls
-	p *postponed.Postponed
 
 	log *zap.SugaredLogger
 }
 
-func New(controls *Controls, tick time.Duration, p *postponed.Postponed, log *zap.SugaredLogger) *Watcher {
+func New(controls *Controls, tick time.Duration, log *zap.SugaredLogger) *Watcher {
 	return &Watcher{
 		c:   controls,
-		p:   p,
 		log: log,
 	}
 }
@@ -54,9 +62,14 @@ func (w *Watcher) Run(ctx context.Context, wg *sync.WaitGroup) {
 
 	go w.runWithNotify(ctx, wg, w.c.CheckAlbums, notifications.Album)
 	go w.runWithNotify(ctx, wg, w.c.CheckBoards, notifications.Board)
+
 	go w.run(ctx, wg, w.c.CheckReservationsDeadline)
+
+	go w.run(ctx, wg, w.c.UpdatePostponed)
+	go w.run(ctx, wg, w.c.DeleteInvalidPostponed)
+
+	go w.run(ctx, wg, w.c.CheckPendingPolls)
 	go w.run(ctx, wg, w.c.CheckOngoingPolls)
-	go w.run(ctx, wg, w.updatePostponed)
 }
 
 func (w *Watcher) run(ctx context.Context, wg *sync.WaitGroup, exec func() error) {
