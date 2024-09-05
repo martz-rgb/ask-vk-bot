@@ -2,6 +2,8 @@ package vk
 
 import (
 	"fmt"
+	"strings"
+	"time"
 
 	"github.com/SevereCloud/vksdk/v2/api"
 	"github.com/SevereCloud/vksdk/v2/object"
@@ -17,6 +19,13 @@ const (
 	CopyPost      = "copy"
 	NewPost       = "post"
 )
+
+type PostParams struct {
+	Text        string
+	Attachments []string
+	Signed      bool
+	PublishDate time.Time
+}
 
 func (v *VK) PostLink(post int) string {
 	return fmt.Sprintf("https://vk.com/wall%d_%d", v.id, post)
@@ -40,6 +49,30 @@ func (v *VK) CreatePost(text string, attachments string, signed bool, publish_da
 	}
 
 	zap.S().Debugw("successfully created post",
+		"params", params,
+		"response", response)
+
+	return response.PostID, nil
+}
+
+func (v *VK) CreatePostByParams(post *PostParams) (int, error) {
+	params := api.Params{
+		"owner_id":     v.id,
+		"from_group":   1,
+		"message":      post.Text,
+		"attachments":  strings.Join(post.Attachments, ","),
+		"signed":       post.Signed,
+		"publish_date": post.PublishDate.Unix(),
+	}
+
+	response, err := v.api.WallPost(params)
+	if err != nil {
+		return 0, zaperr.Wrap(err, "failed to create post by params",
+			zap.Any("params", params),
+			zap.Any("response", response))
+	}
+
+	zap.S().Debugw("successfully created post by params",
 		"params", params,
 		"response", response)
 
