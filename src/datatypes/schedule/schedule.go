@@ -128,3 +128,20 @@ func (schedule Schedule) Add(date time.Time) Schedule {
 
 	return schedule
 }
+
+func (schedule Schedule) Delete(date time.Time) Schedule {
+	index, ok := slices.BinarySearchFunc(schedule, date, func(t1, t2 time.Time) int {
+		return t1.Compare(t2)
+	})
+
+	if !ok {
+		return schedule
+	}
+
+	if index == len(schedule) {
+		return schedule[:index]
+	}
+
+	schedule = append(schedule[:index], schedule[index+1:]...)
+	return schedule
+}
