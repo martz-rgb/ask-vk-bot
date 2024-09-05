@@ -112,7 +112,7 @@ CREATE TABLE reservations (
     introduction INT NOT NULL,
     is_confirmed INT NOT NULL DEFAULT 0,
     deadline DATETIME,
-    -- urls for images 
+    -- json array for urls
     greeting TEXT,
     timestamp DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP
 );
@@ -149,10 +149,7 @@ SELECT
         ORDER BY
             vk_id
     ) AS participants,
-    group_concat(greeting, ';') OVER (
-        ORDER BY
-            vk_id
-    ) AS greetings
+    json_group_object(cast(vk_id as text), json(greeting)) AS greetings
 FROM
     reservations
 WHERE

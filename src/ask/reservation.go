@@ -3,6 +3,7 @@ package ask
 import (
 	"database/sql"
 	"database/sql/driver"
+	"encoding/json"
 	"errors"
 	"time"
 
@@ -51,12 +52,47 @@ func (s *ReservationStatus) Scan(value interface{}) error {
 	return errors.New("failed to scan ReservationStatus")
 }
 
+type Urls []string
+
+func (s Urls) Value() (driver.Value, error) {
+	json, err := json.Marshal(s)
+	if err != nil {
+		return nil, err
+	}
+
+	return string(json), nil
+}
+
+func (s *Urls) Scan(value interface{}) error {
+	if value == nil {
+		*s = []string{}
+		return nil
+	}
+
+	if str, err := driver.String.ConvertValue(value); err == nil {
+		if v, ok := str.(string); ok {
+			var urls []string
+			err := json.Unmarshal([]byte(v), &urls)
+
+			if err != nil {
+				return errors.New("failed to unmarshal urls")
+			}
+
+			*s = urls
+			return nil
+		}
+
+	}
+	return errors.New("failed to scan Urls")
+
+}
+
 type Reservation struct {
 	VkID         int               `db:"vk_id"`
 	Introduction int               `db:"introduction"` // id of vk message contained information
 	Deadline     sql.NullTime      `db:"deadline"`
 	Status       ReservationStatus `db:"status"`
-	Greeting     sql.NullString    `db:"greeting"`
+	Greeting     Urls              `db:"greeting"`
 	Poll         sql.NullInt32     `db:"poll"`
 
 	Role
@@ -257,9 +293,9 @@ func (a *Ask) ConfirmReservation(vk_id int) (time.Time, error) {
 	return deadline, nil
 }
 
-func (a *Ask) CompleteReservation(vk_id int, greeting string) error {
+func (a *Ask) CompleteReservation(vk_id int, images Urls) error {
 	query := sqlf.Update("reservations").
-		Set("greeting", greeting).
+		Set("greeting", images).
 		Where("vk_id = ?", vk_id)
 
 	_, err := a.db.Exec(query.String(), query.Args()...)

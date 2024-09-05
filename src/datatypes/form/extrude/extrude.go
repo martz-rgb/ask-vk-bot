@@ -2,7 +2,6 @@ package extrude
 
 import (
 	"ask-bot/src/vk"
-	"strings"
 )
 
 // int
@@ -50,7 +49,7 @@ var doc_size_order = map[string]int{
 	"o": 5,
 }
 
-// string
+// []string
 func Images(message *vk.Message) interface{} {
 	var images []string
 
@@ -93,5 +92,5 @@ func Images(message *vk.Message) interface{} {
 		return nil
 	}
 
-	return strings.Join(images, ",")
+	return images
 }
