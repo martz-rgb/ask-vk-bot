@@ -45,3 +45,10 @@ const (
 	MsgAdminReservationConsideratedNotify TemplateID = "msg_admin_reservation_considerated_notify"
 	MsgAdminReservationDeleted            TemplateID = "msg_admin_reservation_deleted"
 )
+
+const (
+	// post poll template should contain roles & poll hashtags!!!
+	PostPoll       TemplateID = "post_poll"
+	PostPollLabel  TemplateID = "post_poll_label"
+	PostPollAnswer TemplateID = "post_poll_answer"
+)

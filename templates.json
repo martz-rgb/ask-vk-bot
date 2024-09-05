@@ -71,5 +71,15 @@
     ],
     "msg_admin_reservation_deleted": [
         "Бронь на {{.AccusativeName}} от {{vkid .VkID}} была успешно удалена."
+    ],
+    "post_poll": [
+        "{{.PollHashtag}} {{.Poll.Hashtag}}\nПримем на роль {{.Poll.AccusativeName}}?"
+    ],
+    "post_poll_label": [
+        "Берем?",
+        "Принимаем?"
+    ],
+    "post_poll_answer": [
+        "{{if eq .Value -1}}Нет{{else}}Да{{end}}"
     ]
 }

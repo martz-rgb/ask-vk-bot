@@ -1,6 +1,7 @@
 package watcher
 
 import (
+	"ask-bot/src/ask"
 	"time"
 
 	"github.com/SevereCloud/vksdk/v2/object"
@@ -20,7 +21,7 @@ func (c *Controls) CheckOngoingPolls() error {
 	// get vk posts
 	ids := make([]int, len(polls))
 	for i := range polls {
-		ids[i] = int(polls[i].Post.Int32)
+		ids[i] = int(polls[i].Post)
 	}
 
 	posts, err := c.Admin.PostsByIds(ids)
@@ -36,11 +37,19 @@ func (c *Controls) CheckOngoingPolls() error {
 			}
 
 			if time.Now().After(time.Unix(int64(attachment.Poll.EndDate), 0)) {
-
+				err := c.endPoll(&posts[i], &polls[i])
+				if err != nil {
+					return err
+				}
 			}
 		}
-
 	}
+
 	// if finished then create greeting
+	return nil
+}
+
+// TO-DO: finish
+func (c *Controls) endPoll(post *object.WallWallpost, poll *ask.OngoingPoll) error {
 	return nil
 }
