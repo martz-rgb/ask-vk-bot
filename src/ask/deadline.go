@@ -54,7 +54,7 @@ func (c *DeadlineCause) Scan(value interface{}) error {
 	return errors.New("failed to scan DeadlineCause")
 }
 
-type Deadline struct {
+type DeadlineEvent struct {
 	Member    int           `db:"member"`
 	Diff      int           `db:"diff"` // unix time in seconds!
 	Kind      DeadlineCause `db:"kind"`
@@ -62,35 +62,65 @@ type Deadline struct {
 	Timestamp time.Time     `db:"timestamp"`
 }
 
-func (a *Ask) Deadline(member int) (time.Time, error) {
-	var deadline int64
+type UnixTime time.Time
+
+func (u UnixTime) Value() (driver.Value, error) {
+	return time.Time(u).Unix(), nil
+}
+
+func (u *UnixTime) Scan(value interface{}) error {
+	if value == nil {
+		*u = UnixTime(time.Time{})
+		return nil
+	}
+
+	if i, ok := value.(int64); ok {
+		*u = UnixTime(time.Unix(i, 0))
+
+		return nil
+	}
+
+	return errors.New("failed to scan unixTime")
+}
+
+type Deadline struct {
+	Member   int64    `db:"member"`
+	Deadline UnixTime `db:"deadline"`
+}
+
+func (a *Ask) Deadline(member int) (Deadline, error) {
+	var deadline Deadline
 
 	// should be at least one record
-	query := sqlf.From("deadline").
-		Select("SUM(diff)").
+	query := sqlf.From("deadlines").
+		Bind(&deadline).
 		Where("member = ?", member)
 
 	err := a.db.Get(&deadline, query.String(), query.Args()...)
 	if err != nil {
-		return time.Time{}, zaperr.Wrap(err, "failed to get deadline for memeber",
+		return Deadline{}, zaperr.Wrap(err, "failed to get deadline for member",
 			zap.String("query", query.String()),
 			zap.Any("args", query.Args()))
 	}
 
-	return time.Unix(deadline, 0).Add(a.timezone), nil
+	// add timezone
+	deadline.Deadline = UnixTime(
+		time.Time(deadline.Deadline).Add(a.timezone))
+
+	return deadline, nil
 }
 
-func (a *Ask) HistoryDeadline(member int) ([]Deadline, error) {
-	var history []Deadline
+func (a *Ask) DeadlineJournal(member int) ([]DeadlineEvent, error) {
+	var history []DeadlineEvent
 
-	query := sqlf.From("deadline").
-		Bind(&Deadline{}).
+	query := sqlf.From("deadline_journal").
+		Bind(&DeadlineEvent{}).
 		Where("member = ?", member).
 		OrderBy("timestamp DESC")
 
 	err := a.db.Select(&history, query.String(), query.Args()...)
 	if err != nil {
-		return nil, zaperr.Wrap(err, "failed to get history of deadline for member",
+		return nil, zaperr.Wrap(err, "failed to get deadline journal for member",
 			zap.String("query", query.String()),
 			zap.Any("args", query.Args()))
 	}

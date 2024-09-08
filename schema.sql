@@ -41,7 +41,7 @@ CREATE TABLE members (
     status TEXT CHECK(status IN ('Active', 'Freeze')) NOT NULL DEFAULT 'Active'
 );
 
-CREATE TABLE deadline (
+CREATE TABLE deadline_journal (
     member INT REFERENCES members(id) NOT NULL,
     -- unix time in seconds!
     diff INT NOT NULL DEFAULT 0,
@@ -217,9 +217,10 @@ WHERE
 
 CREATE VIEW deadlines AS
 SELECT
+    member,
     SUM(diff) as deadline
 FROM
-    deadline
+    deadline_journal
 GROUP BY
     member;
 
@@ -232,5 +233,5 @@ SELECT
     roles.*
 FROM
     members
-    INNER JOIN roles ON pending_polls.role = roles.name
-    LEFT JOIN deadlines ON members.id = deadline.member;
+    INNER JOIN roles ON members.role = roles.name
+    LEFT JOIN deadlines ON members.id = deadlines.member;

@@ -67,7 +67,7 @@ func (state *Deadline) NewMessage(user *User, c *Controls, message *vk.Message) 
 func (state *Deadline) KeyboardEvent(user *User, c *Controls, payload *vk.CallbackPayload) (*Action, error) {
 	switch payload.Command {
 	case "history":
-		history, err := c.Ask.HistoryDeadline(user.Id)
+		history, err := c.Ask.DeadlineJournal(user.Id)
 		if err != nil {
 			return nil, err
 		}
@@ -90,7 +90,7 @@ func (state *Deadline) Back(user *User, c *Controls, info *ExitInfo) (*Action, e
 	return nil, state.Entry(user, c)
 }
 
-func (state *Deadline) PrepareHistory(user_id int, c *Controls, history []ask.Deadline) (message string, attachment string, err error) {
+func (state *Deadline) PrepareHistory(user_id int, c *Controls, history []ask.DeadlineEvent) (message string, attachment string, err error) {
 	if len(history) == 0 {
 		return "Нет событий.", "", nil
 	}
