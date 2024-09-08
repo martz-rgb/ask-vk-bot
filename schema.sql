@@ -138,15 +138,15 @@ SELECT
     reservations.deadline,
     reservations.greeting,
     CASE
-        WHEN polls.post IS NOT NULL THEN 'Poll'
+        WHEN ongoing_polls.post IS NOT NULL THEN 'Poll'
         ELSE reservations.status
     END AS status,
-    polls.post as poll,
+    ongoing_polls.post as poll,
     roles.*
 FROM
     reservations
     INNER JOIN roles ON reservations.role = roles.name
-    LEFT JOIN polls USING(role);
+    LEFT JOIN ongoing_polls USING(role);
 
 CREATE VIEW polls AS
 SELECT
@@ -178,18 +178,15 @@ SELECT
     participants,
     greetings,
     roles.*,
-    ongoing_polls.post,
+    ongoing_polls.post
 FROM
-    pending_polls
-    INNER JOIN roles ON pending_polls.role = roles.name
+    polls
+    INNER JOIN roles ON polls.role = roles.name
     LEFT JOIN ongoing_polls USING(role);
 
 CREATE VIEW pending_polls AS
 SELECT
-    count,
-    participants,
-    greetings,
-    roles.*,
+    *
 FROM
     polls_details
 WHERE
@@ -210,7 +207,7 @@ WHERE
         SELECT
             role
         FROM
-            pending_polls
+            polls
         UNION
         SELECT
             role
