@@ -141,14 +141,14 @@ func (state *ReservationManage) KeyboardEvent(user *User, c *Controls, payload *
 				return nil, err
 			}
 
-			image := form.Field{
-				Name:           "images",
+			greeting := form.Field{
+				Name:           "greeting",
 				BuildRequest:   form.AlwaysRequest(&vk.MessageParams{Text: message}, nil),
 				ExtrudeMessage: extrude.Images,
 				Check:          check.NotEmpty,
 			}
 
-			form, err := NewForm("greeting", image)
+			form, err := NewForm("greeting", greeting)
 			return NewActionNext(form), err
 
 		case "cancel":
@@ -194,13 +194,13 @@ func (state *ReservationManage) Back(user *User, c *Controls, info *ExitInfo) (*
 	switch info.Payload {
 	case "greeting":
 		greeting, err := dict.ExtractStruct[struct {
-			Images []string
+			Greeting []string
 		}](info.Values)
 		if err != nil {
 			return nil, err
 		}
 
-		err = c.Ask.CompleteReservation(state.reservation.VkID, greeting.Images)
+		err = c.Ask.CompleteReservation(state.reservation.VkID, greeting.Greeting)
 		if err != nil {
 			return nil, err
 		}

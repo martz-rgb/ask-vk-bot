@@ -47,8 +47,8 @@ func (ids *VkIDs) Scan(value interface{}) error {
 
 type Greetings map[uint32]Urls
 
-func (p Greetings) Value() (driver.Value, error) {
-	json, err := json.Marshal(p)
+func (g Greetings) Value() (driver.Value, error) {
+	json, err := json.Marshal(g)
 	if err != nil {
 		return nil, err
 	}
@@ -56,25 +56,25 @@ func (p Greetings) Value() (driver.Value, error) {
 	return json, nil
 }
 
-func (p *Greetings) Scan(value interface{}) error {
+func (g *Greetings) Scan(value interface{}) error {
 	if value == nil {
 		return errors.New("Greetings is not nullable")
 	}
 
 	if str, err := driver.String.ConvertValue(value); err == nil {
 		if v, ok := str.(string); ok {
-			var participants Greetings
-			err := json.Unmarshal([]byte(v), &participants)
+			var greetings Greetings
+			err := json.Unmarshal([]byte(v), &greetings)
 			if err != nil {
 				return err
 			}
 
-			*p = participants
+			*g = greetings
 			return nil
 		}
 	}
 
-	return errors.New("failed to scan Participants")
+	return errors.New("failed to scan Greetings")
 }
 
 type PendingPoll struct {

@@ -293,9 +293,9 @@ func (a *Ask) ConfirmReservation(vk_id int) (time.Time, error) {
 	return deadline, nil
 }
 
-func (a *Ask) CompleteReservation(vk_id int, images Urls) error {
+func (a *Ask) CompleteReservation(vk_id int, greeting Urls) error {
 	query := sqlf.Update("reservations").
-		Set("greeting", images).
+		Set("greeting", greeting).
 		Where("vk_id = ?", vk_id)
 
 	_, err := a.db.Exec(query.String(), query.Args()...)
