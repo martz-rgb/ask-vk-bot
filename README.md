@@ -51,6 +51,7 @@ thoughts and long-term:
 
 - [ ] maybe remove error from ask.Schedule & create init method to check 
 - [ ] postponed method more optimized? 
+- [ ] stateless chatbot? maybe?
 - [ ] some error resistent like not to stop all things but only affected by error (watcher)
 - [ ] add timeslot test for exclude\merge
 - [ ] use context in nodes
