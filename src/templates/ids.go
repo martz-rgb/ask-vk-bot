@@ -4,7 +4,7 @@ import (
 	"text/template"
 )
 
-//go:generate enumutil -const=TemplateID -dict=Template -name=Templates -output=dict.go -suffix=Data -json=C:\\Users\\noise\\Documents\\ask-vk-bot\\templates.json ids.go
+//go:generate enumutil -const=TemplateID -dict=Template -name=Templates -output=dict.go -suffix=Data ids.go
 
 type TemplateID string
 
